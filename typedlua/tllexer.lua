@@ -61,7 +61,7 @@ local LongString = Open * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close /
                    function (s, o) return s end
 
 local Comment = ((lpeg.P("--") * LongString) +
-                (lpeg.P("--") * lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0))) /
+                (lpeg.P("--") *(-lpeg.P("@"))* lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0))) /
                 function (s)
                   tllexer.comments[#tllexer.comments+1] = s
                   return
@@ -82,6 +82,17 @@ tllexer.Reserved = Keywords * -idRest
 local Identifier = idStart * idRest^0
 
 tllexer.Name = -tllexer.Reserved * lpeg.C(Identifier) * -idRest
+
+-- deco skip not allow \n
+tllexer.DecoSkip = (lpeg.space - lpeg.P("\n"))^0
+-- deco token
+function tllexer.decotoken(pat, name)
+  return pat * tllexer.DecoSkip + updateffp(name) * lpeg.P(false)
+end
+-- deco symb
+function tllexer.decosymb(str)
+  return tllexer.decotoken(lpeg.P(str), str)
+end
 
 function tllexer.token (pat, name)
   return pat * tllexer.Skip + updateffp(name) * lpeg.P(false)

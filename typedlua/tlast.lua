@@ -139,6 +139,25 @@ function tlast.statForin (pos, namelist, explist, block)
   return s
 end
 
+
+function tlast.decoList(...)
+	return {...}
+end
+
+-- statLocalDecopre
+function tlast.statLocalDecopre(pos, decoList, stat)
+	if stat.tag == "Local" then
+		local namelist = stat[1]
+		if #namelist ~= #decoList then
+			-- print("decorated namelist's size not equal with decolist's size")
+		end
+		for i, name in ipairs(namelist) do
+			name[2] = decoList[i]
+		end
+	end
+	return stat
+end
+
 -- statLocal : (number, namelist, explist) -> (stat)
 function tlast.statLocal (pos, namelist, explist)
   return { tag = "Local", pos = pos, [1] = namelist, [2] = explist }
