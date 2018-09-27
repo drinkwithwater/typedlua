@@ -831,4 +831,5 @@ function tlast.dump (out, t, i)
   out:write(string.format("%s}", string.rep(" ", i)))
 end
 
+tlast.var2str = var2str
 return tlast

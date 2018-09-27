@@ -1,0 +1,5 @@
+target:
+	1. deal with global variable
+		-> 1. export tostring function for all kind of ast node
+		?. add typed binding when assign
+

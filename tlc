@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/data/data/com.termux/files/usr/bin/lua
 
 local tlast = require "typedlua.tlast"
 local tlparser = require "typedlua.tlparser"
@@ -10,7 +10,7 @@ local PROGNAME = "tlc"
 local OUTPUT
 
 local DUMPAST = false
-local PRINTAST = false
+local PRINTAST = true
 
 local COLOR = false
 local STRICT = false
@@ -141,8 +141,9 @@ error_msg, status = tlchecker.error_msgs(error_msg, WARNINGS, COLOR, true)
 if error_msg then print(error_msg) end
 
 if status == 0 then
-  local generated_code = tlcode.generate(ast)
-  setcontents(generated_code, OUTPUT)
+  print("not content")
+  -- local generated_code = tlcode.generate(ast)
+  -- setcontents(generated_code, OUTPUT)
 end
 
 if DUMPAST then
