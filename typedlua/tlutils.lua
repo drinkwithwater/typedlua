@@ -1,4 +1,6 @@
 
+local tlnode = require "typedlua.tlnode"
+
 local tlutils = {}
 
 local function lineno (s, i)
@@ -16,6 +18,12 @@ end
 
 local function dumpNode(env, astNode, bufferList, preLine)
 	local line, offset = preLine, nil
+	if tlnode.isType(astNode.tag) then
+		bufferList[#bufferList + 1] = "["
+		bufferList[#bufferList + 1] = astNode.tag
+		bufferList[#bufferList + 1] = "]"
+		return line
+	end
 	if astNode.pos then
 		line, offset = lineno(env.subject, astNode.pos)
 		if line ~= preLine then
@@ -31,8 +39,9 @@ local function dumpNode(env, astNode, bufferList, preLine)
 		if type(v) == "table" then
 			line = dumpNode(env, v, bufferList, line)
 		else
-			bufferList[#bufferList + 1] = " "
+			bufferList[#bufferList + 1] = "("
 			bufferList[#bufferList + 1] = v
+			bufferList[#bufferList + 1] = ")"
 		end
 	end
 	bufferList[#bufferList + 1] = "}"

@@ -12,6 +12,7 @@ local tltype = require "typedlua.tltype"
 local tlparser = require "typedlua.tlparser"
 local tldparser = require "typedlua.tldparser"
 local tlfilter = require "typedlua.tlfilter"
+local tlutils = require "typedlua.tlutils"
 
 local Value = tltype.Value()
 local Any = tltype.Any()
@@ -1346,7 +1347,10 @@ local function check_assignment (env, varlist, explist)
       local l = tlst.get_local(env, v[1][1])
       local t = get_type(l)
       -- a brittle hack to type a method definition in the right-hand side?
-      if tltype.isTable(t) then lselfs[k] = t end
+      if tltype.isTable(t) then
+		  -- tlutils.logat(env, v.pos, tlast.var2str(v))
+		  lselfs[k] = t
+	  end
     end
   end
   check_explist(env, explist, lselfs)
@@ -1882,6 +1886,7 @@ function check_stm (env, stm)
   end
 end
 
+-- check travel ast when block = ast
 local function check_stms (env, block)
   local r = false
   local bkp = env.self
@@ -1959,7 +1964,7 @@ function tlchecker.typecheck (ast, subject, filename, strict, integer, color)
   check_stms(env, ast)
   tlst.end_scope(env)
   tlst.end_function(env)
-  return env.messages
+  return env.messages, env
 end
 
 local function get_source_line(filename, l)

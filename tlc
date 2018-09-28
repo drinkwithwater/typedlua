@@ -1,5 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/lua
 
+local tlutils = require "typedlua.tlutils"
+
 local tlast = require "typedlua.tlast"
 local tlparser = require "typedlua.tlparser"
 local tlchecker = require "typedlua.tlchecker"
@@ -135,13 +137,15 @@ if PRINTAST then
   print(tlast.tostring(ast))
 end
 
-error_msg = tlchecker.typecheck(ast, subject, filename, STRICT, INTEGER, COLOR)
+local env = nil
+error_msg, env = tlchecker.typecheck(ast, subject, filename, STRICT, INTEGER, COLOR)
 local status
 error_msg, status = tlchecker.error_msgs(error_msg, WARNINGS, COLOR, true)
 if error_msg then print(error_msg) end
 
+print(tlutils.dumpast(env, ast))
 if status == 0 then
-  print("not content")
+  -- print("not content")
   -- local generated_code = tlcode.generate(ast)
   -- setcontents(generated_code, OUTPUT)
 end
