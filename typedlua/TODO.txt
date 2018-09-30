@@ -1,5 +1,24 @@
 target:
-	1. deal with global variable
-		-> 1. export tostring function for all kind of ast node
-		?. add typed binding when assign
+	1. 更好地处理全局变量
+		- 1. some tostring
+->		2. 全局变量类型检查加速
+				全局变量ast结构形如 {`Index{`Id "_ENV", `String "fds"} }
+				由于_ENV使用了table类型，table类型的typecheck的subtype判定是无脑遍历的，
+				导致速度非常慢
+				1. 给tableType的typecheck过程加上索引
+				TableTypeBody <- [RecordType{,RecordType}][HashType | ArrayType]
+					1. 对TableType初始化的时候添加索引
+					2. 对TableType进行table.insert的时候添加索引
+		3. dosth
+		?. 为全局变量添加类型系统
+	2. 更方便地处理require和class
+	3. 继承？
 
+skynet target:
+	1. 对于变量的
+			跨service序列化传递、
+			db持久化格式、
+			rest api修改、
+			sproto.encode格式、
+			设计一套框架性地实现
+	2. 为skynet的service类型添加类型系统
