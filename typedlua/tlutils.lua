@@ -48,7 +48,7 @@ local function dumpNode(env, astNode, bufferList, preLine)
 	return line
 end
 
-function tlutils.dumpast(env, astNode, bufferList)
+function tlutils.dumpast(env, astNode)
 	local bufferList = {}
 	dumpNode(env, astNode, bufferList, 0)
 	return table.concat(bufferList)

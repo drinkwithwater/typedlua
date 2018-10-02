@@ -2,6 +2,7 @@
 This module implements Typed Lua tltype.
 ]]
 
+local seri = require "typedlua.seri"
 if not table.unpack then table.unpack = unpack end
 
 local tltype = {}
@@ -437,8 +438,35 @@ function tltype.ArrayField (i, t)
 end
 
 -- Table : (field*) -> (type)
+--!cz mod
 function tltype.Table (...)
-  return { tag = "TTable", ... }
+  local nTableType = { tag = "TTable", recordDict={}, hashList={}, ... }
+  local nRecordDict = nTableType.recordDict
+  local nHashList = nTableType.hashList
+  for i, nField in ipairs(nTableType) do
+	  local nFieldKey = nField[1]
+	  if tltype.isLiteral(nFieldKey) then
+		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
+		  nRecordDict[nFieldKey[1]] = i
+	  else
+		  nHashList[#nHashList + 1] = i
+	  end
+  end
+  return nTableType
+end
+
+-- (TTable, TField) -> ()
+--!cz mod
+function tltype.TableInsertField(vTableType, vFieldType)
+	local nNewIndex = #vTableType + 1
+	local nFieldKey = vFieldType[1]
+	if tltype.isLiteral(nFieldKey) then
+		assert(not vTableType.recordDict[nFieldKey[1]], "TLiteral key use twice")
+		vTableType.recordDict[nFieldKey[1]] = nNewIndex
+	else
+		table.insert(vTableType.hashList, nNewIndex)
+	end
+	vTableType[nNewIndex] = vFieldType
 end
 
 -- isTable : (type) -> (boolean)
@@ -447,9 +475,17 @@ function tltype.isTable (t)
 end
 
 -- getField : (type, type) -> (type)
+--!cz mod
 function tltype.getField (f, t)
   if tltype.isTable(t) then
-    for _, v in ipairs(t) do
+	if tltype.isLiteral(f) then
+		local i = t.recordDict[f[1]]
+		if i then
+			return t[i][2]
+		end
+	end
+    for _, i in ipairs(t.hashList) do
+	  local v = t[i]
       if tltype.consistent_subtype(f, v[1]) then
         return v[2]
       end
@@ -764,24 +800,43 @@ local function subtype_field (env, f1, f2, relation)
   end
 end
 
+--!cz mod
 local function subtype_table (env, t1, t2, relation)
   if tltype.isTable(t1) and tltype.isTable(t2) then
     if t1.unique then
       local m, n = #t1, #t2
       local k, l = 0, {}
       for i = 1, m do
-        for j = 1, n do
-          if subtype(env, t1[i][1], t2[j][1], relation) then
-            if subtype(env, t1[i][2], t2[j][2], relation) then
-              if not l[j] then
-                k = k + 1
-                l[j] = true
-              end
-            else
-              return false
-            end
-          end
-        end
+		local nKey1, nValue1 = t1[i][1], t1[i][2]
+		local nFindLiteralRecord = false
+		if tltype.isLiteral(nKey1) then
+			local j = t2.recordDict[nKey1[1]]
+			if j then
+				if subtype(env, nValue1, t2[j][2], relation) then
+					nFindLiteralRecord = true
+					if not l[j] then
+						k = k + 1
+						l[j] = true
+					end
+				else
+					return false
+				end
+			end
+		end
+		if not nFindLiteralRecord then
+			for _, j in ipairs(t1.hashList) do
+				if subtype(env, nKey1, t2[j][1], relation) then
+					if subtype(env, nValue1, t2[j][2], relation) then
+						if not l[j] then
+							k = k + 1
+							l[j] = true
+						end
+					else
+						return false
+					end
+				end
+			end
+		end
       end
       if k == n then
         return true
@@ -799,18 +854,36 @@ local function subtype_table (env, t1, t2, relation)
       local m, n = #t1, #t2
       local k, l = 0, {}
       for i = 1, m do
-        for j = 1, n do
-          if subtype(env, t1[i][1], t2[j][1], relation) then
-            if subtype_field(env, t2[j], t1[i], relation) then
-              if not l[j] then
-                k = k + 1
-                l[j] = true
-              end
-            else
-              return false
-            end
-          end
-        end
+		local nKey1 = t1[i][1]
+		local nFindLiteralRecord = false
+		if tltype.isLiteral(nKey1) then
+			local j = t2.recordDict[nKey1[1] ]
+			if j then
+				if subtype_field(env, t2[j], t1[i], relation) then
+					nFindLiteralRecord = true
+					if not l[j] then
+						k = k + 1
+						l[j] = true
+					end
+				else
+					return false
+				end
+			end
+		end
+		if not nFindLiteralRecord then
+			for _, j in ipairs(t1.hashList) do
+				if subtype(env, nKey1, t2[j][1], relation) then
+					if subtype_field(env, t2[j], t1[i], relation) then
+						if not l[j] then
+							k = k + 1
+							l[j] = true
+						end
+					else
+						return false
+					end
+				end
+			end
+		end
       end
       if k == n then
         return true
@@ -827,14 +900,26 @@ local function subtype_table (env, t1, t2, relation)
     else
       local m, n = #t1, #t2
       for i = 1, n do
-        local subtype = false
-        for j = 1, m do
-          if subtype_field(env, t1[j], t2[i], relation) then
-            subtype = true
-            break
-          end
-        end
-        if not subtype then return false end
+		local nKey2 = t2[i][1]
+		if tltype.isLiteral(nKey2) then
+			local j = t1.recordDict[nKey2[1]]
+			if j then
+				if not subtype_field(env, t1[j], t2[i], relation) then
+					return false
+				end
+			else
+				return false
+			end
+		else
+			local subtype = false
+			for _, j in ipairs(t1.hashList) do
+				if subtype_field(env, t1[j], t2[i], relation) then
+					subtype = true
+					break
+				end
+			end
+			if not subtype then return false end
+		end
       end
       return true
     end
@@ -951,59 +1036,180 @@ local function subtype_tuple (env, t1, t2, relation)
   end
 end
 
+
+
+--!cz
+local t2QuickDict = {
+	TUnionlist = function(env, t1, t2, relation)
+		for _, v in ipairs(t2) do
+			if subtype(env, t1, v, relation) then
+				return true
+			end
+		end
+		return false
+	end,
+	TTuple = function(env, t1, t2, relation)
+		return false
+	end,
+	TVararg = function(env, t1, t2, relation)
+		local t1_nil = tltype.Union(t1[1], tltype.Nil())
+		return subtype(env, t1_nil, t2, relation)
+	end,
+	TUnion = subtype_union,
+	TValue = subtype_top,
+}
+--!cz
+local function wrapDefault(dictDict)
+	for k, subDict in pairs(dictDict) do
+		if subDict.__default then
+			dictDict[k] = setmetatable(subDict, {
+				__index = function()
+					return subDict.__default
+				end
+			})
+		end
+	end
+	return dictDict
+end
+--!cz
+local t1QuickDict = wrapDefault({
+	-- step 1
+	TVoid = {
+		TVoid = function()
+			return true
+		end,
+	},
+	TProj = {
+		TProj = function(env, t1, t2, relation)
+			return t1[1] == t2[1] and t1[2] == t2[2]
+		end
+	},
+	TPrim = {
+		TPrim = function(env, t1, t2, relation)
+			return t1[1] == t2[1]
+		end,
+		__default = function(env, t1, t2, relation)
+			return subtype(env, t1[2], t2, relation)
+		end
+	},
+
+	-- step 2
+	TUnionlist = {
+		__default = function(env, t1, t2, relation)
+			for _, v in ipairs(t1) do
+				if not subtype(env, v, t2, relation) then
+					return false
+				end
+			end
+			return true
+		end
+	},
+	TTuple = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = function(env, t1, t2, relation)
+			return subtype_tuple(env, t1, t2, relation)
+		end,
+		__default = function(env, t1, t2, relation)
+			return false
+		end
+	},
+	TVararg = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = function(env, t1, t2, relation)
+			local t1_nil = tltype.Union(t1[1], tltype.Nil())
+			local t2_nil = tltype.Union(t2[1], tltype.Nil())
+			return subtype(env, t1_nil, t2_nil, relation)
+		end,
+		__default = function(env, t1, t2, relation)
+			local t1_nil = tltype.Union(t1[1], tltype.Nil())
+			return subtype(env, t1_nil, t2, relation)
+		end
+	},
+
+	-- step 3
+	TLiteral = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TLiteral = subtype_literal,
+		TBase = subtype_literal,
+	},
+	TBase = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TBase = subtype_base,
+	},
+	TNil = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TNil = subtype_nil,
+	},
+	-- TValue,
+	-- TAny,
+	TSelf = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TSelf = subtype_self,
+	},
+
+	-- TUnion,
+	TFunction = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TFunction = subtype_function,
+	},
+	TTable = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TTable = subtype_table,
+	},
+	TVariable = {
+		TUnionlist = t2QuickDict.TUnionlist,
+		TTuple = t2QuickDict.TTuple,
+		TVararg = t2QuickDict.TVararg,
+		TVariable = subtype_variable,
+	},
+	-- TGlobalVariable,
+	-- TRecursive,
+})
+local alterDict = {
+	TUnion = subtype_union,
+}
+
+--!cz
 function subtype (env, t1, t2, relation)
-  if tltype.isVoid(t1) and tltype.isVoid(t2) then
-    return true
-  elseif tltype.isProj(t1) and tltype.isProj(t2) then
-    return t1[1] == t2[1] and t1[2] == t2[2]
-  elseif tltype.isPrim(t1) and tltype.isPrim(t2) then
-    return t1[1] == t2[1]
-  elseif tltype.isPrim(t1) then
-    return subtype(env, t1[2], t2, relation)
-  elseif tltype.isUnionlist(t1) then
-    for _, v in ipairs(t1) do
-      if not subtype(env, v, t2, relation) then
-        return false
-      end
-    end
-    return true
-  elseif tltype.isUnionlist(t2) then
-    for _, v in ipairs(t2) do
-      if subtype(env, t1, v, relation) then
-        return true
-      end
-    end
-    return false
-  elseif tltype.isTuple(t1) and tltype.isTuple(t2) then
-    return subtype_tuple(env, t1, t2, relation)
-  elseif tltype.isTuple(t1) and not tltype.isTuple(t2) then
-    return false
-  elseif not tltype.isTuple(t1) and tltype.isTuple(t2) then
-    return false
-  elseif tltype.isVararg(t1) and tltype.isVararg(t2) then
-    local t1_nil = tltype.Union(t1[1], tltype.Nil())
-    local t2_nil = tltype.Union(t2[1], tltype.Nil())
-    return subtype(env, t1_nil, t2_nil, relation)
-  elseif tltype.isVararg(t1) and not tltype.isVararg(t2) then
-    local t1_nil = tltype.Union(t1[1], tltype.Nil())
-    return subtype(env, t1_nil, t2, relation)
-  elseif not tltype.isVararg(t1) and tltype.isVararg(t2) then
-    local t2_nil = tltype.Union(t2[1], tltype.Nil())
-    return subtype(env, t1, t2_nil, relation)
-  else
-    return subtype_literal(env, t1, t2) or
-           subtype_base(env, t1, t2) or
-           subtype_nil(env, t1, t2) or
-           subtype_top(env, t1, t2) or
-           subtype_any(env, t1, t2, relation) or
-           subtype_self(env, t1, t2) or
-           subtype_union(env, t1, t2, relation) or
-           subtype_function(env, t1, t2, relation) or
-           subtype_table(env, t1, t2, relation) or
-           subtype_variable(env, t1, t2) or
-           subtype_global_variable(env, t1, t2, relation) or
-           subtype_recursive(env, t1, t2, relation)
-  end
+	local t1SubDict = t1QuickDict[t1.tag]
+	local t1Branch = t1SubDict and t1SubDict[t2.tag]
+	if t1Branch then
+		return t1Branch(env, t1, t2, relation)
+	end
+	local t2Branch = t2QuickDict[t2.tag]
+	if t2Branch then
+		return t2Branch(env, t1, t2, relation)
+	end
+	return subtype_top(env, t1, t2) or
+			subtype_any(env, t1, t2, relation) or
+			subtype_union(env, t1, t2, relation) or
+			subtype_global_variable(env, t1, t2, relation) or
+			subtype_recursive(env, t1, t2, relation)
+	--[[return subtype_literal(env, t1, t2) or
+		subtype_base(env, t1, t2) or
+		subtype_nil(env, t1, t2) or
+		subtype_top(env, t1, t2) or
+		subtype_any(env, t1, t2, relation) or
+		subtype_self(env, t1, t2) or
+		subtype_union(env, t1, t2, relation) or
+		subtype_function(env, t1, t2, relation) or
+		subtype_table(env, t1, t2, relation) or
+		subtype_variable(env, t1, t2) or
+		subtype_global_variable(env, t1, t2, relation) or
+		subtype_recursive(env, t1, t2, relation)]]
 end
 
 function tltype.subtype (t1, t2)

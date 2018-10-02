@@ -13,6 +13,7 @@ local tlparser = require "typedlua.tlparser"
 local tldparser = require "typedlua.tldparser"
 local tlfilter = require "typedlua.tlfilter"
 local tlutils = require "typedlua.tlutils"
+local seri = require "typedlua.seri"
 
 local Value = tltype.Value()
 local Any = tltype.Any()
@@ -339,7 +340,7 @@ local function check_tld (env, name, path, pos)
   for _, v in ipairs(ast) do
     local tag = v.tag
     if tag == "Id" then
-      table.insert(t, tltype.Field(v.const, tltype.Literal(v[1]), replace_names(env, v[2], pos)))
+      tltype.TableInsertField(t, tltype.Field(v.const, tltype.Literal(v[1]), replace_names(env, v[2], pos)))
     elseif tag == "Interface" then
       check_interface(env, v)
     elseif tag == "Require" then
@@ -1765,9 +1766,10 @@ function check_var (env, var, exp)
           if exp then
             local t3 = tltype.general(get_type(exp))
             local t = tltype.general(t1)
-            table.insert(t, tltype.Field(var.const, t2, t3))
+			tltype.TableInsertField(t, tltype.Field(var.const, t2, t3))
+			-- TODO!!!!! this function cost too much time...
             if tltype.subtype(t, t1) then
-              table.insert(t1, tltype.Field(var.const, t2, t3))
+              tltype.TableInsertField(t1, tltype.Field(var.const, t2, t3))
             else
               msg = "could not include field " .. bold_token
               msg = string.format(msg, tltype.tostring(t2))
@@ -1935,7 +1937,7 @@ local function load_lua_env (env)
     local t1 = tltype.Literal(v)
     local t2 = check_require(env, v, 0, path)
     local f = tltype.Field(false, t1, t2)
-    table.insert(t, f)
+    tltype.TableInsertField(t, f)
   end
   t.open = true
   local lua_env = tlast.ident(0, "_ENV", t)
