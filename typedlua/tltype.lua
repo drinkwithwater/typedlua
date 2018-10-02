@@ -1052,11 +1052,11 @@ local t2QuickDict = {
 		return false
 	end,
 	TVararg = function(env, t1, t2, relation)
-		local t1_nil = tltype.Union(t1[1], tltype.Nil())
-		return subtype(env, t1_nil, t2, relation)
+		local t2_nil = tltype.Union(t2[1], tltype.Nil())
+		return subtype(env, t1, t2_nil, relation)
 	end,
-	TUnion = subtype_union,
-	TValue = subtype_top,
+	-- TUnion = subtype_union,
+	-- TValue = subtype_top,
 }
 --!cz
 local function wrapDefault(dictDict)
