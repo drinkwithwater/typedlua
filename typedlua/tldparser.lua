@@ -7,6 +7,7 @@ local tldparser = {}
 local lpeg = require "lpeg"
 lpeg.locale(lpeg)
 
+local seri = require "typedlua.seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
 local tltype = require "typedlua.tltype"
@@ -117,7 +118,7 @@ local function traverse (ast, errorinfo, strict)
   for _, v in ipairs(ast) do
     local tag = v.tag
     if tag == "Id" then
-      table.insert(t, tltype.Field(v.const, tltype.Literal(v[1]), v[2]))
+      tltype.TableInsertField(t, tltype.Field(v.const, tltype.Literal(v[1]), v[2]))
     elseif tag == "Interface" then
       local name, t = v[1], v[2]
       local status, msg = tltype.checkTypeDec(name, t)
