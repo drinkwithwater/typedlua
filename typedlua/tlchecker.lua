@@ -337,6 +337,8 @@ local function check_tld (env, name, path, pos)
     return Any
   end
   local t = tltype.Table()
+  --!cz
+  t.file = path..name
   for _, v in ipairs(ast) do
     local tag = v.tag
     if tag == "Id" then

@@ -437,6 +437,23 @@ function tltype.ArrayField (i, t)
   return tltype.Field(false, tltype.Integer(i), t)
 end
 
+
+--[[
+interface Table
+	tag:string
+	open:boolean?
+	unique:boolean?
+	name:string?
+
+	--!cz
+	file:string?
+
+	Field
+	recordDict:{string:integer}
+	hashList:{integer:integer}
+end
+]]
+
 -- Table : (field*) -> (type)
 --!cz mod
 function tltype.Table (...)
@@ -616,6 +633,7 @@ local function unfold_recursive (tr, t)
     local r = tltype.Table(table.unpack(l))
     r.unique = t.unique
     r.open = t.open
+	r.file = t.file
     return r
   elseif tltype.isVariable(t) then
     if t[1] == tr[1] then
@@ -803,6 +821,9 @@ end
 --!cz mod
 local function subtype_table (env, t1, t2, relation)
   if tltype.isTable(t1) and tltype.isTable(t2) then
+	if t1.file and t1.file == t2.file then
+		return true
+	end
     if t1.unique then
       local m, n = #t1, #t2
       local k, l = 0, {}
@@ -1248,6 +1269,7 @@ function tltype.general (t)
     n.unique = t.unique
     n.open = t.open
     n.name = t.name
+	n.file = t.file
     return n
   elseif tltype.isTuple(t) then
     local l = {}
