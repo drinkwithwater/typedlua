@@ -1,65 +1,96 @@
 --[[
-This module implements a visitor for the Typed Lua AST.
+This module implements a faster visitor for the Typed Lua AST.
+--!cz
 ]]
 
 local tltype = require "typedlua.tltype"
-
 local tlvisitor = {}
 
 local visit_block, visit_stm, visit_exp, visit_var, visit_type
 local visit_explist, visit_varlist, visit_parlist, visit_fieldlist
 
-function visit_type (visitor, t)
+local function visit_tag(visit_dict, visitor, t)
   local tag = t.tag
-  if tag == "TLiteral" then
-    -- t[1]
-  elseif tag == "TBase" then
-    -- t[1]
-  elseif tag == "TNil" or
-         tag == "TValue" or
-         tag == "TAny" or
-         tag == "TSelf" or
-         tag == "TVoid" then
-  elseif tag == "TUnion" or
-         tag == "TUnionlist" then
-    for _, v in ipairs(t) do
-      visit_type(visitor, v)
-    end
-  elseif tag == "TFunction" then
-    visit_type(visitor, t[1])
-    visit_type(visitor, t[2])
-  elseif tag == "TTable" then
-    for _, v in ipairs(t) do
-      visit_type(visitor, v[1])
-      visit_type(visitor, v[2])
-    end
-  elseif tag == "TVariable" or
-         tag == "TGlobalVariable" then
-    -- t[1]
-  elseif tag == "TRecursive" then
-    -- t[1]
-    visit_type(visitor, t[2])
-  elseif tag == "TTuple" then
-    for _, v in ipairs(t) do
-      visit_type(visitor, v)
-    end
-  elseif tag == "TVararg" then
-    visit_type(visitor, t[1])
+  local before = visitor.before[tag]
+  local override = visitor.override[tag]
+  local after = visitor.after[tag]
+  if override then
+	  override(visitor, t, before, after)
   else
-    error("expecting a type, but got a " .. tag)
+	  if before then
+		  before(visitor, t)
+	  end
+	  local middle = visit_dict[tag]
+	  if middle then
+		  middle(visitor, t)
+	  end
+	  if after then
+		  after(visitor, t)
+	  end
   end
 end
 
-function visit_var (visitor, var)
-  local tag = var.tag
-  if tag == "Id" then
-    visitor:id(var)
-  elseif tag == "Index" then
-    visitor:index(var)
-  else
-    error("expecting a variable, but got a " .. tag)
-  end
-end
+
+visit_type = setmetatable({
+	TLiteral = false,
+	TBase = false,
+	TNil = false,
+	TValue = false,
+	TAny = false,
+	TSelf = false,
+	TVoid = false,
+	TUnion = function(visitor, node)
+		for _, v in ipairs(node) do
+			visit_type(visitor, v)
+		end
+	end,
+	TUnionlist = function(visitor, node)
+		for _, v in ipairs(node) do
+			visit_type(visitor, v)
+		end
+	end,
+	TFunction = function(visitor, node)
+		visit_type(visitor, node[1])
+		visit_type(visitor, node[2])
+	end,
+	TField = function(visitor, node)
+		visit_type(visitor, node[1])
+		visit_type(visitor, node[2])
+	end,
+	TTable = function(visitor, node)
+		for _, v in ipairs(node) do
+			visit_type(visitor, v)
+		end
+    end,
+	TVariable = false,
+	TGlobalVariable = false,
+	TRecursive = function(visitor, node)
+		visit_type(visitor, node[2])
+	end,
+	TTuple = function(visitor, node)
+		for _, v in ipairs(node) do
+			visit_type(visitor, v)
+		end
+	end,
+	TVararg = function(visitor, node)
+		visit_type(visitor, node[1])
+	end
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a type, but got a " .. tag)
+	end
+})
+
+visit_var = setmetatable({
+	Id = false,
+	Index = false,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a variable, but got a " .. tag)
+	end
+})
 
 function visit_varlist (visitor, varlist)
   for k, v in ipairs(varlist) do
@@ -90,171 +121,193 @@ function visit_fieldlist (visitor, fieldlist)
   for k, v in ipairs(fieldlist) do
     local tag = v.tag
     if tag == "Pair" then
-      visitor:expression(v[1])
-      visitor:expression(v[2])
+		visit_exp(visitor, v[1])
+		visit_exp(visitor, v[2])
     else -- expr
-      visitor:expression(v)
+		visit_exp(visitor, v)
     end
   end
 end
 
-function visit_exp (visitor, exp)
-  local tag = exp.tag
-  if tag == "Nil" or
-     tag == "Dots" or
-     tag == "True" or
-     tag == "False" or
-     tag == "Number" or
-     tag == "String" then
-  elseif tag == "Function" then
-    visit_parlist(visitor, exp[1])
-    if exp[3] then
-      visit_type(visitor, exp[2])
-      visitor:block(exp[3])
-    else
-      visitor:block(exp[2])
-    end
-  elseif tag == "Table" then
-    visit_fieldlist(visitor, exp)
-  elseif tag == "Op" then
-    -- opid: exp[1]
-    visit_exp(visitor, exp[2])
-    if exp[3] then
-      visit_exp(visitor, exp[3])
-    end
-  elseif tag == "Paren" then
-    visit_exp(visitor, exp[1])
-  elseif tag == "Call" then
-    visit_exp(visitor, exp[1])
-    if exp[2] then
-      for i=2, #exp do
-        visit_exp(visitor, exp[i])
-      end
-    end
-  elseif tag == "Invoke" then
-    visit_exp(visitor, exp[1])
-    visit_exp(visitor, exp[2])
-    if exp[3] then
-      for i=3, #exp do
-        visit_exp(visitor, exp[i])
-      end
-    end
-  elseif tag == "Id" or
-         tag == "Index" then
-    visit_var(visitor, exp)
-  else
-    error("expecting an expression, but got a " .. tag)
-  end
-end
+visit_exp = setmetatable({
+	Nil=false,
+	Dots=false,
+	True=false,
+	False=false,
+	Number=false,
+	String=false,
+
+	Function = function(visitor, exp)
+		visit_parlist(visitor, exp[1])
+		if exp[3] then
+			visit_type(visitor, exp[2])
+			visit_block(visitor, exp[3])
+		else
+			visit_block(visitor, exp[2])
+		end
+	end,
+	Table = visit_fieldlist,
+	Op = function(visitor, exp)
+		-- opid: exp[1]
+		visit_exp(visitor, exp[2])
+		if exp[3] then
+			visit_exp(visitor, exp[3])
+		end
+	end,
+	Paren = function(visitor, exp)
+		visit_exp(visitor, exp[1])
+	end,
+	Call = function(visitor, exp)
+		visit_exp(visitor, exp[1])
+		if exp[2] then
+			for i=2, #exp do
+				visit_exp(visitor, exp[i])
+			end
+		end
+	end,
+	Invoke = function(visitor, exp)
+		visit_exp(visitor, exp[1])
+		visit_exp(visitor, exp[2])
+		if exp[3] then
+			for i=3, #exp do
+				visit_exp(visitor, exp[i])
+			end
+		end
+	end,
+	Id = visit_var,
+	Index = visit_var,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a expression, but got a " .. tag)
+	end
+})
 
 function visit_explist (visitor, explist)
   for k, v in ipairs(explist) do
-    visitor:expression(v)
+	visit_exp(visitor, v)
   end
 end
 
-function visit_stm (visitor, stm)
-  local tag = stm.tag
-  if tag == "Do" then -- `Do{ stat* }
-    for k, v in ipairs(stm) do
-      visit_stm(visitor, v)
-    end
-  elseif tag == "Set" then
-    visit_varlist(visitor, stm[1])
-    visit_explist(visitor, stm[2])
-  elseif tag == "While" then
-    visitor:expression(stm[1])
-    visitor:block(stm[2])
-  elseif tag == "Repeat" then
-    visitor:block(stm[1])
-    visitor:expression(stm[2])
-  elseif tag == "If" then
-    local len = #stm
-    if len % 2 == 0 then
-      for i=1,len-2,2 do
-        visitor:expression(stm[i])
-        visitor:block(stm[i+1])
-      end
-      visitor:expression(stm[len-1])
-      visitor:block(stm[len])
-    else
-      for i=1,len-3,2 do
-        visitor:expression(stm[i])
-        visitor:block(stm[i+1])
-      end
-      visitor:expression(stm[len-2])
-      visitor:block(stm[len-1])
-      visitor:block(stm[len])
-    end
-  elseif tag == "Fornum" then
-    visit_var(visitor, stm[1])
-    visitor:expression(stm[2])
-    visitor:expression(stm[3])
-    if stm[5] then
-      visitor:expression(stm[4])
-      visitor:block(stm[5])
-    else
-      visitor:block(stm[4])
-    end
-  elseif tag == "Forin" then
-    visit_varlist(visitor, stm[1])
-    visit_explist(visitor, stm[2])
-    visitor:block(stm[3])
-  elseif tag == "Local" then
-    visit_varlist(visitor, stm[1])
-    if #stm[2] > 0 then
-      visit_explist(visitor, stm[2])
-    end
-  elseif tag == "Localrec" then
-    visit_var(visitor, stm[1][1])
-    visitor:expression(stm[2][1])
-  elseif tag == "Goto" or
-         tag == "Label" then
-    visitor:label(stm[1])
-  elseif tag == "Return" then
-    visit_explist(visitor, stm)
-  elseif tag == "Break" then
-  elseif tag == "Call" then
-    visitor:expression(stm[1])
-    if stm[2] then
-      for i=2, #stm do
-        visitor:expression(stm[i])
-      end
-    end
-  elseif tag == "Invoke" then
-    visitor:expression(stm[1])
-    visitor:expression(stm[2])
-    if stm[3] then
-      for i=3, #stm do
-        visitor:expression(stm[i])
-      end
-    end
-  elseif tag == "Interface" then
-    -- TODO? stm[1]
-    visit_type(visitor, stm[2])
-  else
-    error("expecting a statement, but got a " .. tag)
-  end
-end
+visit_stm = setmetatable({
+	Do=function(visitor, stm)
+		visit_block(visitor, stm)
+	end,
+	Set=function(visitor, stm)
+		visit_varlist(visitor, stm[1])
+		visit_explist(visitor, stm[2])
+	end,
+	While=function(visitor, stm)
+		visit_exp(visitor, stm[1])
+		visit_block(visitor, stm[2])
+	end,
+	Repeat=function(visitor, stm)
+		visit_block(visitor, stm[1])
+		visit_exp(visitor, stm[2])
+	end,
+	If=function(visitor, stm)
+		local len = #stm
+		if len % 2 == 0 then
+			for i=1,len-2,2 do
+				visit_exp(visitor, stm[i])
+				visit_block(visitor, stm[i+1])
+			end
+			visit_exp(visitor, stm[len-1])
+			visit_block(visitor, stm[len])
+		else
+			for i=1,len-3,2 do
+				visit_exp(visitor, stm[i])
+				visit_block(visitor, stm[i+1])
+			end
+			visit_exp(visitor, stm[len-2])
+			visit_block(visitor, stm[len-1])
+			visit_block(visitor, stm[len])
+		end
+	end,
+	Fornum=function(visitor, stm)
+		visit_var(visitor, stm[1])
+		visit_exp(visitor, stm[2])
+		visit_exp(visitor, stm[3])
+		if stm[5] then
+			visit_exp(visitor, stm[4])
+			visit_block(visitor, stm[5])
+		else
+			visit_block(visitor, stm[4])
+		end
+	end,
+	Forin=function(visitor, stm)
+		visit_varlist(visitor, stm[1])
+		visit_explist(visitor, stm[2])
+		visit_block(visitor, stm[3])
+	end,
+	Local=function(visitor, stm)
+		visit_varlist(visitor, stm[1])
+		if #stm[2] > 0 then
+			visit_explist(visitor, stm[2])
+		end
+	end,
+	Localrec=function(visitor, stm)
+		visit_var(visitor, stm[1][1])
+		visit_exp(visitor, stm[2][1])
+	end,
+	Goto=false,
+	Label=false,
+	Return=function(visitor, stm)
+		visit_explist(visitor, stm)
+	end,
+	Break=false,
+	Call=function(visitor, stm)
+		visit_exp(visitor, stm[1])
+		if stm[2] then
+			for i=2, #stm do
+				visit_exp(visitor, stm[i])
+			end
+		end
+	end,
+	Invoke=function(visitor, stm)
+		visit_exp(visitor, stm[1])
+		visit_exp(visitor, stm[2])
+		if stm[3] then
+			for i=3, #stm do
+				visit_exp(visitor, stm[i])
+			end
+		end
+	end,
+	Interface=function(visitor, stm)
+		-- TODO? stm[1]
+		visit_type(visitor, stm[2])
+	end,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a statement, but got a " .. tag)
+	end
+})
 
-function visit_block (visitor, block)
-  for k, v in ipairs(block) do
-    visitor:statement(v)
-  end
-end
+visit_block = setmetatable({
+	Block=function(visitor, block)
+	  for k, v in ipairs(block) do
+		  visit_stm(visitor, v)
+	  end
+	end,
+	Do=function(visitor, block)
+	  for k, v in ipairs(block) do
+		  visit_stm(visitor, v)
+	  end
+	end,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a block or do, but got a " .. tag)
+	end
+})
 
 function tlvisitor.visit(block, visitor)
-  local function nop(visitor) end
-  visitor.id = visitor.id or nop
-  visitor.index = visitor.id or function(visitor, var)
-    visitor:expression(var[1])
-    visitor:expression(var[2])
-  end
-  visitor.label = visitor.label or nop
-  visitor.block = visitor.block or visit_block
-  visitor.statement = visitor.statement or visit_stm
-  visitor.expression = visitor.expression or visit_exp
-  visitor:block(block)
+  visit_block(visitor, block)
+end
+
+function tlvisitor.visit_type(node, visitor)
+  visit_type(visitor, node)
 end
 
 return tlvisitor
