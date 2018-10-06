@@ -11,6 +11,9 @@ local visit_explist, visit_varlist, visit_parlist, visit_fieldlist
 
 local function visit_tag(visit_dict, visitor, t)
   local tag = t.tag
+  local stack = visitor.stack
+  local index = #stack + 1
+  stack[index] = t
   local before = visitor.before[tag]
   local override = visitor.override[tag]
   local after = visitor.after[tag]
@@ -28,6 +31,7 @@ local function visit_tag(visit_dict, visitor, t)
 		  after(visitor, t)
 	  end
   end
+  stack[index] = nil
 end
 
 
@@ -302,12 +306,21 @@ visit_block = setmetatable({
 	end
 })
 
+local function setDefaultVistior(visitor)
+	visitor.before = visitor.before or {}
+	visitor.after = visitor.after or {}
+	visitor.override = visitor.override or {}
+	visitor.stack = visitor.stack or {}
+end
+
 function tlvisitor.visit(block, visitor)
-  visit_block(visitor, block)
+	setDefaultVistior(visitor)
+	visit_block(visitor, block)
 end
 
 function tlvisitor.visit_type(node, visitor)
-  visit_type(visitor, node)
+	setDefaultVistior(visitor)
+	visit_type(visitor, node)
 end
 
 return tlvisitor
