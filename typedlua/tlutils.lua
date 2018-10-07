@@ -131,4 +131,31 @@ function tlutils.dumptype(env, typeNode)
 	return table.concat(visitor.bufferList, "")
 end
 
+function tlutils.searchpath(name, path)
+  if package.searchpath then
+    return package.searchpath(name, path)
+  else
+    local error_msg = ""
+    name = string.gsub(name, '%.', '/')
+    for tldpath in string.gmatch(path, "([^;]*);") do
+      tldpath = string.gsub(tldpath, "?", name)
+      local f = io.open(tldpath, "r")
+      if f then
+        f:close()
+        return tldpath
+      else
+        error_msg = error_msg .. string.format("no file '%s'\n", tldpath)
+      end
+    end
+    return nil, error_msg
+  end
+end
+
+function tlutils.getcontents(fileName)
+  local file = assert(io.open(fileName, "r"))
+  local contents = file:read("*a")
+  file:close()
+  return contents
+end
+
 return tlutils

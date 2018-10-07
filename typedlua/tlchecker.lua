@@ -312,6 +312,7 @@ local function check_interface (env, stm)
     t.name = name
     tlst.set_interface(env, name, t, is_local)
   end
+  -- print(name, seri(t))
   return false
 end
 
@@ -383,7 +384,9 @@ function check_require (env, name, pos, extra_path, only_tld)
           env["loaded"][name] = Any
         end
       else
+		--! cz not require if only .lua file
         env["loaded"][name] = Any
+		--[[
         local s, m = pcall(require, name)
         if not s then
           if string.find(m, "syntax error") then
@@ -397,7 +400,7 @@ function check_require (env, name, pos, extra_path, only_tld)
             end
             typeerror(env, "load", msg, pos)
           end
-        end
+        end]]
       end
     end
   end

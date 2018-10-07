@@ -1,18 +1,27 @@
 target:
 	1. 更好地处理全局变量
 		- 1. some tostring
-->		2. 全局变量类型检查加速
+		-- 2. 全局变量类型检查加速
 				全局变量ast结构形如 {`Index{`Id "_ENV", `String "fds"} }
 				由于_ENV使用了table类型，table类型的typecheck的subtype判定是无脑遍历的，
 				导致速度非常慢
-				1. 给tableType的typecheck过程加上索引
+				-- 1. 给tableType的typecheck过程加上索引
 				TableTypeBody <- [RecordType{,RecordType}][HashType | ArrayType]
-					1. 对TableType初始化的时候添加索引
-					2. 对TableType进行table.insert的时候添加索引
-		3. dosth
-		?. 为全局变量添加类型系统
-	2. 更方便地处理require和class
-	3. 继承？
+					-- 1. 对TableType初始化的时候添加索引
+					-- 2. 对TableType进行table.insert的时候添加索引
+				- 2. 用tltype学习使用类的subtype关系
+				-- 3. 使用索引快速判定table的subtype
+->		3. 为全局变量添加类型系统
+-->	2. 跨文件的递推类型
+		1. 具体设计
+			?. parse require文件时，parse的env?
+			?. require文件之后，生成的类型所在的env?
+			1. 一开始统一处理interface语句，遍历ast处理require内容，在同一个env下放置所有定义
+		2. lua类型的处理
+		3. tld类型的处理
+--> 3. 简化tlparser的代码
+	4. 更方便地处理require和class
+	5. 继承？
 
 skynet target:
 	1. 对于变量的

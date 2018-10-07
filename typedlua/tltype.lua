@@ -584,6 +584,14 @@ function tltype.isGlobalVariable (t)
   return t.tag == "TGlobalVariable"
 end
 
+function tltype.setGlobalVariable(t, env, pos, typeerror, namespace)
+  t.tag = "TGlobalVariable"
+  t[2] = env
+  t[3] = pos
+  t[4] = typerror
+  t[5] = namespace
+end
+
 -- recursive types
 
 -- Recursive : (string, type) -> (type)
