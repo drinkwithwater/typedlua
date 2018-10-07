@@ -52,20 +52,30 @@ tllexer.Shebang = lpeg.P("#") * (lpeg.P(1) - lpeg.P("\n"))^0 * lpeg.P("\n")
 local Space = lpeg.space^1
 
 local Equals = lpeg.P("=")^0
-local Open = "[" * lpeg.Cg(Equals, "init") * "[" * lpeg.P("\n")^-1
+local Open = "[" * lpeg.Cg(Equals, "init") * "["
 local Close = "]" * lpeg.C(Equals) * "]"
 local CloseEQ = lpeg.Cmt(Close * lpeg.Cb("init"),
                          function (s, i, a, b) return a == b end)
 
-local LongString = Open * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close /
+local LongString = Open * lpeg.P("\n")^-1 *lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close /
                    function (s, o) return s end
 
-local Comment = ((lpeg.P("--") * LongString) +
-                (lpeg.P("--") *(-lpeg.P("@"))* lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0))) /
+
+-- comment's start charactor cann't be @
+local LongComment = (lpeg.P("--") * Open * (-lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close ) /
+                   function (s, o)
+					   tllexer.comments[#tllexer.comments+1] = s
+					   return
+				   end
+
+-- comment's start charactor cann't be @
+local ShortComment = (lpeg.P("--") * (-lpeg.P("@")) * (-lpeg.P("[[@")) * lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0)) /
                 function (s)
                   tllexer.comments[#tllexer.comments+1] = s
                   return
                 end
+
+local Comment = LongComment + ShortComment
 
 tllexer.Skip = (Space + Comment)^0
 

@@ -98,7 +98,7 @@ local G = lpeg.P { "TypedLua";
            tlast.namelist;
   IdDec = lpeg.V("IdList") * tllexer.symb(":") *
           (lpeg.V("Type") + lpeg.V("MethodType")) / tltype.fieldlist;
-  IdDecList = (lpeg.V("IdDec")^1 + lpeg.Cc(nil)) / tltype.Table;
+  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltype.Table;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
   Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
               tlast.statInterface +
@@ -106,6 +106,7 @@ local G = lpeg.P { "TypedLua";
               tllexer.token(tllexer.Name, "Name") * tllexer.symb("=") * lpeg.V("Type") /
               tlast.statInterface;
   -- deco
+  DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("Interface")^0 * tllexer.symb("]]");
   DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
   DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
   -- parser
@@ -263,7 +264,7 @@ local G = lpeg.P { "TypedLua";
   Stat = lpeg.V("IfStat") + lpeg.V("WhileStat") + lpeg.V("DoStat") + lpeg.V("ForStat") +
          lpeg.V("RepeatStat") + lpeg.V("FuncStat") + lpeg.V("LocalStat") +
          lpeg.V("LabelStat") + lpeg.V("BreakStat") + lpeg.V("GoToStat") +
-         lpeg.V("TypeDecStat") + lpeg.V("ExprStat");
+         lpeg.V("TypeDecStat") + lpeg.V("ExprStat") + lpeg.V("DecoDefineStat");
 }
 
 local traverse_stm, traverse_exp, traverse_var
