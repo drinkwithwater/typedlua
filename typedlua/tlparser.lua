@@ -7,6 +7,7 @@ local tlparser = {}
 local lpeg = require "lpeg"
 lpeg.locale(lpeg)
 
+local seri = require "typedlua/seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
 local tlst = require "typedlua.tlst"
@@ -105,7 +106,8 @@ local G = lpeg.P { "TypedLua";
               tllexer.token(tllexer.Name, "Name") * tllexer.symb("=") * lpeg.V("Type") /
               tlast.statInterface;
   -- deco
-  DecoPrefix = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
+  DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
+  DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
   -- parser
   Chunk = lpeg.V("Block");
   StatList = (tllexer.symb(";") + lpeg.V("Stat"))^0;
@@ -240,7 +242,9 @@ local G = lpeg.P { "TypedLua";
               (lpeg.V("LocalTypeDec") + lpeg.V("LocalFunc") + lpeg.V("LocalAssign"));
 
   LocalStat = lpeg.V("RawLocalStat") +
-			  (lpeg.Cp() * lpeg.V("DecoPrefix") * lpeg.V("RawLocalStat")/tlast.statLocalDecopre);
+	  (lpeg.Cp() * lpeg.V("DecoName") * tllexer.kw("local") * lpeg.V("LocalAssign")/tlast.statDecoAssign) +
+	  (lpeg.Cp() * lpeg.V("DecoFunc") * tllexer.kw("local") * lpeg.V("LocalFunc")/tlast.statDecoFunc);
+
   LabelStat = lpeg.Cp() * tllexer.symb("::") * tllexer.token(tllexer.Name, "Name") * tllexer.symb("::") / tlast.statLabel;
   BreakStat = lpeg.Cp() * tllexer.kw("break") / tlast.statBreak;
   GoToStat = lpeg.Cp() * tllexer.kw("goto") * tllexer.token(tllexer.Name, "Name") / tlast.statGoto;
@@ -661,7 +665,8 @@ local function traverse (ast, errorinfo, strict)
   tlst.end_function(env)
   local status, msg = verify_pending_gotos(env)
   if not status then return status, msg end
-  return ast
+  -- print("tlst", seri(env))
+  return ast, env
 end
 
 local function lineno (s, i)

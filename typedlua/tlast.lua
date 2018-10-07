@@ -144,17 +144,43 @@ function tlast.decoList(...)
 	return {...}
 end
 
--- statLocalDecopre
-function tlast.statLocalDecopre(pos, decoList, stat)
-	if stat.tag == "Local" then
-		local namelist = stat[1]
-		if #namelist ~= #decoList then
-			-- print("decorated namelist's size not equal with decolist's size")
-		end
-		for i, name in ipairs(namelist) do
-			name[2] = decoList[i]
+-- statDecoAssign
+function tlast.statDecoAssign(pos, decoList, stat)
+	assert(stat.tag == "Local")
+	local namelist = stat[1]
+	if #namelist ~= #decoList then
+		-- print("decorated namelist's size not equal with decolist's size")
+	end
+	for i, name in ipairs(namelist) do
+		name[2] = decoList[i]
+	end
+	return stat
+end
+
+-- statDecoFunc
+function tlast.statDecoFunc(pos, decoFunc, stat)
+	assert(stat.tag == "Localrec")
+	local funcNode = stat[2][1]
+	-- TODO print error with line
+	assert(funcNode.tag == "Function")
+	-- deco input
+	local parlist = funcNode[1] -- parlist or namelist
+	local inputList = decoFunc[1]
+	for i, name in ipairs(parlist) do
+		if not tltype.isVararg(inputList[i]) then
+			if name.tag == "Id" then
+				name[2] = inputList[i]
+			elseif name.tag == "Dots" then
+				name[1] = inputList[i]
+			end
 		end
 	end
+	-- deco output
+	local outputList = decoFunc[2]
+	if not funcNode[3] then
+		funcNode[3] = funcNode[2]
+	end
+	funcNode[2] = outputList
 	return stat
 end
 
