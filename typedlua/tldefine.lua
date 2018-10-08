@@ -178,7 +178,7 @@ function tldefine.define(ast, subject, filename, strict, color)
 		visit_require(visitor, name)
 	end
 	for k,v in pairs(env.interface) do
-		print(k, tlutils.dumptype(env, v))
+		print(k, tlutils.dumptype(v))
 		-- print(k, seri(v))
 	end
 	local error_msg = tldefine.error_msgs(env.messages, false, false, false)

@@ -4,21 +4,8 @@ local tlvisitor = require "typedlua.tlvisitor"
 
 local tlutils = {}
 
-local function lineno (s, i)
-	if i == 1 then return 1, 1 end
-	local rest, num = s:sub(1,i):gsub("[^\n]*\n", "")
-	local r = #rest
-	return 1 + num, r ~= 0 and r or 1
-end
-
-function tlutils.logat(env, pos, msg)
-
-  local l, c = lineno(env.subject, pos)
-  print(string.format("%s:%s:%s:%s", env.filename, l, c, tostring(msg)))
-end
-
 -- dump ast node
-local function dumpNode(env, astNode, bufferList, preLine)
+local function dumpNode(astNode, bufferList, preLine)
 	local line, offset = preLine, nil
 	if tlnode.isType(astNode.tag) then
 		bufferList[#bufferList + 1] = "["
@@ -27,7 +14,7 @@ local function dumpNode(env, astNode, bufferList, preLine)
 		return line
 	end
 	if astNode.pos then
-		line, offset = lineno(env.subject, astNode.pos)
+		line, offset = astNode.l, astNode.c
 		if line ~= preLine then
 			bufferList[#bufferList + 1] = "\n"
 			bufferList[#bufferList + 1] = line
@@ -39,7 +26,7 @@ local function dumpNode(env, astNode, bufferList, preLine)
 	bufferList[#bufferList + 1] = "{"
 	for k, v in ipairs(astNode) do
 		if type(v) == "table" then
-			line = dumpNode(env, v, bufferList, line)
+			line = dumpNode(v, bufferList, line)
 		else
 			bufferList[#bufferList + 1] = "("
 			bufferList[#bufferList + 1] = v
@@ -50,9 +37,9 @@ local function dumpNode(env, astNode, bufferList, preLine)
 	return line
 end
 
-function tlutils.dumpast(env, astNode)
+function tlutils.dumpast(astNode)
 	local bufferList = {}
-	dumpNode(env, astNode, bufferList, 0)
+	dumpNode(astNode, bufferList, 0)
 	return table.concat(bufferList)
 end
 
@@ -119,7 +106,7 @@ local visitor_after = {
 	TField = type_scope_end,
 }
 
-function tlutils.dumptype(env, typeNode)
+function tlutils.dumptype(typeNode)
 	local visitor = {
 		before = visitor_before,
 		after = visitor_after,
