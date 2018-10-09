@@ -129,14 +129,14 @@ local visitor_after = {
 		if stm.is_local then
 			return
 		end
-		if tlst.get_interface(visitor.env, name) then
+		if visitor.interfaceDict[name] then
 			-- local bold_token = "'%s'"
 			local msg = "attempt to redeclare interface '%s'"
 			msg = string.format(msg, name)
 			defineerror(visitor.env, stm, msg)
 		else
 			t.name = name
-			tlst.set_interface(visitor.env, name, t, false)
+			visitor.interfaceDict[name] = t
 		end
 		visitor.definePosition = false
 	end,
@@ -144,36 +144,24 @@ local visitor_after = {
 
 function tldefine.create_visitor(env)
 	local visitor = {
-		env=env,
+		env = env,
 		before = visitor_before,
 		after = visitor_after,
 		override = {},
 		requireSet = {},
+		interfaceDict = {},
 		definePosition = false,
 	}
 
 	return visitor
 end
 
-function tldefine.define(ast, subject, filename, strict, color)
-	local env = tlst.new_env(subject, filename, strict, color)
-	-- if integer and _VERSION == "Lua 5.3" then
-	env.integer = true
-	tltype.integer = true
+function tldefine.define(context)
+	local env = tlst.new_env(context.subject, context.filename, context.strict, context.color)
+	local ast = context.ast
 	local visitor = tldefine.create_visitor(env)
 	tlvisitor.visit(ast, visitor)
-	for name, _ in pairs(visitor.requireSet) do
-		visit_require(visitor, name)
-	end
-	for k,v in pairs(env.interface) do
-		print(k, tlutils.dumptype(v))
-		-- print(k, seri(v))
-	end
-	--[[
-	local error_msg = tldefine.error_msgs(env.messages, false, false, false)
-	if error_msg then
-		print(error_msg)
-	end]]
+	return visitor
 end
 
 function tldefine.error_msgs (messages, warnings, color, line_preview)
