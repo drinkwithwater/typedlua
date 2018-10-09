@@ -20,6 +20,7 @@ function tlst.new_env (subject, filename, strict, color)
   env.scope = 0
   env.fscope = 0
   env.loop = 0
+  env["global"] = {}
   env["function"] = {}
   env["interface"] = {}
   env["userdata"] = {}

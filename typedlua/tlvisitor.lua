@@ -10,6 +10,9 @@ local visit_block, visit_stm, visit_exp, visit_var, visit_type
 local visit_explist, visit_varlist, visit_parlist, visit_fieldlist
 
 local function visit_tag(visit_dict, visitor, t)
+  if visitor.stop then
+	  return
+  end
   local tag = t.tag
   local stack = visitor.stack
   local index = #stack + 1
@@ -311,6 +314,7 @@ local function setDefaultVistior(visitor)
 	visitor.after = visitor.after or {}
 	visitor.override = visitor.override or {}
 	visitor.stack = visitor.stack or {}
+	visitor.stop = false
 end
 
 function tlvisitor.visit(block, visitor)

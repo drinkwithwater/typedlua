@@ -233,10 +233,10 @@ function tlast.statSet (...)
       vl[k] = v
     else
       -- invalid assignment
-      return false
+       return false
     end
   end
-  vl.tag = "Varlist"
+  vl.tag = "VarList"
   vl.pos = vl[1].pos
   return true, { tag = "Set", pos = vl.pos, [1] = vl, [2] = el }
 end
@@ -278,17 +278,18 @@ end
 
 -- parList0 : (number) -> (parlist)
 function tlast.parList0 (pos)
-  return { tag = "Parlist", pos = pos }
+  return { tag = "ParList", pos = pos }
 end
 
 -- parList1 : (number, ident) -> (parlist)
 function tlast.parList1 (pos, vararg)
-  return { tag = "Parlist", pos = pos, [1] = vararg }
+  return { tag = "ParList", pos = pos, [1] = vararg }
 end
 
 -- parList2 : (number, namelist, ident?) -> (parlist)
 function tlast.parList2 (pos, namelist, vararg)
   if vararg then table.insert(namelist, vararg) end
+  namelist.tag = "ParList"
   return namelist
 end
 

@@ -110,7 +110,9 @@ local G = lpeg.P { "TypedLua";
   LocalInterface = tllexer.kw("local") * lpeg.V("Interface") / tlast.statLocalTypeDec;
   TypeDecStat = lpeg.V("Interface") + lpeg.V("LocalInterface");
   -- deco
-  DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
+  GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
+                lpeg.Ct(lpeg.Cc()) / tlast.statLocal;
+  DecoDefineStat = tllexer.symb("--[[@") * (lpeg.V("GlobalDefine") + lpeg.V("TypeDecStat"))^0 * tllexer.symb("]]");
   DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
   DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
   -- parser
