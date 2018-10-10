@@ -1952,6 +1952,25 @@ local function load_lua_env (env)
   tlst.get_local(env, "_ENV")
 end
 
+function tlchecker.check(context)
+  local env = tlst.new_env(context.subject, context.filename, context.strict, context.color)
+  env.integer = true
+  tltype.integer = true
+
+  for k, v in pairs(context.interface) do
+	  env.interface[k] = v
+  end
+
+  tlst.begin_function(env)
+  tlst.begin_scope(env)
+  tlst.set_vararg(env, String)
+  load_lua_env(env)
+  check_stms(env, context.ast)
+  tlst.end_scope(env)
+  tlst.end_function(env)
+  return env.messages, env
+end
+
 function tlchecker.typecheck (ast, subject, filename, strict, integer, color)
   assert(type(ast) == "table")
   assert(type(subject) == "string")

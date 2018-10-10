@@ -3,6 +3,7 @@ local tldefine = require "typedlua/tldefine"
 local tlparser = require "typedlua/tlparser"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
+local tlchecker = require "typedlua/tlchecker"
 local tlmain = {}
 
 function tlmain.main(subject, filename, strict, integer, color)
@@ -22,20 +23,24 @@ function tlmain.main(subject, filename, strict, integer, color)
 		color = color,
 		ast = ast,
 		loaded = {},
-		interfaceDict = {},
+		interface = {},
+		messages = {},
 	}
 
 	local result = tldefine.define(context)
-	for name, interface in pairs(result.interfaceDict) do
-		context.interfaceDict[name] = interface
-	end
 	for name, _ in pairs(result.requireSet) do
 		tlmain.define_require(context, name)
 	end
 
-	for k,v in pairs(context.interfaceDict) do
+	for k,v in pairs(context.interface) do
 		print(k, tlutils.dumptype(v))
 	end
+	print(tlutils.dumpast(context.ast))
+
+	local msgs, env = tlchecker.check(context)
+
+
+	print(tlchecker.error_msgs(msgs,false,false,false))
 
 	return ast
 end
@@ -43,7 +48,7 @@ end
 function tlmain.define_require(context, arg)
 	arg = string.gsub(arg, '%.', '/')
 	local loaded = context.loaded
-	local interfaceDict = context.interfaceDict
+	local interface = context.interface
 	if not loaded[arg] then
 		print("requiring:", arg)
 		local path = package.path
@@ -58,17 +63,12 @@ function tlmain.define_require(context, arg)
 			strict = context.strict,
 			integer = context.integer,
 			color = context.color,
+
+			interface = interface,
 		}
 		print("finish requiring:", arg)
 		local result = tldefine.define(subContext)
 		loaded[arg] = true
-		for name, interface in pairs(result.interfaceDict) do
-			if interfaceDict[name] then
-				error("TODO, use quiet log, define interface twice...")
-			else
-				interfaceDict[name] = interface
-			end
-		end
 		for arg, _ in pairs(result.requireSet) do
 			tlmain.define_require(context, arg)
 		end

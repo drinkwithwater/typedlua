@@ -15,35 +15,17 @@ local seri = require "typedlua.seri"
 local tldefine = {}
 
 local unpack = table.unpack
-local defineerror = function(env, node, msg)
+local defineerror = function(context, node, msg)
   local tag = node.tag
   local l, c = node.l or 0, node.c or 0
-  local error_msg = { tag = tag, filename = env.filename, msg = msg, l = l, c = c }
-  for i, v in ipairs(env.messages) do
+  local error_msg = { tag = tag, filename = context.filename, msg = msg, l = l, c = c }
+  for i, v in ipairs(context.messages) do
     if l < v.l or (l == v.l and c < v.c) then
-      table.insert(env.messages, i, error_msg)
+      table.insert(context.messages, i, error_msg)
       return
     end
   end
-  table.insert(env.messages, error_msg)
-end
-
-local function visit_require(visitor, arg)
-    arg = string.gsub(arg, '%.', '/')
-	local env = visitor.env
-	if not env.loaded[arg] then
-		print("requiring:", arg)
-		local path = package.path
-		local fileName, errormsg  = assert(tlutils.searchpath(arg, path))
-		local subject = tlutils.getcontents(fileName)
-		local ast, error_msg = assert(tlparser.parse(subject, fileName, env.strict, env.integer))
-		print("finish requiring:", arg)
-		tlvisitor.visit(ast, visitor)
-		env.loaded[arg] = true
-		for name, _ in pairs(visitor.requireSet) do
-			visit_require(visitor, name)
-		end
-	end
+  table.insert(context.messages, error_msg)
 end
 
 local visitor_before = {
@@ -56,7 +38,7 @@ local visitor_before = {
 	end,
 	TVariable = function(visitor, t)
 		if visitor.definePosition then
-			tltype.setGlobalVariable(t, visitor.env, visitor.definePosition, defineerror)
+			tltype.setGlobalVariable(t, visitor.context, visitor.definePosition, defineerror)
 		end
 	end,
 	-- TODO
@@ -66,7 +48,7 @@ local visitor_before = {
 			-- not in interface scope
 			return
 		end
-		local env = visitor.env
+		local context = visitor.context
 		local stack = visitor.stack
 		local checkFunction = false
 		local errorMsg = nil
@@ -93,7 +75,7 @@ local visitor_before = {
 			end
 		end
 		if errorMsg then
-			defineerror(env, t, errorMsg)
+			defineerror(context, t, errorMsg)
 		end
 	end,
 }
@@ -129,27 +111,26 @@ local visitor_after = {
 		if stm.is_local then
 			return
 		end
-		if visitor.interfaceDict[name] then
+		if visitor.context.interface[name] then
 			-- local bold_token = "'%s'"
 			local msg = "attempt to redeclare interface '%s'"
 			msg = string.format(msg, name)
-			defineerror(visitor.env, stm, msg)
+			defineerror(visitor.context, stm, msg)
 		else
 			t.name = name
-			visitor.interfaceDict[name] = t
+			visitor.context.interface[name] = t
 		end
 		visitor.definePosition = false
 	end,
 }
 
-function tldefine.create_visitor(env)
+function tldefine.create_visitor(context)
 	local visitor = {
-		env = env,
+		context = context,
 		before = visitor_before,
 		after = visitor_after,
 		override = {},
 		requireSet = {},
-		interfaceDict = {},
 		definePosition = false,
 	}
 
@@ -157,9 +138,8 @@ function tldefine.create_visitor(env)
 end
 
 function tldefine.define(context)
-	local env = tlst.new_env(context.subject, context.filename, context.strict, context.color)
 	local ast = context.ast
-	local visitor = tldefine.create_visitor(env)
+	local visitor = tldefine.create_visitor(context)
 	tlvisitor.visit(ast, visitor)
 	return visitor
 end
