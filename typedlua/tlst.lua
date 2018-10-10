@@ -6,6 +6,13 @@ local tltype = require "typedlua.tltype"
 
 local tlst = {}
 
+function tlst.new_global_env(subject, filename, strict, color)
+	local env = tlst.new_env(subject, filename, strict, color)
+	env.loadedInfo = {}
+	env.ast = {}
+	return env
+end
+
 -- new_env : (string, string, boolean) -> (env)
 function tlst.new_env (subject, filename, strict, color)
   local env = {}

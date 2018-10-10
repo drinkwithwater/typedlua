@@ -1952,12 +1952,12 @@ local function load_lua_env (env)
   tlst.get_local(env, "_ENV")
 end
 
-function tlchecker.check(context)
-  local env = tlst.new_env(context.subject, context.filename, context.strict, context.color)
+function tlchecker.check(global_env)
+  local env = tlst.new_env(global_env.subject, global_env.filename, global_env.strict, global_env.color)
   env.integer = true
   tltype.integer = true
 
-  for k, v in pairs(context.interface) do
+  for k, v in pairs(global_env.interface) do
 	  env.interface[k] = v
   end
 
@@ -1965,7 +1965,7 @@ function tlchecker.check(context)
   tlst.begin_scope(env)
   tlst.set_vararg(env, String)
   load_lua_env(env)
-  check_stms(env, context.ast)
+  check_stms(env, global_env.ast)
   tlst.end_scope(env)
   tlst.end_function(env)
   return env.messages, env
