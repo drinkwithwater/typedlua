@@ -5,8 +5,9 @@ This module implements a faster visitor for the Typed Lua AST.
 
 local tlvisitor = {}
 
-local visit_block, visit_stm, visit_exp, visit_var, visit_type
-local visit_explist, visit_varlist, visit_parlist, visit_fieldlist
+local visit_node
+local visit_block, visit_stm, visit_exp, visit_var, visit_type, visit_list, visit_field
+local visit_explist, visit_varlist, visit_parlist
 
 local function visit_tag(visit_dict, visitor, t)
   if visitor.stop then
@@ -20,7 +21,7 @@ local function visit_tag(visit_dict, visitor, t)
   local override = visitor.override[tag]
   local after = visitor.after[tag]
   if override then
-	  override(visitor, t, before, after)
+	  override(visitor, t, visit_node)
   else
 	  if before then
 		  before(visitor, t)
@@ -35,7 +36,6 @@ local function visit_tag(visit_dict, visitor, t)
   end
   stack[index] = nil
 end
-
 
 visit_type = setmetatable({
 	TLiteral = false,
@@ -123,17 +123,6 @@ function visit_parlist (visitor, parlist)
   end
 end
 
-function visit_fieldlist (visitor, fieldlist)
-  for k, v in ipairs(fieldlist) do
-    local tag = v.tag
-    if tag == "Pair" then
-		visit_exp(visitor, v[1])
-		visit_exp(visitor, v[2])
-    else -- expr
-		visit_exp(visitor, v)
-    end
-  end
-end
 
 visit_exp = setmetatable({
 	Nil=false,
@@ -143,16 +132,20 @@ visit_exp = setmetatable({
 	Number=false,
 	String=false,
 
-	Function = function(visitor, exp)
-		visit_parlist(visitor, exp[1])
-		if exp[3] then
-			visit_type(visitor, exp[2])
-			visit_block(visitor, exp[3])
+	Function = function(visitor, func)
+		visit_list(visitor, func[1])
+		if func[3] then
+			visit_type(visitor, func[2])
+			visit_block(visitor, func[3])
 		else
-			visit_block(visitor, exp[2])
+			visit_block(visitor, func[2])
 		end
 	end,
-	Table = visit_fieldlist,
+	Table = function(visitor, fieldlist)
+		for k, v in ipairs(fieldlist) do
+			visit_field(visitor, v)
+		end
+	end,
 	Op = function(visitor, exp)
 		-- opid: exp[1]
 		visit_exp(visitor, exp[2])
@@ -200,8 +193,8 @@ visit_stm = setmetatable({
 		visit_block(visitor, stm)
 	end,
 	Set=function(visitor, stm)
-		visit_varlist(visitor, stm[1])
-		visit_explist(visitor, stm[2])
+		visit_list(visitor, stm[1])
+		visit_list(visitor, stm[2])
 	end,
 	While=function(visitor, stm)
 		visit_exp(visitor, stm[1])
@@ -242,14 +235,14 @@ visit_stm = setmetatable({
 		end
 	end,
 	Forin=function(visitor, stm)
-		visit_varlist(visitor, stm[1])
-		visit_explist(visitor, stm[2])
+		visit_list(visitor, stm[1])
+		visit_list(visitor, stm[2])
 		visit_block(visitor, stm[3])
 	end,
 	Local=function(visitor, stm)
-		visit_varlist(visitor, stm[1])
+		visit_list(visitor, stm[1])
 		if #stm[2] > 0 then
-			visit_explist(visitor, stm[2])
+			visit_list(visitor, stm[2])
 		end
 	end,
 	Localrec=function(visitor, stm)
@@ -259,7 +252,7 @@ visit_stm = setmetatable({
 	Goto=false,
 	Label=false,
 	Return=function(visitor, stm)
-		visit_explist(visitor, stm)
+		visit_list(visitor, stm)
 	end,
 	Break=false,
 	Call=function(visitor, stm)
@@ -314,6 +307,59 @@ local function setDefaultVistior(visitor)
 	visitor.override = visitor.override or {}
 	visitor.stack = visitor.stack or {}
 	visitor.stop = false
+end
+
+visit_list = setmetatable({
+	ExpList=visit_explist,
+	Return=visit_explist,
+	ParList=visit_parlist,
+	VarList=visit_varlist,
+	NameList=visit_varlist,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+	end
+})
+
+visit_field = setmetatable({
+	Pair=function(visitor, node)
+		visit_exp(visitor, node[1])
+		visit_exp(visitor, node[2])
+	end
+},{
+	__call=visit_tag,
+	__index=function(t, tag)
+		return visit_exp[tag]
+	end
+})
+
+
+local sub_visitor_list = {
+	visit_block,
+	visit_stm,
+	visit_exp,
+	visit_var,
+	visit_type,
+	visit_list,
+	visit_field,
+}
+
+visit_node = setmetatable({},{
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a valid tag, but got a " .. tag)
+	end
+})
+
+
+for _, sub_visitor in ipairs(sub_visitor_list) do
+	for tag, func in pairs(sub_visitor) do
+		visit_node[tag] = func
+	end
+end
+
+function tlvisitor.visit_node(node, visitor)
+	visit_node(visitor, node)
 end
 
 function tlvisitor.visit(block, visitor)
