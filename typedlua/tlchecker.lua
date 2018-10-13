@@ -301,6 +301,9 @@ end
 
 local function check_interface (env, stm)
   local name, t, is_local = stm[1], stm[2], stm.is_local
+  if not is_local then
+	  return
+  end
   if tlst.get_interface(env, name) then
     local bold_token = env.color and acolor.bold .. "'%s'" .. acolor.reset or "'%s'"
     local msg = "attempt to redeclare interface " .. bold_token

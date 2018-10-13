@@ -3,7 +3,6 @@ This module implements a faster visitor for the Typed Lua AST.
 --!cz
 ]]
 
-local tltype = require "typedlua.tltype"
 local tlvisitor = {}
 
 local visit_block, visit_stm, visit_exp, visit_var, visit_type

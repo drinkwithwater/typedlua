@@ -2,6 +2,7 @@
 This module implements Typed Lua tltype.
 ]]
 
+local tlutils = require "typedlua.tlutils"
 local seri = require "typedlua.seri"
 if not table.unpack then table.unpack = unpack end
 
@@ -853,7 +854,7 @@ local function subtype_table (env, t1, t2, relation)
 			end
 		end
 		if not nFindLiteralRecord then
-			for _, j in ipairs(t1.hashList) do
+			for _, j in ipairs(t2.hashList) do
 				if subtype(env, nKey1, t2[j][1], relation) then
 					if subtype(env, nValue1, t2[j][2], relation) then
 						if not l[j] then
@@ -900,7 +901,7 @@ local function subtype_table (env, t1, t2, relation)
 			end
 		end
 		if not nFindLiteralRecord then
-			for _, j in ipairs(t1.hashList) do
+			for _, j in ipairs(t2.hashList) do
 				if subtype(env, nKey1, t2[j][1], relation) then
 					if subtype_field(env, t2[j], t1[i], relation) then
 						if not l[j] then
