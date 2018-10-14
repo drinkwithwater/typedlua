@@ -39,7 +39,7 @@ end
 
 function tlutils.dumpast(astNode)
 	local bufferList = {}
-	dumpNode(astNode, bufferList, 0)
+	dumpNode(astNode, bufferList, -1)
 	return table.concat(bufferList)
 end
 

@@ -116,7 +116,7 @@ local G = lpeg.P { "TypedLua";
   DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
   DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
   -- parser
-  Chunk = lpeg.V("Block");
+  Chunk = lpeg.V("Block") / tlast.chunk;
   StatList = (tllexer.symb(";") + lpeg.V("Stat"))^0;
   Var = lpeg.V("Id");
   TypedId = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") * (tllexer.symb(":") *

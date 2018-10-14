@@ -1311,7 +1311,7 @@ local function resize_tuple (t, n)
     if tltype.isNil(vararg) then
       tuple[i] = vararg
     else
-      tuple[i] = tltype.Union(vararg, Nil)
+      tuple[i] = tltype.Union(vararg, tltype.Nil())
     end
   end
   tuple[n] = tltype.Vararg(vararg)

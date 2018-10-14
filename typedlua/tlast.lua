@@ -98,6 +98,11 @@ function tlast.block (pos, ...)
   return { tag = "Block", pos = pos, ... }
 end
 
+function tlast.chunk(block)
+	block.pos = 0
+	return block
+end
+
 -- statDo : (block) -> (stat)
 function tlast.statDo (block)
   block.tag = "Do"
@@ -220,7 +225,7 @@ function tlast.statFuncSet (pos, is_const, lhs, expr)
   if lhs.is_method then
     table.insert(expr[1], 1, { tag = "Id", [1] = "self" })
   end
-  return { tag = "Set", pos = pos, [1] = { lhs }, [2] = { expr } }
+  return { tag = "Set", pos = pos, [1] = { tag="VarList", lhs }, [2] = { tag="ExpList", expr } }
 end
 
 -- statSet : (expr*) -> (boolean, stat?)

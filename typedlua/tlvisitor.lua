@@ -20,19 +20,20 @@ local function visit_tag(visit_dict, visitor, t)
   local before = visitor.before[tag]
   local override = visitor.override[tag]
   local after = visitor.after[tag]
+  if before then
+	  before(visitor, t)
+  end
   if override then
-	  override(visitor, t, visit_node)
+	  local self_visit = visit_node[tag]
+	  override(visitor, t, visit_node, self_visit)
   else
-	  if before then
-		  before(visitor, t)
-	  end
 	  local middle = visit_dict[tag]
 	  if middle then
 		  middle(visitor, t)
 	  end
-	  if after then
-		  after(visitor, t)
-	  end
+  end
+  if after then
+	  after(visitor, t)
   end
   stack[index] = nil
 end
@@ -91,6 +92,7 @@ visit_type = setmetatable({
 visit_var = setmetatable({
 	Id = false,
 	Index = false,
+	Dots = false,
 }, {
 	__call=visit_tag,
 	__index=function(t, tag)
@@ -106,20 +108,8 @@ end
 
 function visit_parlist (visitor, parlist)
   local len = #parlist
-  local is_vararg = false
-  if len > 0 and parlist[len].tag == "Dots" then
-    is_vararg = true
-    len = len - 1
-  end
-  local i = 1
-  while i <= len do
-    visit_var(visitor, parlist[i])
-    i = i + 1
-  end
-  if is_vararg then
-    if parlist[i][1] then
-      visit_type(visitor, parlist[i][1])
-    end
+  for i=1, len do
+	  visit_var(visitor, parlist[i])
   end
 end
 
