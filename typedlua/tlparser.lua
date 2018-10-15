@@ -241,10 +241,19 @@ local G = lpeg.P { "TypedLua";
   FuncStat = lpeg.Cp() * (tllexer.kw("const") * lpeg.Cc(true) + lpeg.Cc(false)) *
              tllexer.kw("function") * lpeg.V("FuncName") * lpeg.V("FuncBody") /
              tlast.statFuncSet;
+  AssignStat = lpeg.Cmt(lpeg.V("LVar")*(tllexer.symb(",") * lpeg.V("LVar"))^0 * tllexer.symb("=") * lpeg.V("ExpList"), function(s, i, ...) return tlast.statSet(...) end);
+
+  -- stat with deco
+  SetStat = lpeg.V("FuncStat") + lpeg.V("AssignStat") +
+	  (lpeg.Cp() * lpeg.V("DecoName") * lpeg.V("AssignStat")/tlast.statDecoAssign) +
+	  (lpeg.Cp() * lpeg.V("DecoFunc") * lpeg.V("FuncStat")/tlast.statDecoFunc);
+
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
               lpeg.V("Id") * lpeg.V("FuncBody") / tlast.statLocalrec;
   LocalAssign = lpeg.Cp() * tllexer.kw("local") * lpeg.V("NameList") *
                 ((tllexer.symb("=") * lpeg.V("ExpList")) + lpeg.Ct(lpeg.Cc())) / tlast.statLocal;
+
+  -- stat with deco
   LocalStat = lpeg.V("LocalFunc") + lpeg.V("LocalAssign") +
 	  (lpeg.Cp() * lpeg.V("DecoName") * lpeg.V("LocalAssign")/tlast.statDecoAssign) +
 	  (lpeg.Cp() * lpeg.V("DecoFunc") * lpeg.V("LocalFunc")/tlast.statDecoFunc);
@@ -259,14 +268,16 @@ local G = lpeg.P { "TypedLua";
   LVar = (tllexer.kw("const") * lpeg.V("SuffixedExp") / tlast.setConst) +
          lpeg.V("SuffixedExp");
 
-  SetStat = lpeg.Cmt(lpeg.V("LVar")*(tllexer.symb(",") * lpeg.V("LVar"))^0 * tllexer.symb("=") * lpeg.V("ExpList"), function(s, i, ...) return tlast.statSet(...) end);
   ApplyStat = lpeg.Cmt(lpeg.V("SuffixedExp") * (lpeg.Cc(tlast.statApply)),
              function (s, i, s1, f, ...) return f(s1, ...) end);
+
   Stat = lpeg.V("DecoDefineStat") + lpeg.V("TypeDecStat") +
+		 lpeg.V("LocalStat") + lpeg.V("SetStat") +
+
 		 lpeg.V("IfStat") + lpeg.V("WhileStat") + lpeg.V("DoStat") + lpeg.V("ForStat") +
-         lpeg.V("RepeatStat") + lpeg.V("FuncStat") + lpeg.V("LocalStat") +
+         lpeg.V("RepeatStat") +
          lpeg.V("LabelStat") + lpeg.V("BreakStat") + lpeg.V("GoToStat") +
-         lpeg.V("ApplyStat") + lpeg.V("SetStat");
+         lpeg.V("ApplyStat");
 }
 
 local function fixup_lin_col(subject, node, counter)

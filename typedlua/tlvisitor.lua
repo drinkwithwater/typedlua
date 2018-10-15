@@ -236,8 +236,8 @@ visit_stm = setmetatable({
 		end
 	end,
 	Localrec=function(visitor, stm)
-		visit_var(visitor, stm[1][1])
-		visit_exp(visitor, stm[2][1])
+		visit_list(visitor, stm[1])
+		visit_list(visitor, stm[2])
 	end,
 	Goto=false,
 	Label=false,

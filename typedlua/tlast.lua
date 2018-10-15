@@ -151,41 +151,49 @@ end
 
 -- statDecoAssign
 function tlast.statDecoAssign(pos, decoList, stat)
-	assert(stat.tag == "Local")
+	assert(stat.tag == "Local" or stat.tag == "Set")
 	local namelist = stat[1]
 	if #namelist ~= #decoList then
 		-- print("decorated namelist's size not equal with decolist's size")
 	end
 	for i, name in ipairs(namelist) do
-		name[2] = decoList[i]
+		name.left_deco = decoList[i]
+		name[2] = decoList[i] -- for old tlchecker
+	end
+	local explist = stat[2]
+	for i, exp in ipairs(explist) do
+		exp.right_deco = decoList[i]
 	end
 	return stat
 end
 
 -- statDecoFunc
 function tlast.statDecoFunc(pos, decoFunc, stat)
-	assert(stat.tag == "Localrec")
+	assert(stat.tag == "Localrec" or stat.tag == "Set")
+	local lhsNode = stat[1][1]
+	lhsNode.left_deco = decoFunc
 	local funcNode = stat[2][1]
-	-- TODO print error with line
 	assert(funcNode.tag == "Function")
 	-- deco input
 	local parlist = funcNode[1] -- parlist or namelist
-	local inputList = decoFunc[1]
+	local inputDecoList = decoFunc[1]
 	for i, name in ipairs(parlist) do
-		if not tltype.isVararg(inputList[i]) then
+		name.left_deco = inputDecoList[i]
+		if not tltype.isVararg(inputDecoList[i]) then
 			if name.tag == "Id" then
-				name[2] = inputList[i]
+				name[2] = inputDecoList[i]
 			elseif name.tag == "Dots" then
-				name[1] = inputList[i]
+				name[1] = inputDecoList[i]
 			end
-		end
+		end -- for old tlchecker
 	end
 	-- deco output
-	local outputList = decoFunc[2]
+	local outputDecoList = decoFunc[2]
 	if not funcNode[3] then
 		funcNode[3] = funcNode[2]
 	end
-	funcNode[2] = outputList
+	funcNode.right_deco = outputDecoList
+	funcNode[2] = outputDecoList -- for old tlchecker
 	return stat
 end
 
@@ -196,7 +204,7 @@ end
 
 -- statLocalrec : (number, ident, expr) -> (stat)
 function tlast.statLocalrec (pos, ident, expr)
-  return { tag = "Localrec", pos = pos, [1] = { ident }, [2] = { expr } }
+  return { tag = "Localrec", pos = pos, [1] = { tag="NameList", ident }, [2] = { tag="ExpList", expr } }
 end
 
 -- statGoto : (number, string) -> (stat)
