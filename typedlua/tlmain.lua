@@ -7,6 +7,7 @@ local tlrequire = require "typedlua/tlrequire"
 local tldefine = require "typedlua/tldefine"
 local tlrefer = require "typedlua/tlrefer"
 
+local tlbreadth = require "typedlua/tlbreadth"
 local tlchecker = require "typedlua/tlchecker"
 
 -- utils
@@ -43,6 +44,8 @@ function tlmain.main(subject, filename, strict, integer, color)
 	local uvtree = tlrefer.refer(ast)
 	-- print(seri(uvtree))
 	print(tluv.dump(uvtree))
+
+	tlbreadth.visit(ast, uvtree)
 	-- local msgs, env = tlchecker.check(global_env)
 
 	-- print(tlchecker.error_msgs(msgs,false,false,false))

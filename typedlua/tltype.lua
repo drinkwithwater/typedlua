@@ -589,7 +589,7 @@ function tltype.setGlobalVariable(t, env, pos, typeerror, namespace)
   t.tag = "TGlobalVariable"
   t[2] = env
   t[3] = pos
-  t[4] = typerror
+  t[4] = typeerror
   t[5] = namespace
 end
 
