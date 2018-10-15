@@ -86,14 +86,14 @@ local visitor_override = {
 		if visitor.define_pos then
 			tluv.ident_define(visitor.uvtree, node)
 		else
-			tluv.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tluv.ident_refer(visitor.uvtree, node)
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
 			tluv.ident_define(visitor.uvtree, node)
 		else
-			tluv.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tluv.ident_refer(visitor.uvtree, node)
 		end
 	end,
 }

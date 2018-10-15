@@ -97,7 +97,7 @@ function tluv.ident_refer(tree, ident)
 		error("tluv refer error tag"..tostring(ident.tag))
 	end
 	local refer_uv_index = assert(tree.cur_table.record_dict[name], string.format("ident_refer fail, %s,%s", ident.l, ident.c))
-	ident.uv_index = refer_uv_index
+	return refer_uv_index
 end
 
 --@(UVTable|UpValue, {integer:string}, integer) -> string
