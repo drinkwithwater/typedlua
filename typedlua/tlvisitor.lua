@@ -91,7 +91,10 @@ visit_type = setmetatable({
 
 visit_var = setmetatable({
 	Id = false,
-	Index = false,
+	Index = function(visitor, node)
+		visit_exp(visitor, node[1])
+		visit_exp(visitor, node[2])
+	end,
 	Dots = false,
 }, {
 	__call=visit_tag,
@@ -360,6 +363,20 @@ end
 function tlvisitor.visit_type(node, visitor)
 	setDefaultVistior(visitor)
 	visit_type(visitor, node)
+end
+
+function tlvisitor.concat(...)
+	local nDict = {}
+	for i=1, select("#", ...) do
+		local t = select(i, ...)
+		for k,v in pairs(t) do
+			if nDict[k] then
+				error("visitor concat duplicate")
+			end
+			nDict[k] = v
+		end
+	end
+	return nDict
 end
 
 return tlvisitor

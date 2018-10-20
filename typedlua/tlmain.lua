@@ -11,7 +11,7 @@ local tlbreadth = require "typedlua/tlbreadth"
 local tlchecker = require "typedlua/tlchecker"
 
 -- utils
-local tluv = require "typedlua/tluv"
+local tlupvalue = require "typedlua/tlupvalue"
 local seri = require "typedlua/seri"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
@@ -43,7 +43,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	local uvtree = tlrefer.refer(ast)
 	-- print(seri(uvtree))
-	print(tluv.dump(uvtree))
+	print(tlupvalue.dump(uvtree))
 
 	tlbreadth.visit(ast, uvtree)
 	-- local msgs, env = tlchecker.check(global_env)
