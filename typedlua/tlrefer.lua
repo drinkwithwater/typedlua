@@ -1,5 +1,5 @@
 
-local tlupvalue = require "typedlua.tlupvalue"
+local tlident = require "typedlua.tlident"
 local tlast = require "typedlua.tlast"
 local tlvisitor = require "typedlua.tlvisitor"
 local tlutils = require "typedlua.tlutils"
@@ -7,13 +7,13 @@ local tlrefer = {}
 
 local visitor_before = {
 	Do=function(visitor, stm)
-		tlupvalue.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.uvtree, stm)
 	end,
 	While=function(visitor, stm)
-		tlupvalue.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.uvtree, stm)
 	end,
 	Repeat=function(visitor, stm)
-		tlupvalue.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.uvtree, stm)
 	end,
 }
 
@@ -28,25 +28,25 @@ local visitor_override = {
 		else
 			block_node = stm[4]
 		end
-		tlupvalue.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.uvtree, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, block_node)
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 	Forin=function(visitor, stm, node_visit)
 		node_visit(visitor, stm[2])
 
-		tlupvalue.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.uvtree, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, stm[3])
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 	Function = function(visitor, func, node_visit)
-		tlupvalue.begin_scope(visitor.uvtree, func)
+		tlident.begin_scope(visitor.uvtree, func)
 		visitor.define_pos = true
 		node_visit(visitor, func[1])
 		visitor.define_pos = false
@@ -55,15 +55,15 @@ local visitor_override = {
 		else
 			node_visit(visitor, func[2])
 		end
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 	Block=function(visitor, stm, node_visit, self_visit)
 		local stack = visitor.stack
 		local if_stm = stack[#stack - 1]
 		if if_stm and if_stm.tag == "If" then
-			tlupvalue.begin_scope(visitor.uvtree, stm)
+			tlident.begin_scope(visitor.uvtree, stm)
 			self_visit(visitor, stm)
-			tlupvalue.end_scope(visitor.uvtree)
+			tlident.end_scope(visitor.uvtree)
 		else
 			self_visit(visitor, stm)
 		end
@@ -84,35 +84,35 @@ local visitor_override = {
 	end,
 	Dots=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlupvalue.ident_define(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_define(visitor.uvtree, node)
 		else
-			node.tlrefer = tlupvalue.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_refer(visitor.uvtree, node)
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlupvalue.ident_define(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_define(visitor.uvtree, node)
 		else
-			node.tlrefer = tlupvalue.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_refer(visitor.uvtree, node)
 		end
 	end,
 }
 
 local visitor_after = {
 	Do=function(visitor, stm)
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 	While=function(visitor, stm)
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 	Repeat=function(visitor, stm)
-		tlupvalue.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.uvtree)
 	end,
 }
 
 
 function tlrefer.refer(ast)
-	local uvtree = tlupvalue.new_tree(ast)
+	local uvtree = tlident.new_tree(ast)
 	local visitor = {
 		uvtree = uvtree,
 		before = visitor_before,
@@ -123,10 +123,10 @@ function tlrefer.refer(ast)
 	local env_node = tlast.ident(0, "_ENV")
 	env_node.l=0
 	env_node.c=0
-	env_node.tlrefer = tlupvalue.ident_define(uvtree, env_node)
-	tlupvalue.begin_scope(uvtree, ast)
+	env_node.tlrefer = tlident.ident_define(uvtree, env_node)
+	tlident.begin_scope(uvtree, ast)
 	tlvisitor.visit(ast, visitor)
-	tlupvalue.end_scope(uvtree)
+	tlident.end_scope(uvtree)
 
 	return uvtree
 end
