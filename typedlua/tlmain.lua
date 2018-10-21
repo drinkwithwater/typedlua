@@ -41,11 +41,11 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	print("==========================================tlrefer=======================")
 
-	local uvtree = tlrefer.refer(ast)
-	-- print(seri(uvtree))
-	print(tlident.dump(uvtree))
+	local identTree = tlrefer.refer(ast)
+	-- print(seri(identTree))
+	print(tlident.dump(identTree))
 
-	tlbreadth.visit(ast, uvtree)
+	-- tlbreadth.visit(ast, identTree)
 	--[[local msgs, env = tlchecker.check(global_env)
 
 	print(tlchecker.error_msgs(msgs,true,false,false))]]

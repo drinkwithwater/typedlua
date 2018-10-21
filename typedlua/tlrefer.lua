@@ -7,13 +7,13 @@ local tlrefer = {}
 
 local visitor_before = {
 	Do=function(visitor, stm)
-		tlident.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.identTree, stm)
 	end,
 	While=function(visitor, stm)
-		tlident.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.identTree, stm)
 	end,
 	Repeat=function(visitor, stm)
-		tlident.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.identTree, stm)
 	end,
 }
 
@@ -28,25 +28,25 @@ local visitor_override = {
 		else
 			block_node = stm[4]
 		end
-		tlident.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.identTree, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, block_node)
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 	Forin=function(visitor, stm, node_visit)
 		node_visit(visitor, stm[2])
 
-		tlident.begin_scope(visitor.uvtree, stm)
+		tlident.begin_scope(visitor.identTree, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, stm[3])
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 	Function = function(visitor, func, node_visit)
-		tlident.begin_scope(visitor.uvtree, func)
+		tlident.begin_scope(visitor.identTree, func)
 		visitor.define_pos = true
 		node_visit(visitor, func[1])
 		visitor.define_pos = false
@@ -55,15 +55,15 @@ local visitor_override = {
 		else
 			node_visit(visitor, func[2])
 		end
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 	Block=function(visitor, stm, node_visit, self_visit)
 		local stack = visitor.stack
 		local if_stm = stack[#stack - 1]
 		if if_stm and if_stm.tag == "If" then
-			tlident.begin_scope(visitor.uvtree, stm)
+			tlident.begin_scope(visitor.identTree, stm)
 			self_visit(visitor, stm)
-			tlident.end_scope(visitor.uvtree)
+			tlident.end_scope(visitor.identTree)
 		else
 			self_visit(visitor, stm)
 		end
@@ -84,37 +84,37 @@ local visitor_override = {
 	end,
 	Dots=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlident.ident_define(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlrefer = tlident.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_refer(visitor.identTree, node)
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlident.ident_define(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlrefer = tlident.ident_refer(visitor.uvtree, node)
+			node.tlrefer = tlident.ident_refer(visitor.identTree, node)
 		end
 	end,
 }
 
 local visitor_after = {
 	Do=function(visitor, stm)
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 	While=function(visitor, stm)
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 	Repeat=function(visitor, stm)
-		tlident.end_scope(visitor.uvtree)
+		tlident.end_scope(visitor.identTree)
 	end,
 }
 
 
 function tlrefer.refer(ast)
-	local uvtree = tlident.new_tree(ast)
+	local identTree = tlident.new_tree(ast)
 	local visitor = {
-		uvtree = uvtree,
+		identTree = identTree,
 		before = visitor_before,
 		override = visitor_override,
 		after = visitor_after,
@@ -123,12 +123,12 @@ function tlrefer.refer(ast)
 	local env_node = tlast.ident(0, "_ENV")
 	env_node.l=0
 	env_node.c=0
-	env_node.tlrefer = tlident.ident_define(uvtree, env_node)
-	tlident.begin_scope(uvtree, ast)
+	env_node.tlrefer = tlident.ident_define(identTree, env_node)
+	tlident.begin_scope(identTree, ast)
 	tlvisitor.visit(ast, visitor)
-	tlident.end_scope(uvtree)
+	tlident.end_scope(identTree)
 
-	return uvtree
+	return identTree
 end
 
 return tlrefer
