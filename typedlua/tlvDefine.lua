@@ -3,7 +3,6 @@ This file implements Interface parsing before type checker
 --!cz
 ]]
 
-local tlst = require "typedlua.tlst"
 local tlvisitor = require "typedlua.tlvisitor"
 local tltype = require "typedlua.tltype"
 local tlutils = require "typedlua.tlutils"
@@ -86,14 +85,14 @@ local visitor_after = {
 		if stm.is_local then
 			return
 		end
-		if visitor.env.interface[name] then
+		if visitor.env.interface_dict[name] then
 			-- local bold_token = "'%s'"
 			local msg = "attempt to redeclare interface '%s'"
 			msg = string.format(msg, name)
 			defineerror(visitor.env, stm, msg)
 		else
 			t.name = name
-			visitor.env.interface[name] = t
+			visitor.env.interface_dict[name] = t
 		end
 		visitor.definePosition = false
 	end,
@@ -115,8 +114,8 @@ function tlvDefine.defineAll(global_env)
 	local ast = global_env.ast
 	local visitor = tlvDefine.create_visitor(global_env)
 	tlvisitor.visit(ast, visitor)
-	for name, loadedInfo in pairs(global_env.loadedInfo) do
-		tlvisitor.visit(loadedInfo.ast, visitor)
+	for name, file_env in pairs(global_env.file_env_dict) do
+		tlvisitor.visit(file_env.ast, visitor)
 	end
 	return visitor
 end

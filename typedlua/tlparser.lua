@@ -9,7 +9,6 @@ lpeg.locale(lpeg)
 local seri = require "typedlua/seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
-local tlst = require "typedlua.tlst"
 local tltype = require "typedlua.tltype"
 
 local function chainl1 (pat, sep)

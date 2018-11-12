@@ -16,7 +16,7 @@ local tlident = require "typedlua/tlident"
 local seri = require "typedlua/seri"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
-local tlst = require "typedlua/tlst"
+local tlenv = require "typedlua/tlenv"
 local tlmain = {}
 
 function tlmain.main(subject, filename, strict, integer, color)
@@ -28,14 +28,13 @@ function tlmain.main(subject, filename, strict, integer, color)
 		return
 	end
 
-	local global_env = tlst.new_global_env(subject, filename, strict, color)
-	global_env.ast = ast
+	local global_env = tlenv.GlobalEnv(subject, filename, ast)
 
 	tlvRequire.requireAll(global_env)
 
 	tlvDefine.defineAll(global_env)
 
-	for k,v in pairs(global_env.interface) do
+	for k,v in pairs(global_env.interface_dict) do
 		print(k, tlutils.dumptype(v))
 	end
 	print(tlutils.dumpast(global_env.ast))

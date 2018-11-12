@@ -33,15 +33,15 @@ local visitor_after = {
 }
 
 function tlvRequire.requireName(name, global_env)
-	local loadedInfo = global_env.loadedInfo
+	local file_env_dict = global_env.file_env_dict
 	name = string.gsub(name, '%.', '/')
-	if not loadedInfo[name] then
+	if not file_env_dict[name] then
 		print("requiring:", name)
 		local path = package.path
 		local filename, errormsg  = assert(tlutils.searchpath(name, path))
 		local subject = tlutils.getcontents(filename)
 		local ast, error_msg = assert(tlparser.parse(subject, filename, global_env.strict, global_env.integer))
-		loadedInfo[name] = {
+		file_env_dict[name] = {
 			subject = subject,
 			filename = filename,
 			ast = ast,
@@ -52,7 +52,7 @@ function tlvRequire.requireName(name, global_env)
 		}
 		tlvisitor.visit(ast, visitor)
 		for i, nextName in pairs(visitor.requireList) do
-			if not loadedInfo[nextName] then
+			if not file_env_dict[nextName] then
 				tlvRequire.requireName(nextName, global_env)
 			end
 		end
@@ -68,7 +68,7 @@ function tlvRequire.requireAll(global_env)
 	}
 	tlvisitor.visit(ast, visitor)
 	for i, nextName in ipairs(visitor.requireList) do
-		if not global_env.loadedInfo[nextName] then
+		if not global_env.file_env_dict[nextName] then
 			tlvRequire.requireName(nextName, global_env)
 		end
 	end
