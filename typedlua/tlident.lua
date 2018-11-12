@@ -3,6 +3,7 @@ This module implements Ident define & refer for Lua.
 ]]
 
 local seri = require "typedlua.seri"
+local tlutils = require "typedlua.tlutils"
 local tlident = {}
 
 --[[@
@@ -103,43 +104,14 @@ function tlident.ident_refer(tree, ident)
 	return refer_index
 end
 
---@(IdentTable|IdentDefine, {integer:string}, integer) -> string
-function tlident.iter(child, buffer_list, pre_line)
-	local line, offset = pre_line, nil
-	local astNode = child.node
-	if astNode.pos then
-		line, offset = astNode.l, astNode.c
-		if line ~= pre_line then
-			buffer_list[#buffer_list + 1] = "\n"
-			buffer_list[#buffer_list + 1] = line
-			buffer_list[#buffer_list + 1] = ":"
-			buffer_list[#buffer_list + 1] = string.rep(" ", offset)
-		end
-	end
-	if child.tag == "IdentTable" then
-		buffer_list[#buffer_list + 1] = "{"
-		for k, v in ipairs(child) do
-			if type(v) == "table" then
-				line = tlident.iter(v, buffer_list, line)
-			else
-				buffer_list[#buffer_list + 1] = "("
-				buffer_list[#buffer_list + 1] = v
-				buffer_list[#buffer_list + 1] = ")"
-			end
-		end
-		buffer_list[#buffer_list + 1] = "}"
-	else
-		buffer_list[#buffer_list + 1] = "("
-		buffer_list[#buffer_list + 1] = table.concat(child, ",")
-		buffer_list[#buffer_list + 1] = ")"
-	end
-	return line
-end
-
 function tlident.dump(tree)
-	local bufferList = {}
-	tlident.iter(tree.root_table, bufferList, -1)
-	return table.concat(bufferList)
+	return tlutils.dumpLambda(tree.root_table, function(child)
+		if child.tag == "IdentTable" then
+			return child.node, "", nil
+		else
+			return child.node, nil, table.concat(child, ",")
+		end
+	end)
 end
 
 return tlident

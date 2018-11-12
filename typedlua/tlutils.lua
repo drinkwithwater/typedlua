@@ -5,14 +5,9 @@ local tlvisitor = require "typedlua.tlvisitor"
 local tlutils = {}
 
 -- dump ast node
-local function dumpNode(astNode, bufferList, preLine)
+local function dumpNode(obj, bufferList, preLine, lambda)
 	local line, offset = preLine, nil
-	if tlnode.isType(astNode.tag) then
-		bufferList[#bufferList + 1] = "["
-		bufferList[#bufferList + 1] = astNode.tag
-		bufferList[#bufferList + 1] = "]"
-		return line
-	end
+	local astNode, middle, last = lambda(obj)
 	if astNode.pos then
 		line, offset = astNode.l, astNode.c
 		if line ~= preLine then
@@ -22,11 +17,21 @@ local function dumpNode(astNode, bufferList, preLine)
 			bufferList[#bufferList + 1] = string.rep(" ", offset)
 		end
 	end
-	bufferList[#bufferList + 1] = astNode.tag
+	if not middle then
+		if last then
+			bufferList[#bufferList + 1] = "("
+			bufferList[#bufferList + 1] = last
+			bufferList[#bufferList + 1] = ")"
+			return line
+		else
+			return line
+		end
+	end
+	bufferList[#bufferList + 1] = middle
 	bufferList[#bufferList + 1] = "{"
-	for k, v in ipairs(astNode) do
+	for k, v in ipairs(obj) do
 		if type(v) == "table" then
-			line = dumpNode(v, bufferList, line)
+			line = dumpNode(v, bufferList, line, lambda)
 		else
 			bufferList[#bufferList + 1] = "("
 			bufferList[#bufferList + 1] = v
@@ -37,10 +42,20 @@ local function dumpNode(astNode, bufferList, preLine)
 	return line
 end
 
-function tlutils.dumpast(astNode)
+function tlutils.dumpLambda(root, lambda)
 	local bufferList = {}
-	dumpNode(astNode, bufferList, -1)
+	dumpNode(root, bufferList, -1, lambda)
 	return table.concat(bufferList)
+end
+
+function tlutils.dumpast(astNode)
+	return tlutils.dumpLambda(astNode, function(node)
+		if tlnode.isType(node.tag) then
+			return node, nil, node.tag
+		else
+			return node, node.tag
+		end
+	end)
 end
 
 -- dump type
