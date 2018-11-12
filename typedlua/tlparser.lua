@@ -11,7 +11,6 @@ local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
 local tlst = require "typedlua.tlst"
 local tltype = require "typedlua.tltype"
-local tlvGlobal = require "typedlua.tlvGlobal"
 
 local function chainl1 (pat, sep)
   return lpeg.Cf(pat * lpeg.Cg(sep * pat)^0, tlast.exprBinaryOp)
@@ -307,9 +306,6 @@ function tlparser.parse (subject, filename, strict, integer)
   lpeg.setmaxstack(1000)
   if integer and _VERSION ~= "Lua 5.3" then integer = false end
   local ast, error_msg = lpeg.match(G, subject, nil, errorinfo, strict, integer)
-  if not ast then return ast, error_msg end
-
-  local ast, error_msg = tlvGlobal.visit(ast, subject, filename, strict, integer)
   if not ast then return ast, error_msg end
 
   fixup_lin_col(subject, ast)

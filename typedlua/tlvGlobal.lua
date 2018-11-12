@@ -1,4 +1,8 @@
-
+--[[
+old code for tlparser,
+include some simple check and _ENV setting,
+not used
+]]
 local seri = require "typedlua/seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"

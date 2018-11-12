@@ -1,4 +1,6 @@
-
+--[[
+This module implements Ident Node's reference
+]]
 local tlident = require "typedlua.tlident"
 local tlast = require "typedlua.tlast"
 local tlvisitor = require "typedlua.tlvisitor"
@@ -86,14 +88,31 @@ local visitor_override = {
 		if visitor.define_pos then
 			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlvRefer = tlident.ident_refer(visitor.identTree, node)
+			-- TODO for ... in global
+			node.tlvRefer = assert(tlident.ident_refer(visitor.identTree, node))
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
 			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlvRefer = tlident.ident_refer(visitor.identTree, node)
+			local refer = tlident.ident_refer(visitor.identTree, node)
+			if refer then
+				node.tlvRefer = refer
+			else
+				node.tag = "Index"
+
+				-- ident
+				local e1 = tlast.ident(node.pos, "_ENV")
+				e1.l, e1.c = node.l, node.c
+				e1.tlvRefer = tlident.ident_refer(visitor.identTree, e1)
+				node[1] = e1
+
+				-- key
+				local e2 = tlast.exprString(node.pos, node[1])
+				e2.l, e2.c = node.l, node.c
+				node[2] = e2
+			end
 		end
 	end,
 }

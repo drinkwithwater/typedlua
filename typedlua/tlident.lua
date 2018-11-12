@@ -8,6 +8,7 @@ local tlident = {}
 --[[@
 interface IdentTable
 	tag:"IdentDefine"
+	type:Type			-- type
 	[1]:string			-- name
 	[2]:integer			-- refer index
 end
@@ -97,7 +98,8 @@ function tlident.ident_refer(tree, ident)
 	else
 		error("tlident refer error tag"..tostring(ident.tag))
 	end
-	local refer_index = assert(tree.cur_table.record_dict[name], string.format("ident_refer fail, %s,%s", ident.l, ident.c))
+	-- local refer_index = assert(tree.cur_table.record_dict[name], string.format("ident_refer fail, %s,%s", ident.l, ident.c))
+	local refer_index = tree.cur_table.record_dict[name]
 	return refer_index
 end
 
