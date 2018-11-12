@@ -2,7 +2,7 @@
 local tlvisitor = require "typedlua/tlvisitor"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
-local tlbreadth = {}
+local tlvBreadth = {}
 
 local Value = tltype.Value()
 local Any = tltype.Any()
@@ -126,7 +126,7 @@ local visitor_exp = {
 		end
 	end,
 	Id=function(visitor, node)
-		node.type = visitor.identTree[node.tlrefer].node.type
+		node.type = visitor.identTree[node.tlvRefer].node.type
 	end
 }
 
@@ -159,16 +159,16 @@ local visitor_stm = {
 
 local visitor_after = tlvisitor.concat(visitor_stm, visitor_exp)
 
-function tlbreadth.visit_block(block, visitor)
+function tlvBreadth.visit_block(block, visitor)
 	tlvisitor.visit(block, visitor)
 	local func_block_list = visitor.func_block_list
 	visitor.func_block_list = {}
 	for _, sub_block in pairs(func_block_list) do
-		tlbreadth.visit_block(sub_block, visitor)
+		tlvBreadth.visit_block(sub_block, visitor)
 	end
 end
 
-function tlbreadth.visit(ast, identTree)
+function tlvBreadth.visit(ast, identTree)
 	local visitor = {
 		override = visitor_override,
 		after = visitor_after,
@@ -181,8 +181,8 @@ function tlbreadth.visit(ast, identTree)
 	local func_block_list = visitor.func_block_list
 	visitor.func_block_list = {}
 	for _, sub_block in pairs(func_block_list) do
-		tlbreadth.visit_block(sub_block, visitor)
+		tlvBreadth.visit_block(sub_block, visitor)
 	end
 end
 
-return tlbreadth
+return tlvBreadth

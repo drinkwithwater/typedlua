@@ -1,13 +1,14 @@
 
 
--- visitor
 local tlparser = require "typedlua/tlparser"
-local tlrequire = require "typedlua/tlrequire"
 
-local tldefine = require "typedlua/tldefine"
-local tlrefer = require "typedlua/tlrefer"
+-- visitor
+local tlvRequire = require "typedlua/tlvRequire"
 
-local tlbreadth = require "typedlua/tlbreadth"
+local tlvDefine = require "typedlua/tlvDefine"
+local tlvRefer = require "typedlua/tlvRefer"
+
+local tlvBreadth = require "typedlua/tlvBreadth"
 local tlchecker = require "typedlua/tlchecker"
 
 -- utils
@@ -30,22 +31,22 @@ function tlmain.main(subject, filename, strict, integer, color)
 	local global_env = tlst.new_global_env(subject, filename, strict, color)
 	global_env.ast = ast
 
-	tlrequire.requireAll(global_env)
+	tlvRequire.requireAll(global_env)
 
-	tldefine.defineAll(global_env)
+	tlvDefine.defineAll(global_env)
 
 	for k,v in pairs(global_env.interface) do
 		print(k, tlutils.dumptype(v))
 	end
 	print(tlutils.dumpast(global_env.ast))
 
-	print("==========================================tlrefer=======================")
+	print("==========================================tlvRefer=======================")
 
-	local identTree = tlrefer.refer(ast)
+	local identTree = tlvRefer.refer(ast)
 	-- print(seri(identTree))
 	print(tlident.dump(identTree))
 
-	-- tlbreadth.visit(ast, identTree)
+	-- tlvBreadth.visit(ast, identTree)
 	--[[local msgs, env = tlchecker.check(global_env)
 
 	print(tlchecker.error_msgs(msgs,true,false,false))]]

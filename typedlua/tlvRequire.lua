@@ -3,7 +3,7 @@ local tlutils = require "typedlua/tlutils"
 local tlvisitor = require "typedlua/tlvisitor"
 local tlparser = require "typedlua/tlparser"
 
-local tlrequire = {}
+local tlvRequire = {}
 local visitor_after = {
 	-- TODO deal with case if "local sth = require  sth("balabala")"
 	Call=function(visitor, stm)
@@ -32,7 +32,7 @@ local visitor_after = {
 	end,
 }
 
-function tlrequire.requireName(name, global_env)
+function tlvRequire.requireName(name, global_env)
 	local loadedInfo = global_env.loadedInfo
 	name = string.gsub(name, '%.', '/')
 	if not loadedInfo[name] then
@@ -53,14 +53,14 @@ function tlrequire.requireName(name, global_env)
 		tlvisitor.visit(ast, visitor)
 		for i, nextName in pairs(visitor.requireList) do
 			if not loadedInfo[nextName] then
-				tlrequire.requireName(nextName, global_env)
+				tlvRequire.requireName(nextName, global_env)
 			end
 		end
 	end
 end
 
 -- require recursive
-function tlrequire.requireAll(global_env)
+function tlvRequire.requireAll(global_env)
 	local ast = global_env.ast
 	local visitor = {
 		after = visitor_after,
@@ -69,9 +69,9 @@ function tlrequire.requireAll(global_env)
 	tlvisitor.visit(ast, visitor)
 	for i, nextName in ipairs(visitor.requireList) do
 		if not global_env.loadedInfo[nextName] then
-			tlrequire.requireName(nextName, global_env)
+			tlvRequire.requireName(nextName, global_env)
 		end
 	end
 end
 
-return tlrequire
+return tlvRequire

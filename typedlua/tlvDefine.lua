@@ -12,7 +12,7 @@ local tlparser = require "typedlua.tlparser"
 local tldparser = require "typedlua.tldparser"
 
 local seri = require "typedlua.seri"
-local tldefine = {}
+local tlvDefine = {}
 
 local unpack = table.unpack
 local defineerror = function(env, node, msg)
@@ -99,7 +99,7 @@ local visitor_after = {
 	end,
 }
 
-function tldefine.create_visitor(env)
+function tlvDefine.create_visitor(env)
 	local visitor = {
 		env = env,
 		before = visitor_before,
@@ -111,9 +111,9 @@ function tldefine.create_visitor(env)
 	return visitor
 end
 
-function tldefine.defineAll(global_env)
+function tlvDefine.defineAll(global_env)
 	local ast = global_env.ast
-	local visitor = tldefine.create_visitor(global_env)
+	local visitor = tlvDefine.create_visitor(global_env)
 	tlvisitor.visit(ast, visitor)
 	for name, loadedInfo in pairs(global_env.loadedInfo) do
 		tlvisitor.visit(loadedInfo.ast, visitor)
@@ -121,4 +121,4 @@ function tldefine.defineAll(global_env)
 	return visitor
 end
 
-return tldefine
+return tlvDefine

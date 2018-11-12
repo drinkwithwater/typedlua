@@ -3,7 +3,7 @@ local tlident = require "typedlua.tlident"
 local tlast = require "typedlua.tlast"
 local tlvisitor = require "typedlua.tlvisitor"
 local tlutils = require "typedlua.tlutils"
-local tlrefer = {}
+local tlvRefer = {}
 
 local visitor_before = {
 	Do=function(visitor, stm)
@@ -84,16 +84,16 @@ local visitor_override = {
 	end,
 	Dots=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlident.ident_define(visitor.identTree, node)
+			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlrefer = tlident.ident_refer(visitor.identTree, node)
+			node.tlvRefer = tlident.ident_refer(visitor.identTree, node)
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
-			node.tlrefer = tlident.ident_define(visitor.identTree, node)
+			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
 		else
-			node.tlrefer = tlident.ident_refer(visitor.identTree, node)
+			node.tlvRefer = tlident.ident_refer(visitor.identTree, node)
 		end
 	end,
 }
@@ -111,7 +111,7 @@ local visitor_after = {
 }
 
 
-function tlrefer.refer(ast)
+function tlvRefer.refer(ast)
 	local identTree = tlident.new_tree(ast)
 	local visitor = {
 		identTree = identTree,
@@ -123,7 +123,7 @@ function tlrefer.refer(ast)
 	local env_node = tlast.ident(0, "_ENV")
 	env_node.l=0
 	env_node.c=0
-	env_node.tlrefer = tlident.ident_define(identTree, env_node)
+	env_node.tlvRefer = tlident.ident_define(identTree, env_node)
 	tlident.begin_scope(identTree, ast)
 	tlvisitor.visit(ast, visitor)
 	tlident.end_scope(identTree)
@@ -131,4 +131,4 @@ function tlrefer.refer(ast)
 	return identTree
 end
 
-return tlrefer
+return tlvRefer
