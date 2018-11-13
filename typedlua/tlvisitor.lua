@@ -9,6 +9,27 @@ local visit_node
 local visit_block, visit_stm, visit_exp, visit_var, visit_type, visit_list, visit_field
 local visit_explist, visit_varlist, visit_parlist
 
+local function visit_error(visitor, t, trace, msg)
+	local seri = require "typedlua.seri"
+	print("node:",seri(t))
+	print("trace:",trace)
+	print("msg:",msg)
+end
+
+local ecall = function(func, visitor, t, ...)
+	local logError = visitor.error or visit_error
+	local ok = xpcall(func, function(emsg)
+		if not emsg:find("throw", -5) then
+			logError(visitor, t, debug.traceback(), emsg)
+		end
+	end, visitor, t, ...)
+	if not ok then
+		error("throw")
+	end
+	return true
+end
+
+-- __call for all visit dict
 local function visit_tag(visit_dict, visitor, t)
   if visitor.stop then
 	  return
@@ -21,19 +42,31 @@ local function visit_tag(visit_dict, visitor, t)
   local override = visitor.override[tag]
   local after = visitor.after[tag]
   if before then
-	  before(visitor, t)
+	  local ok = ecall(before, visitor, t)
+	  if not ok then
+		  return
+	  end
   end
   if override then
 	  local self_visit = visit_node[tag]
-	  override(visitor, t, visit_node, self_visit)
+	  local ok = ecall(override, visitor, t, visit_node, self_visit)
+	  if not ok then
+		  return
+	  end
   else
 	  local middle = visit_dict[tag]
 	  if middle then
-		  middle(visitor, t)
+		  local ok = ecall(middle, visitor, t)
+		  if not ok then
+			  return
+		  end
 	  end
   end
   if after then
-	  after(visitor, t)
+	  local ok = ecall(after, visitor, t)
+	  if not ok then
+		  return
+	  end
   end
   stack[index] = nil
 end
@@ -166,8 +199,8 @@ visit_exp = setmetatable({
 			end
 		end
 	end,
-	Id = visit_var,
-	Index = visit_var,
+	Id = false,
+	Index = visit_var.Index,
 }, {
 	__call=visit_tag,
 	__index=function(t, tag)
