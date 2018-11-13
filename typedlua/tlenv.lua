@@ -17,6 +17,7 @@ function tlenv.FileEnv(vSubject, vFileName, vAst)
 		ident_tree = nil,
 		subject = vSubject,
 		filename = vFileName,
+		unique_table_list = {},
 	}
 	return env
 end

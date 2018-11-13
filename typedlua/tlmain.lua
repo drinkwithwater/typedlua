@@ -29,6 +29,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 	end
 
 	local global_env = tlenv.GlobalEnv(subject, filename, ast)
+	-- print(tlutils.dumpast(global_env.ast))
 
 	tlvRequire.requireAll(global_env)
 
@@ -42,10 +43,20 @@ function tlmain.main(subject, filename, strict, integer, color)
 	print("==========================================tlvRefer=======================")
 
 	local identTree = tlvRefer.refer(ast)
-	-- print(seri(identTree))
+	--print(seri(identTree))
 	print(tlident.dump(identTree))
 
-	-- tlvBreadth.visit(ast, identTree)
+	global_env.ident_tree = identTree
+
+	tlvBreadth.visit(global_env)
+
+	print(tlutils.dumpLambda(global_env.ast, function(node)
+		if node.type then
+			return node, "", node.type.tag
+		else
+			return node, "", nil
+		end
+	end):gsub("[()]"," "))
 	--[[local msgs, env = tlchecker.check(global_env)
 
 	print(tlchecker.error_msgs(msgs,true,false,false))]]

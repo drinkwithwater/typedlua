@@ -158,7 +158,6 @@ function tlast.statDecoAssign(pos, decoList, stat)
 	end
 	for i, name in ipairs(namelist) do
 		name.left_deco = decoList[i]
-		name[2] = decoList[i] -- for old tlchecker
 	end
 	local explist = stat[2]
 	for i, exp in ipairs(explist) do
@@ -179,21 +178,10 @@ function tlast.statDecoFunc(pos, decoFunc, stat)
 	local inputDecoList = decoFunc[1]
 	for i, name in ipairs(parlist) do
 		name.left_deco = inputDecoList[i]
-		if not tltype.isVararg(inputDecoList[i]) then
-			if name.tag == "Id" then
-				name[2] = inputDecoList[i]
-			elseif name.tag == "Dots" then
-				name[1] = inputDecoList[i]
-			end
-		end -- for old tlchecker
 	end
 	-- deco output
 	local outputDecoList = decoFunc[2]
-	if not funcNode[3] then
-		funcNode[3] = funcNode[2]
-	end
-	funcNode.right_deco = outputDecoList
-	funcNode[2] = outputDecoList -- for old tlchecker
+	funcNode.right_deco = decoFunc
 	return stat
 end
 
@@ -345,9 +333,9 @@ function tlast.exprString (pos, str)
   return { tag = "String", pos = pos, [1] = str }
 end
 
--- exprFunction : (number, parlist, type|stat, stat?) -> (expr)
-function tlast.exprFunction (pos, parlist, rettype, stat)
-  return { tag = "Function", pos = pos, [1] = parlist, [2] = rettype, [3] = stat }
+-- exprFunction : (number, parlist, stat) -> (expr)
+function tlast.exprFunction (pos, parlist, stat)
+  return { tag = "Function", pos = pos, [1] = parlist, [2] = stat }
 end
 
 -- exprTable : (number, field*) -> (expr)

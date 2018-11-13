@@ -7,9 +7,9 @@ local tlutils = require "typedlua.tlutils"
 local tlident = {}
 
 --[[@
-interface IdentTable
+interface IdentDefine
 	tag:"IdentDefine"
-	type:Type			-- type
+	node:Node			-- astnode
 	[1]:string			-- name
 	[2]:integer			-- refer index
 end

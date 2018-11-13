@@ -11,6 +11,11 @@ local visit_explist, visit_varlist, visit_parlist
 
 local function visit_error(visitor, t, trace, msg)
 	local seri = require "typedlua.seri"
+	local tagList = {}
+	for i=1,#visitor.stack do
+		tagList[#tagList + 1] = visitor.stack[i].tag
+	end
+	print("stack:",table.concat(tagList,","))
 	print("node:",seri(t))
 	print("trace:",trace)
 	print("msg:",msg)

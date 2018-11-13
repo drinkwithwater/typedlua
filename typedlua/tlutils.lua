@@ -17,15 +17,13 @@ local function dumpNode(obj, bufferList, preLine, lambda)
 			bufferList[#bufferList + 1] = string.rep(" ", offset)
 		end
 	end
+	if last then
+		bufferList[#bufferList + 1] = "("
+		bufferList[#bufferList + 1] = last
+		bufferList[#bufferList + 1] = ")"
+	end
 	if not middle then
-		if last then
-			bufferList[#bufferList + 1] = "("
-			bufferList[#bufferList + 1] = last
-			bufferList[#bufferList + 1] = ")"
-			return line
-		else
-			return line
-		end
+		return line
 	end
 	bufferList[#bufferList + 1] = middle
 	bufferList[#bufferList + 1] = "{"

@@ -108,7 +108,8 @@ end
 
 -- Integer : (boolean?) -> (type)
 function tltype.Integer (i)
-  if i then return tltype.Base("integer") else return tltype.Base("number") end
+	return tltype.Base("integer")
+  -- if i then return tltype.Base("integer") else return tltype.Base("number") end
 end
 
 -- isBase : (type) -> (boolean)
@@ -958,6 +959,52 @@ local function subtype_table (env, t1, t2, relation)
   end
 end
 
+--!cz mod
+function tltype.indexfield(v_table, v_key)
+	if tltype.isLiteral(v_key) then
+		local j = v_table.recordDict[v_key[1]]
+		if j then
+			return v_table[j]
+		end
+		if v_table.unique then
+			return tltype.Nil()
+		end
+	end
+	for _, j in ipairs(v_table.hashList) do
+		if subtype(env, v_key, v_table[j][1]) then
+			return v_table[j]
+		end
+	end
+	return tltype.Nil()
+end
+
+--!cz mod
+function tltype.subfield(v_field, v_table)
+	local n_key = v_field[1]
+	local n_value = v_field[2]
+	if tltype.isLiteral(n_key) then
+		local j = v_table.recordDict[n_key[1]]
+		if j then
+			if subtype_field(env, v_table[j], v_field) then
+				return true
+			end
+		end
+	else
+		if v_table.unique then
+			return false
+		end
+	end
+	for _, j in ipairs(v_table.hashList) do
+		if subtype(env, n_key, v_table[j][1]) then
+			if subtype_field(env, v_table[j], v_field) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+
 local function subtype_global_variable(env, t1, t2, relation)
   if env[t1] and env[t1][t2] then return true end
   if env[t1] then
@@ -1480,6 +1527,17 @@ function tltype.typeerror (env, tag, msg, pos)
 
   local l, c = lineno(env.subject, pos)
   local error_msg = { tag = tag, filename = env.filename, msg = msg, l = l, c = c }
+  for i, v in ipairs(env.messages) do
+    if l < v.l or (l == v.l and c < v.c) then
+      table.insert(env.messages, i, error_msg)
+      return
+    end
+  end
+  table.insert(env.messages, error_msg)
+end
+
+function tltype.error(env, node, msg)
+  local error_msg = { tag = "error", filename = env.filename, msg = msg, l = node.l, c = node.c }
   for i, v in ipairs(env.messages) do
     if l < v.l or (l == v.l and c < v.c) then
       table.insert(env.messages, i, error_msg)
