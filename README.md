@@ -1,68 +1,37 @@
 # Typed Lua
-[![Build Status](https://travis-ci.org/andremm/typedlua.svg?branch=master)](https://travis-ci.org/andremm/typedlua)
-
-**Please note that Typed Lua is not being actively maintained, as we are now
-working on the [Titan Programming Language](http://www.titan-lang.org).**
 
 Typed Lua is a typed superset of Lua that compiles to plain Lua.
 It provides optional type annotations, compile-time type checking, and
 class-based object oriented programming through the definition of classes,
 interfaces, and modules.
 
-# Requirements for running the compiler
+This is a repository forked from [andremm/typedlua](https://github.com/andremm/typedlua).
 
-1. Lua >= 5.1
-1. [LPeg](http://www.inf.puc-rio.br/%7Eroberto/lpeg/) >= 0.12
+# Motivation
 
-# Install
+This forking intends to improve the typed system and some code in Typedlua.
 
-Typed Lua must be installed in a standard location; [LuaRocks](http://luarocks.org) will do this, and will also install the LPeg dependency automatically.
+## Benefit
 
-        $ [install luarocks]
-        $ luarocks install typedlua-scm-1.rockspec
+1. Syntax define and parser based on LPeg.
+2. Ast's node and link's implement using lua table.
+3. Some basic design and logic in a type system. (As I'm a newbie in PL...)
 
-# Usage
+## Not Good
 
-        $ tlc [options] [filename]
+1. Unionlist, Union, Variable, Recursive...
+2. The code in tlvisitor.lua is hard to reuse.
+3. The complexity of tltype.subtype.
+4. Much if-else branches which may be a little slow are used in many place.
 
-# Compiler options
+## Problem
 
-        -h       print this help
-        -d name  dump the AST (after typechecking) to file 'name'
-        -o name  output to file 'name' (default is 'tlc.lua')
-        -c       ansi colors on
-        -p       print the AST in Metalua format (before typechecking)
-        -s       strict mode on
-        -v       print current version
-        -w       warnings on (consistent-subtyping, unused locals)
+1. Support for multi .lua file.
+2. Type checking order if there's function block.
 
-# Runtime module loader
+# TODO
 
-Typed Lua also provides a runtime loader to use Typed Lua modules on any
-standard Lua virtual machine:
-
-```lua
-require "typedlua"
-package.path = "./?.tl;" .. package.path
-
--- It will load my_module.tl if it exists:
-local my_module = require "my_module"
-local my_file = loadfile "my_file.tl"
-```
-
-The loader functions use the file extension (chunk name extension in the cases
-of load and loadstring) to decide whether it contains Typed Lua (.tl) or plain
-Lua. If you want to force loading the chunks as Typed Lua you can use the
-functions provided by the typedlua module (these work like their standard Lua
-counterparts):
-
-```lua
-local typedlua = require "typedlua"
-typedlua.loadstring(string, chunkname)
-typedlua.load(func, chunkname)
-typedlua.loadfile(filename)
-typedlua.dofile(filename)
-```
+Many things TODO...
 
 # License
 
