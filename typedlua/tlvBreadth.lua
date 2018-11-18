@@ -61,9 +61,6 @@ local function add_type(visitor, node, t)
 	end
 end
 
-local function index_type(visitor, node, t2)
-end
-
 local visitor_override = {
 	Block=function(visitor, node, visit_node, self_visit)
 		local pre_node = visitor.stack[#visitor.stack - 1]
@@ -75,7 +72,7 @@ local visitor_override = {
 	end
 }
 
--- +-*/
+-- + - * / // % ^
 local visitor_arith = function(visitor, node)
 	-- TODO
 	add_type(visitor, node, tltype.Number())
@@ -136,12 +133,15 @@ local visitor_unary = {
 	end,
 	bnot=function(visitor, node)
 		add_type(visitor, node, tltype.Integer())
+		check_type(visitor, node[2], tltype.Integer())
 	end,
 	unm=function(visitor, node)
-		add_type(visitor, node, node[2].type)
+		add_type(visitor, node, tltype.Number())
+		check_type(visitor, node[2], tltype.Number())
 	end,
 	len=function(visitor, node)
 		add_type(visitor, node, tltype.Integer())
+		check_type(visitor, node[2], tltype.String())
 	end,
 }
 
@@ -236,6 +236,13 @@ local visitor_stm = {
 			if nVarNode.tag == "Index" then
 				if tltype.isNil(nVarNode.type) then
 					tltable.insert(nVarNode[1].type, tltable.Field(nVarNode[2].type, nExprNode.type))
+				else
+					log_error(visitor, nVarNode, "type assign type TODO:", nVarNode.type.tag, nExprNode.tag)
+					--[[
+					if not tlrelation.sub(nExprNode.type, nVarNode.type) then
+						log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.tag)
+					end
+					]]
 				end
 			elseif nVarNode.tag == "Id" then
 				if not tlrelation.sub(nExprNode.type, nVarNode.type) then

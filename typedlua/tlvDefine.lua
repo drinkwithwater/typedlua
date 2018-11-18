@@ -8,7 +8,6 @@ local tltype = require "typedlua.tltype"
 local tlutils = require "typedlua.tlutils"
 
 local tlparser = require "typedlua.tlparser"
-local tldparser = require "typedlua.tldparser"
 
 local seri = require "typedlua.seri"
 local tlvDefine = {}

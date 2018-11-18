@@ -35,7 +35,7 @@ end
 function tltable.index_generic(vTableType, vKeyType)
 	for _, j in ipairs(vTableType.hash_list) do
 		if tlrelation.sub(vKeyType, vTableType[j][1]) then
-			return v_table[j]
+			return vTableType[j]
 		end
 	end
 	return tltype.Nil()

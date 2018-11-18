@@ -9,7 +9,6 @@ local tlvDefine = require "typedlua/tlvDefine"
 local tlvRefer = require "typedlua/tlvRefer"
 
 local tlvBreadth = require "typedlua/tlvBreadth"
-local tlchecker = require "typedlua/tlchecker"
 
 -- utils
 local tlident = require "typedlua/tlident"
