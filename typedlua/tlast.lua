@@ -73,8 +73,6 @@ base: 'boolean' | 'number' | 'string'
 field: `TField{ <string> type }
 ]]
 
-local tltype = require "typedlua.tltype"
-
 local tlast = {}
 
 -- namelist : (number, ident, ident*) -> (namelist)

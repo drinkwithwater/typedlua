@@ -35,9 +35,9 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	tlvDefine.defineAll(global_env)
 
-	for k,v in pairs(global_env.interface_dict) do
+	--[[for k,v in pairs(global_env.interface_dict) do
 		print(k, tlutils.dumptype(v))
-	end
+	end]]
 	print(tlutils.dumpast(global_env.ast))
 
 	print("==========================================tlvRefer=======================")

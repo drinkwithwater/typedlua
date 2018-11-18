@@ -107,8 +107,12 @@ function tltype.String ()
 end
 
 -- Integer : (boolean?) -> (type)
-function tltype.Integer (i)
-	return tltype.Base("integer")
+function tltype.Integer ()
+	if _VERSION == "Lua 5.3" then
+		return tltype.Base("integer")
+	else
+		return tltype.Base("number")
+	end
   -- if i then return tltype.Base("integer") else return tltype.Base("number") end
 end
 
@@ -578,7 +582,7 @@ end
 
 -- GlobalVariable : (string) -> (type)
 function tltype.GlobalVariable (env, name, pos, typeerror, namespace)
-  return { tag = "TGlobalVariable", [1] = name, [2] = env, [3] = pos, [4] = typeerror, [5] = namespace }
+  return { tag = "TGlobalVariable", [1] = name} --, [2] = env, [3] = pos, [4] = typeerror, [5] = namespace }
 end
 
 -- isVariable : (type) -> (boolean)
@@ -588,10 +592,11 @@ end
 
 function tltype.setGlobalVariable(t, env, pos, typeerror, namespace)
   t.tag = "TGlobalVariable"
+  --[[
   t[2] = env
   t[3] = pos
   t[4] = typeerror
-  t[5] = namespace
+  t[5] = namespace]]
 end
 
 -- recursive types

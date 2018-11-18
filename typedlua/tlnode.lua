@@ -58,6 +58,7 @@ local TYPE_TAG = {
 	"TUnion",
 	"TFunction",
 	"TTable",
+	"TUniqueTable",
 	"TVariable",
 	"TRecursive",
 	"TVoid",

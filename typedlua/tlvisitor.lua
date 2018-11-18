@@ -133,7 +133,6 @@ visit_var = setmetatable({
 		visit_exp(visitor, node[1])
 		visit_exp(visitor, node[2])
 	end,
-	Dots = false,
 }, {
 	__call=visit_tag,
 	__index=function(t, tag)

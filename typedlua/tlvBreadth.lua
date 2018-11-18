@@ -1,7 +1,27 @@
+--[[
+This module implements a type checker,
+use a way similar to BFS to visit each function block recursively.
 
+in the case like:
+"""
+local t = {}
+
+function t.dosth()
+	t.data = "jlfkdsfjds"
+end
+
+t.data = 321
+
+t.dosth()
+
+"""
+We can't get the right type of t.data if we visit block in "function t.dosth" before we visit "t.data = 321".
+So I use a breadth-first way to solve this problem: finishing visiting all the statement outside each function's block before visiting a function's block.
+]]
 local tlvisitor = require "typedlua/tlvisitor"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
+local tlrelation = require "typedlua/tlrelation"
 local tltable = require "typedlua/tltable"
 local tlvBreadth = {}
 
@@ -13,24 +33,35 @@ local Boolean = tltype.Boolean()
 local Number = tltype.Number()
 local String = tltype.String()
 
--- expr set type, check right_deco
-local function set_type(node, t)
-	if node.right_deco then
-		--[[ TODO
-		if not tltype.subtype(t, node.right_deco) then
-			typeerror(nil, node, "typeerror")
-		end]]
-		-- node.type = right_deco
-	end
-	node.type = t
+local function log_error (visitor, node, ...)
+	local filename = visitor.env.filename
+	local head = string.format("%s:%d:%d:", filename, node.l, node.c)
+	print(head, ...)
 end
 
--- assign or local
-local function assign_type(node, t)
-	if node.left_deco then
-		-- TODO
+-- expr check type
+local function check_type(visitor, node, t)
+	if not tlrelation.sub(node.type, t) then
+		log_error(visitor, node, node.type.tag, "can't not be", t.tag)
 	end
-	node.type = t
+end
+
+-- expr add type, check right_deco
+local function add_type(visitor, node, t)
+	local nRightDeco = node.right_deco
+	if nRightDeco then
+		if not tlrelation.sub(t, nRightDeco) then
+			log_error(visitor, node, t.tag, "is not", nRightDeco.tag)
+		end
+	end
+	if node.type then
+		log_error(visitor, node, "add type but node.type existed", node.type.tag, t.tag)
+	else
+		node.type = t
+	end
+end
+
+local function index_type(visitor, node, t2)
 end
 
 local visitor_override = {
@@ -47,15 +78,21 @@ local visitor_override = {
 -- +-*/
 local visitor_arith = function(visitor, node)
 	-- TODO
-	set_type(node, tltype.Number())
+	add_type(visitor, node, tltype.Number())
+	check_type(visitor, node[2], tltype.Number())
+	check_type(visitor, node[3], tltype.Number())
 end
 -- &|~>><<
 local visitor_bitwise = function(visitor, node)
-	set_type(node, tltype.Integer())
+	add_type(visitor, node, tltype.Integer())
+	check_type(visitor, node[2], tltype.Integer())
+	check_type(visitor, node[3], tltype.Integer())
 end
 -- >= <= > < == ~=
 local visitor_compare = function(visitor, node)
-	set_type(node, tltype.Boolean())
+	add_type(visitor, node, tltype.Boolean())
+	check_type(visitor, node[2], tltype.Number())
+	check_type(visitor, node[3], tltype.Number())
 end
 
 local visitor_binary = {
@@ -68,7 +105,9 @@ local visitor_binary = {
 	pow=visitor_arith,
 
 	concat=function(visitor, node)
-		set_type(node, tltype.String())
+		add_type(visitor, node, tltype.String())
+		check_type(visitor, node[2], tltype.String())
+		check_type(visitor, node[3], tltype.String())
 	end,
 	["and"]=function(visitor, node)
 		print("and TODO")
@@ -93,43 +132,43 @@ local visitor_binary = {
 
 local visitor_unary = {
 	["not"] = function(visitor, node)
-		set_type(node, tltype.Boolean())
+		add_type(visitor, node, tltype.Boolean())
 	end,
 	bnot=function(visitor, node)
-		set_type(node, tltype.Integer())
+		add_type(visitor, node, tltype.Integer())
 	end,
 	unm=function(visitor, node)
-		set_type(node, node[2].type)
+		add_type(visitor, node, node[2].type)
 	end,
 	len=function(visitor, node)
-		set_type(node, tltype.Integer())
+		add_type(visitor, node, tltype.Integer())
 	end,
 }
 
 local visitor_exp = {
 	Nil=function(visitor, node)
-		set_type(node, tltype.Nil())
+		add_type(visitor, node, tltype.Nil())
 	end,
 	True=function(visitor, node)
-		set_type(node, tltype.Literal(true))
+		add_type(visitor, node, tltype.Literal(true))
 	end,
 	False=function(visitor, node)
-		set_type(node, tltype.Literal(false))
+		add_type(visitor, node, tltype.Literal(false))
 	end,
 	Number=function(visitor, node)
-		set_type(node, tltype.Literal(node[1]))
+		add_type(visitor, node, tltype.Literal(node[1]))
 	end,
 	String=function(visitor, node)
-		set_type(node, tltype.Literal(node[1]))
+		add_type(visitor, node, tltype.Literal(node[1]))
 	end,
 	Table=function(visitor, node)
 		local l = {}
 		local i = 1
 		for k, field in ipairs(node) do
 			if field.tag == "Pair" then
-				l[#l + 1] = tltype.Field(false, field[1].type, field[2].type)
+				l[#l + 1] = tltable.Field(field[1].type, field[2].type)
 			else
-				l[#l + 1] = tltype.Field(false, tltype.Literal(i), field.type)
+				l[#l + 1] = tltable.Field(tltype.Literal(i), field.type)
 			end
 		end
 
@@ -138,7 +177,7 @@ local visitor_exp = {
 		local nNewIndex = #visitor.env.unique_table_list + 1
 		visitor.env.unique_table_list[nNewIndex] = nUniqueTable
 
-		set_type(node, nUniqueTable)
+		add_type(visitor, node, nUniqueTable)
 	end,
 	Op=function(visitor, node)
 		local nOP = node[1]
@@ -157,15 +196,24 @@ local visitor_exp = {
 		print("func invoke TODO")
 	end,
 	Index=function(visitor, node)
-		local nField = tltable.index(node[1].type, node[2].type)
-		if tltype.isNil(nField) then
-			set_type(node, nField)
+		local nField = nil
+		local nType1, nType2 = node[1].type, node[2].type
+		if nType1.tag == "TUniqueTable" then
+			nField = tltable.index_unique(nType1, nType2)
+		elseif nType1.tag == "TTable" then
+			nField = tltable.index_generic(nType1, nType2)
 		else
-			set_type(node, nField[2])
+			-- TODO check node is Table
+			log_error(visitor, node, "index for non-table type not implement...")
+			nField = tltable.Field(nType2, tltype.Nil())
+		end
+		if tltype.isNil(nField) then
+			add_type(visitor, node, nField)
+		else
+			add_type(visitor, node, nField[2])
 		end
 	end,
 	Id=function(visitor, node)
-		local seri = require "typedlua.seri"
 		local ident = visitor.env.ident_tree[node.tlvRefer]
 		if node == ident.node then
 			-- ident set itself
@@ -181,7 +229,22 @@ local visitor_exp = {
 
 local visitor_stm = {
 	Set=function(visitor, node)
-		for i, lhs in ipairs(node[1]) do
+		local nExprList = node[2]
+		local nVarList = node[1]
+		for i, nVarNode in ipairs(nVarList) do
+			local nExprNode = nExprList[i]
+			if nVarNode.tag == "Index" then
+				if tltype.isNil(nVarNode.type) then
+					tltable.insert(nVarNode[1].type, tltable.Field(nVarNode[2].type, nExprNode.type))
+				end
+			elseif nVarNode.tag == "Id" then
+				if not tlrelation.sub(nExprNode.type, nVarNode.type) then
+					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.tag)
+				end
+				-- TODO assign to Id
+			else
+				error("assign to node:tag="..tostring(node.tag))
+			end
 		end
 	end,
 	Localrec=function(visitor, node)
@@ -191,15 +254,19 @@ local visitor_stm = {
 	end,
 	Local=function(visitor, node)
 		local identTree = visitor.env.ident_tree
-		local name_list = node[1]
-		local exp_list = node[2]
-		for i, name in ipairs(name_list) do
-			local exp = exp_list[i]
-			local right_type = exp and exp.type or Nil
-			if name.left_deco and right_type then
-				-- TODO assert(tltype.subtype(right_type, name.left_deco))
+		local nNameList = node[1]
+		local nExprList = node[2]
+		for i, nNameNode in ipairs(nNameList) do
+			local nExprNode = nExprList[i]
+			local nRightType = nExprNode and nExprNode.type or Nil
+			local nLeftDeco = nNameNode.left_deco
+			if nLeftDeco then
+				if not tlrelation.sub(nRightType, nLeftDeco) then
+					log_error(visitor, nNameNode, nRightType.tag.." can't be assigned to "..nLeftDeco.tag)
+				end
+				nNameNode.type = nLeftDeco
 			else
-				name.type = right_type
+				nNameNode.type = nRightType
 			end
 		end
 	end,
@@ -213,7 +280,8 @@ function tlvBreadth.visit_block(block, visitor)
 	tlvisitor.visit(block, visitor)
 	visitor.func_block_list = nil
 	for _, sub_block in pairs(block_list) do
-		tlvBreadth.visit_block(sub_block, visitor)
+		-- TODO don't implement function first
+		-- tlvBreadth.visit_block(sub_block, visitor)
 	end
 end
 
@@ -223,6 +291,7 @@ function tlvBreadth.visit(vFileEnv)
 		after = visitor_after,
 		func_block_list = {},
 		env = vFileEnv,
+		error = log_error,
 	}
 
 	tlvBreadth.visit_block(vFileEnv.ast, visitor)

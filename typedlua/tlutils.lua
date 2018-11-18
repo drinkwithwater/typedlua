@@ -56,79 +56,14 @@ function tlutils.dumpast(astNode)
 	end)
 end
 
--- dump type
-local function type_tag(visitor, node, append)
-	append = (append and append.."\n") or "\n"
-	local word = string.rep("\t", visitor.indent).."`"..node.tag.." "..append
-	table.insert(visitor.bufferList, word)
-end
-
-local function type_scope_begin(visitor, node, append)
-	append = (append and " "..append.." " ) or " "
-	local word = string.rep("\t", visitor.indent).."`"..node.tag..append.."{\n"
-	table.insert(visitor.bufferList, word)
-	visitor.indent = visitor.indent + 1
-end
-
-local function type_scope_end(visitor, node)
-	visitor.indent = visitor.indent - 1
-	local word = string.rep("\t", visitor.indent).."}\n"
-	table.insert(visitor.bufferList, word)
-end
-
-local visitor_before = {
-	TLiteral = function(visitor, node)
-		type_tag(visitor, node, tostring(node[1]))
-	end,
-	TBase = function(visitor, node)
-		type_tag(visitor, node, node[1])
-	end,
-	TNil = type_tag,
-	TValue = type_tag,
-	TAny = type_tag,
-	TSelf = type_tag,
-	TVoid = type_tag,
-
-	TVariable = function(visitor, node)
-		type_tag(visitor, node, node[1])
-	end,
-	TGlobalVariable = function(visitor, node)
-		type_tag(visitor, node, node[1])
-	end,
-
-	TUnion = type_scope_begin,
-	TUnionlist = type_scope_begin,
-	TFunction = type_scope_begin,
-	TTable = type_scope_begin,
-	TTuple = type_scope_begin,
-	TVararg = type_scope_begin,
-	TField = type_scope_begin,
-	TRecursive = function(visitor, node)
-		type_scope_begin(visitor, node, node[1])
-	end,
-}
-
-local visitor_after = {
-	TUnion = type_scope_end,
-	TUnionlist = type_scope_end,
-	TFunction = type_scope_end,
-	TTable = type_scope_end,
-	TTuple = type_scope_end,
-	TVararg = type_scope_end,
-	TRecursive = type_scope_end,
-	TField = type_scope_end,
-}
-
 function tlutils.dumptype(typeNode)
-	local visitor = {
-		before = visitor_before,
-		after = visitor_after,
-		override = {},
-		indent = 0,
-		bufferList = {},
-	}
-	tlvisitor.visit_type(typeNode, visitor)
-	return table.concat(visitor.bufferList, "")
+	return tlutils.dumpLambda(typeNode, function(node)
+		if tlnode.isType(node.tag) then
+			return node, node.tag, nil
+		else
+			return node, "", nil
+		end
+	end)
 end
 
 function tlutils.searchpath(name, path)
