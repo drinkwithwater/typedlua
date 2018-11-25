@@ -10,7 +10,7 @@ function tltable.UniqueTable(...)
   local nHashList = nTableType.hash_list
   for i, nField in ipairs(nTableType) do
 	  local nFieldKey = nField[1]
-	  if tltype.isLiteral(nFieldKey) then
+	  if nFieldKey.tag == "TLiteral" then
 		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
 		  nRecordDict[nFieldKey[1]] = i
 	  else
@@ -23,7 +23,7 @@ end
 function tltable.insert(vTableType, vFieldType)
 	local nNewIndex = #vTableType + 1
 	local nFieldKey = vFieldType[1]
-	if tltype.isLiteral(nFieldKey) then
+	  if nFieldKey.tag == "TLiteral" then
 		assert(not vTableType.record_dict[nFieldKey[1]], "TLiteral key use twice")
 		vTableType.record_dict[nFieldKey[1]] = nNewIndex
 	else
@@ -42,7 +42,7 @@ function tltable.index_generic(vTableType, vKeyType)
 end
 
 function tltable.index_unique(vTableType, vKeyType)
-	if tltype.isLiteral(vKeyType) then
+	if vKeyType.tag == "TLiteral" then
 		local j = vTableType.record_dict[vKeyType[1]]
 		if j then
 			return vTableType[j]

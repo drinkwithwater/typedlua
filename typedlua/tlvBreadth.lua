@@ -208,7 +208,7 @@ local visitor_exp = {
 			log_error(visitor, node, "index for non-table type not implement...")
 			nField = tltable.Field(nType2, tltype.Nil())
 		end
-		if tltype.isNil(nField) then
+		if nField.tag == "TNil" then
 			add_type(visitor, node, nField)
 		else
 			add_type(visitor, node, nField[2])
@@ -235,7 +235,7 @@ local visitor_stm = {
 		for i, nVarNode in ipairs(nVarList) do
 			local nExprNode = nExprList[i]
 			if nVarNode.tag == "Index" then
-				if tltype.isNil(nVarNode.type) then
+				if nVarNode.type.tag == "TNil" then
 					tltable.insert(nVarNode[1].type, tltable.Field(nVarNode[2].type, nExprNode.type))
 				else
 					log_error(visitor, nVarNode, "type assign type TODO:", nVarNode.type.tag, nExprNode.tag)
