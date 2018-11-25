@@ -48,12 +48,13 @@ end
 
 -- expr add type, check right_deco
 local function add_type(visitor, node, t)
+	--[[ do nothing...
 	local nRightDeco = node.right_deco
 	if nRightDeco then
 		if not tlrelation.sub(t, nRightDeco) then
 			log_error(visitor, node, t.tag, "is not", nRightDeco.tag)
 		end
-	end
+	end]]
 	if node.type then
 		log_error(visitor, node, "add type but node.type existed", node.type.tag, t.tag)
 	else
@@ -246,7 +247,7 @@ local visitor_stm = {
 				end
 			elseif nVarNode.tag == "Id" then
 				if not tlrelation.sub(nExprNode.type, nVarNode.type) then
-					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.tag)
+					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.type.tag)
 				end
 				-- TODO assign to Id
 			else
