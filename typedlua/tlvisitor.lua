@@ -220,7 +220,7 @@ end
 
 visit_stm = setmetatable({
 	Do=function(visitor, stm)
-		visit_block(visitor, stm)
+		visit_block(visitor, stm[1])
 	end,
 	Set=function(visitor, stm)
 		visit_list(visitor, stm[1])
@@ -319,11 +319,6 @@ visit_block = setmetatable({
 		  visit_stm(visitor, v)
 	  end
 	end,
-	Do=function(visitor, block)
-	  for k, v in ipairs(block) do
-		  visit_stm(visitor, v)
-	  end
-	end,
 }, {
 	__call=visit_tag,
 	__index=function(t, tag)
@@ -394,6 +389,19 @@ end
 
 function tlvisitor.visit(block, visitor)
 	setDefaultVistior(visitor)
+	visit_block(visitor, block)
+end
+
+function tlvisitor.visit_object_dict(block, visitor)
+	setDefaultVistior(visitor)
+	visitor.after = {}
+	visitor.override = {}
+	visitor.before = {}
+	for tag, object in pairs(visitor.object_dict) do
+		visitor.after[tag] = object.after
+		visitor.override[tag] = object.override
+		visitor.before[tag] = object.before
+	end
 	visit_block(visitor, block)
 end
 

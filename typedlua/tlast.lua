@@ -103,8 +103,7 @@ end
 
 -- statDo : (block) -> (stat)
 function tlast.statDo (block)
-  block.tag = "Do"
-  return block
+  return { tag = "Do", pos = block.pos, [1] = block}
 end
 
 -- statWhile : (number, expr, block) -> (stat)
