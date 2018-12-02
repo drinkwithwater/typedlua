@@ -1,6 +1,6 @@
 
 local tltype = require "typedlua.tltype"
-local tlrelation = require "typedlua.tlrelation"
+local tltRelation = require "typedlua.tltRelation"
 
 local tltable = {}
 
@@ -34,7 +34,7 @@ end
 
 function tltable.index_generic(vTableType, vKeyType)
 	for _, j in ipairs(vTableType.hash_list) do
-		if tlrelation.sub(vKeyType, vTableType[j][1]) then
+		if tltRelation.sub(vKeyType, vTableType[j][1]) then
 			return vTableType[j]
 		end
 	end

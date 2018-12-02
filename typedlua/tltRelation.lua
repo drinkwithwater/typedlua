@@ -1,6 +1,6 @@
 local tltype = require "typedlua/tltype"
 local seri = require "typedlua/seri"
-local tlrelation = {}
+local tltRelation = {}
 
 -- The first element in node are equal.
 local eq0 = function(vLeft, vRight)
@@ -24,7 +24,7 @@ local function unionNil(vType, vUnion)
 	else
 		return false
 	end
-	if tlrelation.contain(vType, nSubType) then
+	if tltRelation.contain(vType, nSubType) then
 		return true, true
 	end
 	return false
@@ -89,7 +89,7 @@ local TypeContainDict = {
 				if nLeftRecordIndex then
 					-- if has left record, compare record field
 					local nLeftField = vLeftTable[nLeftRecordIndex]
-					local nContainResult, nFieldWarning = tlrelation.contain(nLeftField[2], nRightField[2])
+					local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
 					if not nContainResult then
 						return false
 					elseif nFieldWarning then
@@ -100,8 +100,8 @@ local TypeContainDict = {
 					local nContain = true
 					for k, nLeftHashIndex in ipairs(vLeftTable.hash_list) do
 						local nLeftField = vLeftTable[nLeftHashIndex]
-						if tlrelation.contain(nLeftField[1], nRightField[1]) then
-							local nContainResult, nFieldWarning = tlrelation.contain(nLeftField[2], nRightField[2])
+						if tltRelation.contain(nLeftField[1], nRightField[1]) then
+							local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
 							if not nContainResult then
 								return false
 							else
@@ -139,7 +139,7 @@ local TypeContainDict = {
 		TUnion=function(vUnion, vSubUnion)
 			local nWarning = false
 			for k, nSubUnionItem in ipairs(vSubUnion) do
-				local nContainResult, nItemWarning = tlrelation.contain(vUnion, nSubUnionItem)
+				local nContainResult, nItemWarning = tltRelation.contain(vUnion, nSubUnionItem)
 				if not nContainResult then
 					return false
 				elseif nItemWarning then
@@ -157,7 +157,7 @@ local TypeContainDict = {
 			local nContain = function(vUnion, vSubType)
 				local nWarning = false
 				for k, nUnionItem in ipairs(vUnion) do
-					local nContainResult, nItemWarning = tlrelation.contain(nUnionItem, vSubType)
+					local nContainResult, nItemWarning = tltRelation.contain(nUnionItem, vSubType)
 					if nContainResult then
 						if not nItemWarning then
 							return true
@@ -200,7 +200,7 @@ for nType, nRelation in pairs(TypeContainDict) do
 	end
 end
 
-function tlrelation.contain(vLeft, vRight)
+function tltRelation.contain(vLeft, vRight)
 	local nContain = TypeContainDict[vLeft.tag][vRight.tag]
 	if nContain then
 		return nContain(vLeft, vRight)
@@ -209,7 +209,7 @@ function tlrelation.contain(vLeft, vRight)
 	end
 end
 
-function tlrelation.sub(vLeft, vRight)
+function tltRelation.sub(vLeft, vRight)
 	local nContain = TypeContainDict[vRight.tag][vLeft.tag]
 	if nContain then
 		return nContain(vRight, vLeft)
@@ -218,13 +218,13 @@ function tlrelation.sub(vLeft, vRight)
 	end
 end
 
-function tlrelation.general(vType)
+function tltRelation.general(vType)
 	if vType.tag == "TLiteral" then
 		return tltype.Base(type(vType[1]))
 	end
 end
 
-return tlrelation
+return tltRelation
 
 
 --[[

@@ -21,7 +21,7 @@ So I use a breadth-first way to solve this problem: finishing visiting all the s
 local tlvisitor = require "typedlua/tlvisitor"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
-local tlrelation = require "typedlua/tlrelation"
+local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
 local tlvBreadth = {}
 
@@ -41,7 +41,7 @@ end
 
 -- expr check type
 local function check_type(visitor, node, t)
-	if not tlrelation.sub(node.type, t) then
+	if not tltRelation.sub(node.type, t) then
 		log_error(visitor, node, node.type.tag, "can't not be", t.tag)
 	end
 end
@@ -51,7 +51,7 @@ local function add_type(visitor, node, t)
 	--[[ do nothing...
 	local nRightDeco = node.right_deco
 	if nRightDeco then
-		if not tlrelation.sub(t, nRightDeco) then
+		if not tltRelation.sub(t, nRightDeco) then
 			log_error(visitor, node, t.tag, "is not", nRightDeco.tag)
 		end
 	end]]
@@ -240,13 +240,13 @@ local visitor_stm = {
 				else
 					log_error(visitor, nVarNode, "type assign type TODO:", nVarNode.type.tag, nExprNode.tag)
 					--[[
-					if not tlrelation.sub(nExprNode.type, nVarNode.type) then
+					if not tltRelation.sub(nExprNode.type, nVarNode.type) then
 						log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.tag)
 					end
 					]]
 				end
 			elseif nVarNode.tag == "Id" then
-				if not tlrelation.sub(nExprNode.type, nVarNode.type) then
+				if not tltRelation.sub(nExprNode.type, nVarNode.type) then
 					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.type.tag)
 				end
 				-- TODO assign to Id
@@ -269,7 +269,7 @@ local visitor_stm = {
 			local nRightType = nExprNode and nExprNode.type or Nil
 			local nLeftDeco = nNameNode.left_deco
 			if nLeftDeco then
-				if not tlrelation.sub(nRightType, nLeftDeco) then
+				if not tltRelation.sub(nRightType, nLeftDeco) then
 					log_error(visitor, nNameNode, nRightType.tag.." can't be assigned to "..nLeftDeco.tag)
 				end
 				nNameNode.type = nLeftDeco

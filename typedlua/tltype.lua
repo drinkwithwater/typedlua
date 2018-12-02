@@ -576,14 +576,14 @@ function tltype.error(env, node, msg)
   table.insert(env.messages, error_msg)
 end
 
-local tlrelation = nil
+local tltRelation = nil
 function tltype.subtype(vLeft, vRight)
-	local nRelation = tlrelation or (require "typedlua/tlrelation")
+	local nRelation = tltRelation or (require "typedlua/tltRelation")
 	return nRelation.sub(vLeft, vRight)
 end
 
 function tltype.consistent_subtype(vLeft, vRight)
-	local nRelation = tlrelation or (require "typedlua/tlrelation")
+	local nRelation = tltRelation or (require "typedlua/tltRelation")
 	return nRelation.sub(vLeft, vRight)
 end
 
