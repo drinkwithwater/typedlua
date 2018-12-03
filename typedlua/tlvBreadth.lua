@@ -122,15 +122,17 @@ local visitor_exp = {
 		add_type(visitor, node, nUniqueTable)
 	end,
 	Op=function(visitor, vNode)
-		local nOP = node[1]
-		if #node == 3 then
+		local nOP = vNode[1]
+		if #vNode== 3 then
 			local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
 			local nWrapper = nOper(visitor, vNode[2], vNode[3])
-			oper_merge(vNode, nWrapper)
-		elseif #node == 2 then
+			oper_merge(visitor, vNode, nWrapper)
+		elseif #vNode == 2 then
 			local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
 			local nWrapper = nOper(visitor, vNode[2])
-			oper_merge(vNode, nWrapper)
+			oper_merge(visitor, vNode, nWrapper)
+		else
+			error("exception branch")
 		end
 	end,
 	Call=function(visitor, node)
