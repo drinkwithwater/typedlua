@@ -51,6 +51,15 @@ local function check_type(visitor, node, t)
 	end
 end
 
+local function oper_merge(visitor, vNode, vWrapper)
+	if vNode.type then
+		log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
+	else
+		vNode.type = vWrapper.type
+	end
+	vNode.index_field = vWrapper.index_field
+end
+
 -- expr add type, check right_deco
 local function add_type(visitor, node, t)
 	--[[ do nothing...
@@ -78,76 +87,111 @@ local visitor_override = {
 	end
 }
 
--- + - * / // % ^
-local visitor_arith = function(visitor, node)
-	-- TODO
-	add_type(visitor, node, tltype.Number())
-	check_type(visitor, node[2], tltype.Number())
-	check_type(visitor, node[3], tltype.Number())
-end
--- &|~>><<
-local visitor_bitwise = function(visitor, node)
-	add_type(visitor, node, tltype.Integer())
-	check_type(visitor, node[2], tltype.Integer())
-	check_type(visitor, node[3], tltype.Integer())
-end
--- >= <= > < == ~=
-local visitor_compare = function(visitor, node)
-	add_type(visitor, node, tltype.Boolean())
-	check_type(visitor, node[2], tltype.Number())
-	check_type(visitor, node[3], tltype.Number())
-end
-
 local visitor_binary = {
-	add=visitor_arith,
-	sub=visitor_arith,
-	mul=visitor_arith,
-	idiv=visitor_arith,
-	div=visitor_arith,
-	mod=visitor_arith,
-	pow=visitor_arith,
-
-	concat=function(visitor, node)
-		add_type(visitor, node, tltype.String())
-		check_type(visitor, node[2], tltype.String())
-		check_type(visitor, node[3], tltype.String())
+	add=function(visitor, vNode)
+		local nWrapper = tltOper.__add(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
-	["and"]=function(visitor, node)
-		print("and TODO")
+	sub=function(visitor, vNode)
+		local nWrapper = tltOper.__sub(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
-	["or"]=function(visitor, node)
-		print("or TODO")
+	mul=function(visitor, vNode)
+		local nWrapper = tltOper.__mul(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	idiv=function(visitor, vNode)
+		local nWrapper = tltOper.__idiv(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	div=function(visitor, vNode)
+		local nWrapper = tltOper.__div(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	mod=function(visitor, vNode)
+		local nWrapper = tltOper.__mod(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	pow=function(visitor, vNode)
+		local nWrapper = tltOper.__pow(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
 
-	eq=visitor_compare,
-	lt=visitor_compare,
-	le=visitor_compare,
-	ne=visitor_compare,
-	gt=visitor_compare,
-	ge=visitor_compare,
+	concat=function(visitor, vNode)
+		local nWrapper = tltOper.__concat(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	["and"]=function(visitor, vNode)
+		local nWrapper = tltOper._and(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	["or"]=function(visitor, vNode)
+		local nWrapper = tltOper._or(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	eq=function(visitor, vNode)
+		local nWrapper = tltOper.__eq(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	lt=function(visitor, vNode)
+		local nWrapper = tltOper.__lt(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	le=function(visitor, vNode)
+		local nWrapper = tltOper.__le(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	ne=function(visitor, vNode)
+		local nWrapper = tltOper._ne(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	gt=function(visitor, vNode)
+		local nWrapper = tltOper._gt(visitor, vNode[3], vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	ge=function(visitor, vNode)
+		local nWrapper = tltOper._ge(visitor, vNode[3], vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
 
-	band=visitor_bitwise,
-	bor=visitor_bitwise,
-	bxor=visitor_bitwise,
-	shl=visitor_bitwise,
-	shr=visitor_bitwise,
+	band=function(visitor, vNode)
+		local nWrapper = tltOper.__band(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	bor=function(visitor, vNode)
+		local nWrapper = tltOper.__bor(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	bxor=function(visitor, vNode)
+		local nWrapper = tltOper.__bxor(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	shl=function(visitor, vNode)
+		local nWrapper = tltOper.__shl(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
+	shr=function(visitor, vNode)
+		local nWrapper = tltOper.__shr(visitor, vNode[2], vNode[3])
+		oper_merge(visitor, vNode, nWrapper)
+	end,
 }
 
 local visitor_unary = {
-	["not"] = function(visitor, node)
-		add_type(visitor, node, tltype.Boolean())
+	["not"] = function(visitor, vNode)
+		local nWrapper = tltOper._not(visitor, vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
-	bnot=function(visitor, node)
-		add_type(visitor, node, tltype.Integer())
-		check_type(visitor, node[2], tltype.Integer())
+	bnot=function(visitor, vNode)
+		local nWrapper = tltOper.__bnot(visitor, vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
-	unm=function(visitor, node)
-		add_type(visitor, node, tltype.Number())
-		check_type(visitor, node[2], tltype.Number())
+	unm=function(visitor, vNode)
+		local nWrapper = tltOper.__unm(visitor, vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
-	len=function(visitor, node)
-		add_type(visitor, node, tltype.Integer())
-		check_type(visitor, node[2], tltype.String())
+	len=function(visitor, vNode)
+		local nWrapper = tltOper.__len(visitor, vNode[2])
+		oper_merge(visitor, vNode, nWrapper)
 	end,
 }
 
@@ -185,15 +229,17 @@ local visitor_exp = {
 
 		add_type(visitor, node, nUniqueTable)
 	end,
-	Op=function(visitor, node)
+	Op=function(visitor, vNode)
 		local nOP = node[1]
-		local nFunc = nil
 		if #node == 3 then
-			nFunc = visitor_binary[nOP]
+			local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
+			local nWrapper = nOper(visitor, vNode[2], vNode[3])
+			oper_merge(vNode, nWrapper)
 		elseif #node == 2 then
-			nFunc = visitor_unary[nOP]
+			local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
+			local nWrapper = nOper(visitor, vNode[2])
+			oper_merge(vNode, nWrapper)
 		end
-		nFunc(visitor, node)
 	end,
 	Call=function(visitor, node)
 		print("func call TODO")
