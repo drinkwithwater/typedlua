@@ -23,10 +23,9 @@ local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
 local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
+local tltOper = require "typedlua/tltOper"
 local tlvBreadth = {}
 
-local Value = tltype.Value()
-local Any = tltype.Any()
 local Nil = tltype.Nil()
 local Self = tltype.Self()
 local Boolean = tltype.Boolean()
@@ -35,7 +34,13 @@ local String = tltype.String()
 
 local function log_error (visitor, node, ...)
 	local filename = visitor.env.filename
-	local head = string.format("%s:%d:%d:", filename, node.l, node.c)
+	local head = string.format("%s:%d:%d:[ERROR]", filename, node.l, node.c)
+	print(head, ...)
+end
+
+local function log_warning(visitor, node, ...)
+	local filename = visitor.env.filename
+	local head = string.format("%s:%d:%d:[WARNING]", filename, node.l, node.c)
 	print(head, ...)
 end
 
@@ -215,7 +220,7 @@ local visitor_exp = {
 		end
 	end,
 	Id=function(visitor, node)
-		local ident = visitor.env.ident_tree[node.tlvRefer]
+		local ident = visitor.env.ident_tree[node.refer]
 		if node == ident.node then
 			-- ident set itself
 			if node.left_deco then
@@ -299,7 +304,8 @@ function tlvBreadth.visit(vFileEnv)
 		after = visitor_after,
 		func_block_list = {},
 		env = vFileEnv,
-		error = log_error,
+		log_error = log_error,
+		log_warning = log_warning,
 	}
 
 	tlvBreadth.visit_block(vFileEnv.ast, visitor)

@@ -86,26 +86,26 @@ local visitor_override = {
 	end,
 	Dots=function(visitor, node)
 		if visitor.define_pos then
-			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
+			node.refer = tlident.ident_define(visitor.identTree, node)
 		else
 			-- TODO for ... in global
-			node.tlvRefer = assert(tlident.ident_refer(visitor.identTree, node))
+			node.refer = assert(tlident.ident_refer(visitor.identTree, node))
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
-			node.tlvRefer = tlident.ident_define(visitor.identTree, node)
+			node.refer = tlident.ident_define(visitor.identTree, node)
 		else
 			local refer = tlident.ident_refer(visitor.identTree, node)
 			if refer then
-				node.tlvRefer = refer
+				node.refer = refer
 			else
 				node.tag = "Index"
 
 				-- ident
 				local e1 = tlast.ident(node.pos, "_ENV")
 				e1.l, e1.c = node.l, node.c
-				e1.tlvRefer = tlident.ident_refer(visitor.identTree, e1)
+				e1.refer = tlident.ident_refer(visitor.identTree, e1)
 				node[1] = e1
 
 				-- key
@@ -142,7 +142,7 @@ function tlvRefer.refer(ast)
 	local env_node = tlast.ident(0, "_ENV")
 	env_node.l=0
 	env_node.c=0
-	env_node.tlvRefer = tlident.ident_define(identTree, env_node)
+	env_node.refer = tlident.ident_define(identTree, env_node)
 	tlident.begin_scope(identTree, ast)
 	tlvisitor.visit(ast, visitor)
 	tlident.end_scope(identTree)
