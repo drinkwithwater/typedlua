@@ -4,8 +4,24 @@ local tltRelation = require "typedlua.tltRelation"
 
 local tltable = {}
 
+function tltable.CloseTable(...)
+  local nTableType = { tag = "TTable", sub_tag="CloseTable", record_dict={}, hash_list={}, ... }
+  local nRecordDict = nTableType.record_dict
+  local nHashList = nTableType.hash_list
+  for i, nField in ipairs(nTableType) do
+	  local nFieldKey = nField[1]
+	  if nFieldKey.tag == "TLiteral" then
+		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
+		  nRecordDict[nFieldKey[1]] = i
+	  else
+		  nHashList[#nHashList + 1] = i
+	  end
+  end
+  return nTableType
+end
+
 function tltable.UniqueTable(...)
-  local nTableType = { tag = "TUniqueTable", record_dict={}, hash_list={}, ... }
+  local nTableType = { tag = "TTable", sub_tag="TUniqueTable", record_dict={}, hash_list={}, ... }
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
   for i, nField in ipairs(nTableType) do
@@ -30,6 +46,21 @@ function tltable.insert(vTableType, vFieldType)
 		table.insert(vTableType.hash_list, nNewIndex)
 	end
 	vTableType[nNewIndex] = vFieldType
+end
+
+function tltable.index_field(vTableType, vKeyType)
+	if vKeyType.tag == "TLiteral" then
+		local j = vTableType.record_dict[vKeyType[1]]
+		if j then
+			return vTableType[j]
+		end
+	end
+	for _, j in ipairs(vTableType.hash_list) do
+		if tltRelation.sub(vKeyType, vTableType[j][1]) then
+			return vTableType[j]
+		end
+	end
+	return nil
 end
 
 function tltable.index_generic(vTableType, vKeyType)

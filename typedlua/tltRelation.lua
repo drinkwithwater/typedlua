@@ -3,13 +3,10 @@ local seri = require "typedlua/seri"
 local tltRelation = {}
 
 -- The first element in node are equal.
-local eq0 = function(vLeft, vRight)
-	return vLeft == vRight
-end
--- The first element in node are equal.
 local eq1 = function(vLeft, vRight)
 	return vLeft[1] == vRight[1]
 end
+
 local function unionNil(vType, vUnion)
 	if #vUnion < 2 then
 		error("union 1 item...")
@@ -38,7 +35,6 @@ local TypeContainDict = {
 		TBase=false,
 		TGlobalVariable=false,
 		TTable=false,
-		TUniqueTable=false,
 		TUnion=unionNil,
 		TNil=false,
 	},
@@ -62,7 +58,6 @@ local TypeContainDict = {
 		end,
 		TGlobalVariable=false,
 		TTable=false,
-		TUniqueTable=false,
 		TUnion=unionNil,
 		TNil=false,
 	},
@@ -71,7 +66,6 @@ local TypeContainDict = {
 		TBase=false,
 		TGlobalVariable=eq1,
 		TTable=false,
-		TUniqueTable=false,
 		TUnion=unionNil,
 		TNil=false,
 	},
@@ -79,61 +73,56 @@ local TypeContainDict = {
 		TLiteral=false,
 		TBase=false,
 		TGlobalVariable=false,
-		TTable=false,
-		TUniqueTable=function(vLeftTable, vRightUniqueTable)
-			local nWarning = true
-			local nLeftRecordDict = vLeftTable.record_dict
-			for nRightKey, nRightRecordIndex in pairs(vRightUniqueTable.record_dict) do
-				local nLeftRecordIndex = nLeftRecordDict[nRightKey]
-				local nRightField = vRightUniqueTable[nRightRecordIndex]
-				if nLeftRecordIndex then
-					-- if has left record, compare record field
-					local nLeftField = vLeftTable[nLeftRecordIndex]
-					local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
-					if not nContainResult then
-						return false
-					elseif nFieldWarning then
-						nWarning = true
-					end
-				else
-					-- if left do not has left record, compare hash field
-					local nContain = true
-					for k, nLeftHashIndex in ipairs(vLeftTable.hash_list) do
-						local nLeftField = vLeftTable[nLeftHashIndex]
-						if tltRelation.contain(nLeftField[1], nRightField[1]) then
-							local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
-							if not nContainResult then
-								return false
-							else
-								nContain = true
-								if nFieldWarning then
-									nWarning = true
+		TTable=function(vLeftTable, vRightTable)
+			if vLeftTable.sub_tag == "TUniqueTable" and vRightTable.sub_tag == "TUniqueTable" then
+				return vLeftTable == vRightTable
+			end
+			if vLeftTable.sub_tag ~= "TUniqueTable" and vRightTable.sub_tag == "TUniqueTable" then
+				local nWarning = true
+				local nLeftRecordDict = vLeftTable.record_dict
+				for nRightKey, nRightRecordIndex in pairs(vRightTable.record_dict) do
+					local nLeftRecordIndex = nLeftRecordDict[nRightKey]
+					local nRightField = vRightTable[nRightRecordIndex]
+					if nLeftRecordIndex then
+						-- if has left record, compare record field
+						local nLeftField = vLeftTable[nLeftRecordIndex]
+						local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
+						if not nContainResult then
+							return false
+						elseif nFieldWarning then
+							nWarning = true
+						end
+					else
+						-- if left do not has left record, compare hash field
+						local nContain = true
+						for k, nLeftHashIndex in ipairs(vLeftTable.hash_list) do
+							local nLeftField = vLeftTable[nLeftHashIndex]
+							if tltRelation.contain(nLeftField[1], nRightField[1]) then
+								local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
+								if not nContainResult then
+									return false
+								else
+									nContain = true
+									if nFieldWarning then
+										nWarning = true
+									end
 								end
 							end
 						end
-					end
-					if not nContain then
-						return false
+						if not nContain then
+							return false
+						end
 					end
 				end
-			end
-			if nWarning then
-				return true, true
-			else
-				return true
+				if nWarning then
+					return true, true
+				else
+					return true
+				end
 			end
 		end,
 		TUnion=unionNil,
 		TNil=false,
-	},
-	TUniqueTable={
-		TLiteral=false,
-		TBase=false,
-		TGlobalVariable=false,
-		TTable=false,
-		TUnion=unionNil,
-		TNil=false,
-		TUniqueTable=eq0,
 	},
 	TUnion=setmetatable({
 		TUnion=function(vUnion, vSubUnion)
@@ -185,7 +174,6 @@ local TypeContainDict = {
 		TNil=function()
 			return true
 		end,
-		TUniqueTable=false,
 	}
 }
 
@@ -256,8 +244,6 @@ local List = {
 	TVariable = { },
 
 	TGlobalVariable = {},
-
-	TUniqueTable = {},
 
 	-- not compatible type
 	-- TUnionlist = { },
