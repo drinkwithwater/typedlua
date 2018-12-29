@@ -74,10 +74,14 @@ local TypeContainDict = {
 		TBase=false,
 		TGlobalVariable=false,
 		TTable=function(vLeftTable, vRightTable)
-			if vLeftTable.sub_tag == "TUniqueTable" and vRightTable.sub_tag == "TUniqueTable" then
-				return vLeftTable == vRightTable
+			if vLeftTable.sub_tag == "TOpenTable" and vRightTable.sub_tag == "TOpenTable" then
+				if vLeftTable == vRightTable then
+					return true, true
+				else
+					return false
+				end
 			end
-			if vLeftTable.sub_tag ~= "TUniqueTable" and vRightTable.sub_tag == "TUniqueTable" then
+			if vLeftTable.sub_tag ~= "TOpenTable" and vRightTable.sub_tag == "TOpenTable" then
 				local nWarning = true
 				local nLeftRecordDict = vLeftTable.record_dict
 				for nRightKey, nRightRecordIndex in pairs(vRightTable.record_dict) do
@@ -209,6 +213,8 @@ end
 function tltRelation.general(vType)
 	if vType.tag == "TLiteral" then
 		return tltype.Base(type(vType[1]))
+	else
+		return vType
 	end
 end
 

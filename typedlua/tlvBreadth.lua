@@ -53,11 +53,11 @@ end
 
 local function oper_merge(visitor, vNode, vWrapper)
 	if vNode.type then
-		log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
+		-- log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
+		vNode.type = vWrapper.type
 	else
 		vNode.type = vWrapper.type
 	end
-	vNode.index_field = vWrapper.index_field
 end
 
 -- expr add type, check right_deco
@@ -115,11 +115,11 @@ local visitor_exp = {
 		end
 
 		-- if not deco type, ident is unique table
-		local nUniqueTable = tltable.UniqueTable(table.unpack(l))
+		local nOpenTable = tltable.OpenTable(table.unpack(l))
 		local nNewIndex = #visitor.env.unique_table_list + 1
-		visitor.env.unique_table_list[nNewIndex] = nUniqueTable
+		visitor.env.unique_table_list[nNewIndex] = nOpenTable
 
-		add_type(visitor, node, nUniqueTable)
+		add_type(visitor, node, nOpenTable)
 	end,
 	Op=function(visitor, vNode)
 		local nOP = vNode[1]
@@ -141,22 +141,14 @@ local visitor_exp = {
 	Invoke=function(visitor, node)
 		print("func invoke TODO")
 	end,
-	Index=function(visitor, node)
-		local nField = nil
-		local nType1, nType2 = node[1].type, node[2].type
-		if nType1.tag == "TUniqueTable" then
-			nField = tltable.index_unique(nType1, nType2)
-		elseif nType1.tag == "TTable" then
-			nField = tltable.index_generic(nType1, nType2)
+	Index=function(visitor, vIndexNode)
+		local nParentNode = visitor.stack[#visitor.stack - 1]
+		if nParentNode and nParentNode.tag == "VarList" then
+			-- set index
+			-- pass
 		else
-			-- TODO check node is Table
-			log_error(visitor, node, "index for non-table type not implement...")
-			nField = tltable.Field(nType2, tltype.Nil())
-		end
-		if nField.tag == "TNil" then
-			add_type(visitor, node, nField)
-		else
-			add_type(visitor, node, nField[2])
+			local nWrapper = tltOper._index_get(visitor, vIndexNode[1], vIndexNode[2])
+			oper_merge(visitor, vIndexNode, nWrapper)
 		end
 	end,
 	Id=function(visitor, node)
@@ -180,47 +172,36 @@ local visitor_stm = {
 		for i, nVarNode in ipairs(nVarList) do
 			local nExprNode = nExprList[i]
 			if nVarNode.tag == "Index" then
-				if nVarNode.type.tag == "TNil" then
-					tltable.insert(nVarNode[1].type, tltable.Field(nVarNode[2].type, nExprNode.type))
-				else
-					log_error(visitor, nVarNode, "type assign type TODO:", nVarNode.type.tag, nExprNode.tag)
-					--[[
-					if not tltRelation.sub(nExprNode.type, nVarNode.type) then
-						log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.tag)
-					end
-					]]
-				end
+				tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nExprNode)
 			elseif nVarNode.tag == "Id" then
+				local nWrapper = tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nExprNode)
+				-- assign to Id -- use referenced identity
+				local nIdent = visitor.env.ident_tree[nVarNode.refer]
+				oper_merge(visitor, ident, nWrapper)
+				--[[
 				if not tltRelation.sub(nExprNode.type, nVarNode.type) then
 					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.type.tag)
-				end
-				-- TODO assign to Id
+				end]]
 			else
 				error("assign to node:tag="..tostring(node.tag))
 			end
 		end
 	end,
 	Localrec=function(visitor, node)
+		print("local function TODO")
 	end,
 	Fornum=function(visitor, node)
-		node[1].type = tltype.Number()
+		local nNameNode = node[1]
+		local nWrapper = tltOper._init_assign(visitor, nNameNode, node[2])
+		oper_merge(visitor, nNameNode, nWrapper)
 	end,
 	Local=function(visitor, node)
-		local identTree = visitor.env.ident_tree
 		local nNameList = node[1]
 		local nExprList = node[2]
 		for i, nNameNode in ipairs(nNameList) do
 			local nExprNode = nExprList[i]
-			local nRightType = nExprNode and nExprNode.type or Nil
-			local nLeftDeco = nNameNode.left_deco
-			if nLeftDeco then
-				if not tltRelation.sub(nRightType, nLeftDeco) then
-					log_error(visitor, nNameNode, nRightType.tag.." can't be assigned to "..nLeftDeco.tag)
-				end
-				nNameNode.type = nLeftDeco
-			else
-				nNameNode.type = nRightType
-			end
+			local nWrapper = tltOper._init_assign(visitor, nNameNode, nExprNode)
+			oper_merge(visitor, nNameNode, nWrapper)
 		end
 	end,
 }
