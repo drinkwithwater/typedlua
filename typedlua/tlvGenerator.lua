@@ -2,11 +2,32 @@
 local tlvisitor = require "typedlua/tlvisitor"
 local tlvGenerator = {}
 
+local function push(vNode, vBuffer)
+	local vList = vNode.buffer
+	if vBuffer then
+		if type(vBuffer) == "string" then
+			table.insert(vList, vBuffer)
+		elseif type(vBuffer) == "table" then
+			for i=1, #vBuffer do
+				table.insert(vList, vBuffer[i])
+			end
+		else
+			error("type error when buffer push"..type(vBuffer))
+		end
+	else
+		print(vNode.tag)
+	end
+end
+
 local visitor_block = {
 	Block={
 		before=function(visitor, node)
+			node.buffer = {}
 		end,
 		after=function(visitor, node)
+			for k, nSubNode in ipairs(node) do
+				push(node, nSubNode.buffer)
+			end
 		end
 	}
 }
@@ -14,23 +35,39 @@ local visitor_block = {
 local visitor_stm = {
 	Do={
 		before=function(visitor, node)
-			table.insert(visitor.buffer_list, " do ")
+			node.buffer = {" do "}
 		end,
 		after=function(visitor, node)
-			table.insert(visitor.buffer_list, " end ")
+			push(node, node[1].buffer)
+			push(node, " end ")
 		end
 	},
 	Set={
 		before=function(visitor, node)
-			table.insert(visitor.buffer_list, " local ")
+			node.buffer = {" local "}
 		end,
 		after=function(visitor, node)
-			table.insert(visitor.buffer_list, " end ")
+			push(node, node[1].buffer)
+			push(node, " = ")
+			push(node, node[2].buffer)
 		end
 	},
 	While={
+		before=function(visitor, node)
+			node.buffer = {" while "}
+		end,
+		after=function(visitor, node)
+			push(node, node[1].buffer)
+			push(node, " do ")
+			push(node, node[2].buffer)
+			push(node, " end ")
+		end
 	},
 	Repeat={
+		before=function(visitor, node)
+		end,
+		after=function(visitor, node)
+		end,
 	}
 	If={
 	},
@@ -93,7 +130,7 @@ function tlvGenerator.visit(vFileEnv)
 		env = vFileEnv,
 	}
 
-	tlvisitor.visit_object_dict(vFileEnv.ast, visitor)
+	tlvisitor.visit_obj(vFileEnv.ast, visitor)
 end
 
 return tlgen

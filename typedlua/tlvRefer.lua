@@ -144,7 +144,7 @@ function tlvRefer.refer(ast)
 	env_node.c=0
 	env_node.refer = tlident.ident_define(identTree, env_node)
 	tlident.begin_scope(identTree, ast)
-	tlvisitor.visit(ast, visitor)
+	tlvisitor.visit_raw(ast, visitor)
 	tlident.end_scope(identTree)
 
 	return identTree

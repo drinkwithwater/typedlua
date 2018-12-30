@@ -112,9 +112,9 @@ end
 function tlvDefine.defineAll(global_env)
 	local ast = global_env.ast
 	local visitor = tlvDefine.create_visitor(global_env)
-	tlvisitor.visit(ast, visitor)
+	tlvisitor.visit_raw(ast, visitor)
 	for name, file_env in pairs(global_env.file_env_dict) do
-		tlvisitor.visit(file_env.ast, visitor)
+		tlvisitor.visit_raw(file_env.ast, visitor)
 	end
 	return visitor
 end

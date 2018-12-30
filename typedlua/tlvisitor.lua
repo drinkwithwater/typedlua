@@ -387,12 +387,12 @@ function tlvisitor.visit_node(node, visitor)
 	visit_node(visitor, node)
 end
 
-function tlvisitor.visit(block, visitor)
+function tlvisitor.visit_raw(block, visitor)
 	setDefaultVistior(visitor)
 	visit_block(visitor, block)
 end
 
-function tlvisitor.visit_object_dict(block, visitor)
+function tlvisitor.visit_obj(block, visitor)
 	setDefaultVistior(visitor)
 	visitor.after = {}
 	visitor.override = {}

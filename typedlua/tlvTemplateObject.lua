@@ -81,7 +81,7 @@ function tlvTemplate.visit(vFileEnv)
 		env = vFileEnv,
 	}
 
-	tlvisitor.visit_object_dict(vFileEnv.ast, visitor)
+	tlvisitor.visit_obj(vFileEnv.ast, visitor)
 end
 
 return tlgen

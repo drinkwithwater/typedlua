@@ -50,7 +50,7 @@ function tlvRequire.requireName(name, global_env)
 			after = visitor_after,
 			requireList = {},
 		}
-		tlvisitor.visit(ast, visitor)
+		tlvisitor.visit_raw(ast, visitor)
 		for i, nextName in pairs(visitor.requireList) do
 			if not file_env_dict[nextName] then
 				tlvRequire.requireName(nextName, global_env)
@@ -66,7 +66,7 @@ function tlvRequire.requireAll(global_env)
 		after = visitor_after,
 		requireList = {},
 	}
-	tlvisitor.visit(ast, visitor)
+	tlvisitor.visit_raw(ast, visitor)
 	for i, nextName in ipairs(visitor.requireList) do
 		if not global_env.file_env_dict[nextName] then
 			tlvRequire.requireName(nextName, global_env)
