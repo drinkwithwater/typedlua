@@ -89,11 +89,6 @@ visit_type = setmetatable({
 			visit_type(visitor, v)
 		end
 	end,
-	TUnionlist = function(visitor, node)
-		for _, v in ipairs(node) do
-			visit_type(visitor, v)
-		end
-	end,
 	TFunction = function(visitor, node)
 		visit_type(visitor, node[1])
 		visit_type(visitor, node[2])

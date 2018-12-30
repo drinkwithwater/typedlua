@@ -140,7 +140,7 @@ function tltype.Union (...)
   -- remove unions of unions
   local l2 = {}
   for i = 1, #l1 do
-    if tltype.isUnion(l1[i]) or tltype.isUnionlist(l1[i]) then
+    if tltype.isUnion(l1[i]) then
       for j = 1, #l1[i] do
         table.insert(l2, l1[i][j])
       end
@@ -183,9 +183,6 @@ function tltype.Union (...)
   elseif #t == 1 then
     return t[1]
   else
-    if tltype.isTuple(t[1]) then
-      t.tag = "TUnionlist"
-    end
     return t
   end
 end
@@ -232,11 +229,8 @@ end
 -- tuple types
 
 -- Tuple : ({number:type}, true?) -> (type)
-function tltype.Tuple (l, is_vararg)
-  if is_vararg then
-    l[#l] = tltype.Vararg(l[#l])
-  end
-  return { tag = "TTuple", table.unpack(l) }
+function tltype.Tuple (...)
+  return { tag = "TTuple", ... }
 end
 
 -- void type
@@ -246,86 +240,16 @@ function tltype.Void ()
   return { tag = "TVoid" }
 end
 
--- inputTuple : (type?, boolean) -> (type)
-function tltype.inputTuple (t, strict)
-  if not strict then
-    if not t then
-      return tltype.Tuple({ tltype.Value() }, true)
-    else
-      if not tltype.isVararg(t[#t]) then
-        table.insert(t, tltype.Vararg(tltype.Value()))
-      end
-      return t
-    end
-  else
-    if not t then
-      return tltype.Tuple({ tltype.Nil() }, true)
-    else
-      if not tltype.isVararg(t[#t]) then
-        table.insert(t, tltype.Vararg(tltype.Nil()))
-      end
-      return t
-    end
-  end
-end
-
--- outputTuple : (type?, boolean) -> (type)
-function tltype.outputTuple (t)
-  if not t then
-    return tltype.Tuple({ tltype.Nil() }, true)
-  else
-    if not tltype.isVararg(t[#t]) then
-      table.insert(t, tltype.Vararg(tltype.Nil()))
-    end
-    return t
-  end
-end
-
--- retType : (type, boolean) -> (type)
-function tltype.retType (t)
-  return tltype.outputTuple(tltype.Tuple({ t }))
-end
-
--- isTuple : (type) -> (boolean)
-function tltype.isTuple (t)
-  return t.tag == "TTuple"
-end
-
 -- union of tuple types
-
--- Unionlist : (type*) -> (type)
-function tltype.Unionlist (...)
-  local t = tltype.Union(...)
-  if tltype.isUnion(t) then t.tag = "TUnionlist" end
-  return t
-end
-
--- isUnionlist : (type) -> (boolean)
-function tltype.isUnionlist (t)
-  return t.tag == "TUnionlist"
-end
 
 function tltype.Proj(label, idx)
   return { tag = "TProj", label, idx }
 end
 
--- UnionlistNil : (type, boolean?) -> (type)
-function tltype.UnionlistNil (t, is_union_nil)
-  if type(is_union_nil) == "boolean" then
-    local u = tltype.Tuple({ tltype.Nil(), tltype.String() })
-    return tltype.Unionlist(t, tltype.outputTuple(u))
-  else
-    return t
-  end
-end
-
 -- function types
 
--- Function : (type, type, true?) -> (type)
-function tltype.Function (t1, t2, is_method)
-  if is_method then
-    table.insert(t1, 1, tltype.Self())
-  end
+-- Function : (type, type) -> (type)
+function tltype.Function (t1, t2)
   return { tag = "TFunction", [1] = t1, [2] = t2 }
 end
 
@@ -334,16 +258,6 @@ end
 -- Field : (boolean, type, type) -> (field)
 function tltype.Field (is_const, t1, t2)
   return { tag = "TField", const = is_const, [1] = t1, [2] = t2 }
-end
-
--- isField : (field) -> (boolean)
-function tltype.isField (f)
-  return f.tag == "TField" and not f.const
-end
-
--- isConstField : (field) -> (boolean)
-function tltype.isConstField (f)
-  return f.tag == "TField" and f.const
 end
 
 -- ArrayField : (boolean, type) -> (field)
@@ -382,11 +296,6 @@ function tltype.Table (...)
 	  end
   end
   return nTableType
-end
-
--- isTable : (type) -> (boolean)
-function tltype.isTable (t)
-  return t.tag == "TTable"
 end
 
 -- fieldlist : ({ident}, type) -> (field*)

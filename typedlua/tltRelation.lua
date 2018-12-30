@@ -225,7 +225,6 @@ return tltRelation
 local List = {
 	TVoid = {
 		TVoid=VoidVoid,
-		TUnionlist=toUnionlist,
 		TTuple=toTuple,
 		TVararg=toVararg,
 	},
@@ -252,9 +251,6 @@ local List = {
 	TGlobalVariable = {},
 
 	-- not compatible type
-	-- TUnionlist = { },
-	-- TSelf = { },
-	-- TRecursive = {},
 	-- TProj = { },
 }
 ]]
