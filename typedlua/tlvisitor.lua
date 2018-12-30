@@ -6,7 +6,7 @@ This module implements a faster visitor for the Typed Lua AST.
 local tlvisitor = {}
 
 local visit_node
-local visit_block, visit_stm, visit_exp, visit_var, visit_type, visit_list, visit_field
+local visit_block, visit_stm, visit_exp, visit_var, visit_par, visit_type, visit_list, visit_field
 local visit_explist, visit_varlist, visit_parlist
 
 local function visit_error(visitor, t, trace, msg)
@@ -140,6 +140,16 @@ visit_var = setmetatable({
 	end
 })
 
+visit_par = setmetatable({
+	Id = false,
+	Dots = false,
+}, {
+	__call=visit_tag,
+	__index=function(t, tag)
+		error("expecting a parameter declare, but got a " .. tag)
+	end
+})
+
 function visit_varlist (visitor, varlist)
   for k, v in ipairs(varlist) do
     visit_var(visitor, v)
@@ -149,7 +159,7 @@ end
 function visit_parlist (visitor, parlist)
   local len = #parlist
   for i=1, len do
-	  visit_var(visitor, parlist[i])
+	  visit_par(visitor, parlist[i])
   end
 end
 
