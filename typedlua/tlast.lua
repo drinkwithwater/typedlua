@@ -139,10 +139,6 @@ function tlast.statForin (pos, namelist, explist, block)
   return s
 end
 
-function tlast.decoIdent(pos, str)
-	return { tag = "Comment", sub_tag = "Id", str}
-end
-
 function tlast.decoList(...)
 	return {...}
 end

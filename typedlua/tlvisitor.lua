@@ -314,7 +314,7 @@ visit_stm = setmetatable({
 	end,
 	Interface=function(visitor, stm)
 		-- TODO? stm[1]
-		visit_type(visitor, stm[2])
+		-- visit_type(visitor, stm[2])
 	end,
 }, {
 	__call=visit_tag,

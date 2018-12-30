@@ -90,8 +90,7 @@ local G = lpeg.P { "TypedLua";
   RetType = lpeg.V("NilableTuple") +
             lpeg.V("Type") / tltype.retType;
 
-  -- interface ??
-  Id = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") / tlast.ident;
+  -- interface ?? TODO
   TypeDecId = (tllexer.kw("const") * lpeg.V("Id") / tlast.setConst) +
               lpeg.V("Id");
   IdList = lpeg.Cp() * lpeg.V("TypeDecId") * (tllexer.symb(",") * lpeg.V("TypeDecId"))^0 /
@@ -107,18 +106,19 @@ local G = lpeg.P { "TypedLua";
               tlast.statInterface;
   LocalInterface = tllexer.kw("local") * lpeg.V("Interface") / tlast.statLocalTypeDec;
   TypeDecStat = lpeg.V("Interface") + lpeg.V("LocalInterface");
+
   -- deco
-  GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
-                lpeg.Ct(lpeg.Cc()) / tlast.statLocal;
-  DecoDefineStat = tllexer.symb("--[[@") * (lpeg.V("GlobalDefine") + lpeg.V("TypeDecStat"))^0 * tllexer.symb("]]");
+  --[[GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
+                lpeg.Ct(lpeg.Cc()) / tlast.statLocal;]]
+  DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
   DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
   DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
+
   -- parser
   Chunk = lpeg.V("Block") / tlast.chunk;
   StatList = (tllexer.symb(";") + lpeg.V("Stat"))^0;
   Var = lpeg.V("Id");
-  TypedId = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") * (tllexer.symb(":") *
-            lpeg.V("Type"))^-1 / tlast.ident;
+  Id = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") / tlast.ident;
   FunctionDef = tllexer.kw("function") * lpeg.V("FuncBody");
   FieldSep = tllexer.symb(",") + tllexer.symb(";");
   Field = lpeg.Cp() *
@@ -131,7 +131,7 @@ local G = lpeg.P { "TypedLua";
   FieldList = (lpeg.V("TField") * (lpeg.V("FieldSep") * lpeg.V("TField"))^0 *
               lpeg.V("FieldSep")^-1)^-1;
   Constructor = lpeg.Cp() * tllexer.symb("{") * lpeg.V("FieldList") * tllexer.symb("}") / tlast.exprTable;
-  NameList = lpeg.Cp() * lpeg.V("TypedId") * (tllexer.symb(",") * lpeg.V("TypedId"))^0 /
+  NameList = lpeg.Cp() * lpeg.V("Id") * (tllexer.symb(",") * lpeg.V("Id"))^0 /
              tlast.namelist;
   ExpList = lpeg.Cp() * lpeg.V("Expr") * (tllexer.symb(",") * lpeg.V("Expr"))^0 /
             tlast.explist;
@@ -227,12 +227,10 @@ local G = lpeg.P { "TypedLua";
              tlast.exprString) *
                lpeg.Cc(true))^-1 /
              tlast.funcName;
-  ParList = lpeg.Cp() * lpeg.V("NameList") * (tllexer.symb(",") * lpeg.V("TypedVarArg"))^-1 /
-            tlast.parList2 +
-            lpeg.Cp() * lpeg.V("TypedVarArg") / tlast.parList1 +
+  ParDots = lpeg.Cp() * tllexer.symb("...") / tlast.identDots;
+  ParList = lpeg.Cp() * lpeg.V("NameList") * (tllexer.symb(",") * lpeg.V("ParDots"))^-1 / tlast.parList2 +
+            lpeg.Cp() * lpeg.V("ParDots") / tlast.parList1 +
             lpeg.Cp() / tlast.parList0;
-  TypedVarArg = lpeg.Cp() * tllexer.symb("...") * (tllexer.symb(":") * lpeg.V("Type"))^-1 /
-                tlast.identDots;
   FuncBody = lpeg.Cp() * tllexer.symb("(") * lpeg.V("ParList") * tllexer.symb(")") *
              (tllexer.symb(":") * lpeg.V("RetType"))^-1 *
              lpeg.V("Block") * tllexer.kw("end") / exprFunction;

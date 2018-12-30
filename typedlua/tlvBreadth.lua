@@ -27,7 +27,6 @@ local tltOper = require "typedlua/tltOper"
 local tlvBreadth = {}
 
 local Nil = tltype.Nil()
-local Self = tltype.Self()
 local Boolean = tltype.Boolean()
 local Number = tltype.Number()
 local String = tltype.String()
@@ -86,9 +85,16 @@ local visitor_stm = {
 				local nSubNode = node[i]
 				visit_node(visitor, nSubNode)
 			end
+			-- oper subNode 1
 			local nNameNode = node[1]
 			local nWrapper = tltOper._init_assign(visitor, nNameNode, node[2])
 			oper_merge(visitor, nNameNode, nWrapper)
+
+			-- oper subNode 2, 3,..., #node-1
+			for i = 2, #node - 1 do
+				local nSubNode = node[i]
+				tltOper._assert(visitor, nSubNode, tltype.Number())
+			end
 			visit_node(visitor, node[#node])
 		end,
 	},
@@ -159,6 +165,8 @@ local visitor_exp = {
 	},
 
 	--
+	Function={
+	},
 	Table={
 		after=function(visitor, node)
 			local l = {}
@@ -195,6 +203,11 @@ local visitor_exp = {
 			end
 		end,
 	},
+	Paren={
+		after=function(visitor, vNode)
+			vNode.type = vNode[1].type
+		end,
+	},
 	Call={
 		after=function(visitor, node)
 			print("func call TODO")
@@ -203,6 +216,20 @@ local visitor_exp = {
 	Invoke={
 		after=function(visitor, node)
 			print("func invoke TODO")
+		end
+	},
+	Id={
+		before=function(visitor, node)
+			local ident = visitor.env.ident_tree[node.refer]
+			if node == ident.node then
+				-- ident set itself
+				if node.left_deco then
+					node.type = node.left_deco
+				end
+			else
+				-- ident get
+				node.type = ident.node.type
+			end
 		end
 	},
 	Index={
@@ -216,20 +243,6 @@ local visitor_exp = {
 				oper_merge(visitor, vIndexNode, nWrapper)
 			end
 		end,
-	},
-	Id={
-		after=function(visitor, node)
-			local ident = visitor.env.ident_tree[node.refer]
-			if node == ident.node then
-				-- ident set itself
-				if node.left_deco then
-					node.type = node.left_deco
-				end
-			else
-				-- ident get
-				node.type = ident.node.type
-			end
-		end
 	},
 }
 

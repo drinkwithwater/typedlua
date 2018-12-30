@@ -306,6 +306,13 @@ function tltOper._gt(visitor, vLeft, vRight)
 	return tltOper.__lt(visitor, vRight, vLeft)
 end
 
+function tltOper._assert(visitor, vNode, vType)
+	check_type(visitor, vNode, vType)
+	return {
+		type=vType,
+	}
+end
+
 tltOper.wrapper = setmetatable({},{
 	__index=function(t,k)
 		local nFunc = tltype[k]

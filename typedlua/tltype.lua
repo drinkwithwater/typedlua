@@ -42,21 +42,6 @@ function tltype.isLiteral (t)
   return t.tag == "TLiteral"
 end
 
--- isFalse : (type) -> (boolean)
-function tltype.isFalse (t)
-  return tltype.isLiteral(t) and t[1] == false
-end
-
--- isTrue : (type) -> (boolean)
-function tltype.isTrue (t)
-  return tltype.isLiteral(t) and t[1] == true
-end
-
--- isNum : (type) -> (boolean)
-function tltype.isNum (t)
-  return tltype.isLiteral(t) and type(t[1]) == "number"
-end
-
 -- isFloat : (type) -> (boolean)
 function tltype.isFloat (t)
   if _VERSION == "Lua 5.3" then
@@ -116,41 +101,9 @@ function tltype.Integer ()
   -- if i then return tltype.Base("integer") else return tltype.Base("number") end
 end
 
--- isBase : (type) -> (boolean)
-function tltype.isBase (t)
-  return t.tag == "TBase"
-end
-
--- isBoolean : (type) -> (boolean)
-function tltype.isBoolean (t)
-  return tltype.isBase(t) and t[1] == "boolean"
-end
-
--- isNumber : (type) -> (boolean)
-function tltype.isNumber (t)
-  return tltype.isBase(t) and t[1] == "number"
-end
-
--- isString : (type) -> (boolean)
-function tltype.isString (t)
-  return tltype.isBase(t) and t[1] == "string"
-end
-
--- isInteger : (type) -> (boolean)
-function tltype.isInteger (t)
-  return tltype.isBase(t) and t[1] == "integer"
-end
-
--- nil type
-
 -- Nil : () -> (type)
 function tltype.Nil ()
   return { tag = "TNil" }
-end
-
--- isNil : (type) -> (boolean)
-function tltype.isNil (t)
-  return t.tag == "TNil"
 end
 
 -- value type
@@ -158,11 +111,6 @@ end
 -- Value : () -> (type)
 function tltype.Value ()
   return { tag = "TValue" }
-end
-
--- isValue : (type) -> (boolean)
-function tltype.isValue (t)
-  return t.tag == "TValue"
 end
 
 -- dynamic type
@@ -182,11 +130,6 @@ end
 -- Self : () -> (type)
 function tltype.Self ()
   return { tag = "TSelf" }
-end
-
--- isSelf : (type) -> (boolean)
-function tltype.isSelf (t)
-  return t.tag == "TSelf"
 end
 
 -- union types
@@ -265,21 +208,6 @@ function tltype.isUnion (t1, t2)
   end
 end
 
--- filterUnion : (type, type) -> (type)
-function tltype.filterUnion (u, t)
-  if tltype.isUnion(u) then
-    local l = {}
-    for _, v in ipairs(u) do
-      if not (tltype.subtype(t, v) and tltype.subtype(v, t)) then
-        table.insert(l, v)
-      end
-    end
-    return tltype.Union(table.unpack(l))
-  else
-    return u
-  end
-end
-
 -- UnionNil : (type, true?) -> (type)
 function tltype.UnionNil (t, is_union_nil)
   if is_union_nil then
@@ -316,11 +244,6 @@ end
 -- Void : () -> (type)
 function tltype.Void ()
   return { tag = "TVoid" }
-end
-
--- isVoid : (type) -> (boolean)
-function tltype.isVoid (t)
-  return t.tag == "TVoid"
 end
 
 -- inputTuple : (type?, boolean) -> (type)
@@ -404,21 +327,6 @@ function tltype.Function (t1, t2, is_method)
     table.insert(t1, 1, tltype.Self())
   end
   return { tag = "TFunction", [1] = t1, [2] = t2 }
-end
-
-function tltype.isFunction (t)
-  return t.tag == "TFunction"
-end
-
-function tltype.isMethod (t)
-  if tltype.isFunction(t) then
-    for _, v in ipairs(t[1]) do
-      if tltype.isSelf(v) then return true end
-    end
-    return false
-  else
-    return false
-  end
 end
 
 -- table types
