@@ -44,13 +44,6 @@ local function log_warning(visitor, node, ...)
 	print(head, ...)
 end
 
--- expr check type
-local function check_type(visitor, node, t)
-	if not tltRelation.sub(node.type, t) then
-		log_error(visitor, node, node.type.tag, "can't not be", t.tag)
-	end
-end
-
 local function oper_merge(visitor, vNode, vWrapper)
 	if vNode.type then
 		-- log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
@@ -84,25 +77,20 @@ local visitor_override = {
 		else
 			self_visit(visitor, node)
 		end
-	end
+	end,
+	Fornum=function(visitor, node, visit_node, self_visit)
+		for i = 1, #node - 1 do
+			local nSubNode = node[i]
+			visit_node(visitor, nSubNode)
+		end
+		local nNameNode = node[1]
+		local nWrapper = tltOper._init_assign(visitor, nNameNode, node[2])
+		oper_merge(visitor, nNameNode, nWrapper)
+		visit_node(visitor, node[#node])
+	end,
 }
 
 local visitor_exp = {
-	Nil=function(visitor, node)
-		add_type(visitor, node, tltype.Nil())
-	end,
-	True=function(visitor, node)
-		add_type(visitor, node, tltype.Literal(true))
-	end,
-	False=function(visitor, node)
-		add_type(visitor, node, tltype.Literal(false))
-	end,
-	Number=function(visitor, node)
-		add_type(visitor, node, tltype.Literal(node[1]))
-	end,
-	String=function(visitor, node)
-		add_type(visitor, node, tltype.Literal(node[1]))
-	end,
 	Table=function(visitor, node)
 		local l = {}
 		local i = 1
@@ -174,14 +162,9 @@ local visitor_stm = {
 			if nVarNode.tag == "Index" then
 				tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nExprNode)
 			elseif nVarNode.tag == "Id" then
-				local nWrapper = tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nExprNode)
-				-- assign to Id -- use referenced identity
+				local nWrapper = tltOper._set_assign(visitor, nVarNode, nExprNode)
 				local nIdent = visitor.env.ident_tree[nVarNode.refer]
-				oper_merge(visitor, ident, nWrapper)
-				--[[
-				if not tltRelation.sub(nExprNode.type, nVarNode.type) then
-					log_error(visitor, nVarNode, "assign type failed:", nVarNode.type.tag, nExprNode.type.tag)
-				end]]
+				oper_merge(visitor, nIdent, nWrapper)
 			else
 				error("assign to node:tag="..tostring(node.tag))
 			end
@@ -190,23 +173,39 @@ local visitor_stm = {
 	Localrec=function(visitor, node)
 		print("local function TODO")
 	end,
-	Fornum=function(visitor, node)
-		local nNameNode = node[1]
-		local nWrapper = tltOper._init_assign(visitor, nNameNode, node[2])
-		oper_merge(visitor, nNameNode, nWrapper)
-	end,
 	Local=function(visitor, node)
 		local nNameList = node[1]
 		local nExprList = node[2]
 		for i, nNameNode in ipairs(nNameList) do
 			local nExprNode = nExprList[i]
 			local nWrapper = tltOper._init_assign(visitor, nNameNode, nExprNode)
+			local nIdent = visitor.env.ident_tree[nNameNode.refer]
 			oper_merge(visitor, nNameNode, nWrapper)
+			oper_merge(visitor, nIdent, nWrapper)
 		end
 	end,
 }
 
 local visitor_after = tlvisitor.concat(visitor_stm, visitor_exp)
+
+local visitor_before = {
+	-- exp
+	Nil=function(visitor, node)
+		add_type(visitor, node, tltype.Nil())
+	end,
+	True=function(visitor, node)
+		add_type(visitor, node, tltype.Literal(true))
+	end,
+	False=function(visitor, node)
+		add_type(visitor, node, tltype.Literal(false))
+	end,
+	Number=function(visitor, node)
+		add_type(visitor, node, tltype.Literal(node[1]))
+	end,
+	String=function(visitor, node)
+		add_type(visitor, node, tltype.Literal(node[1]))
+	end,
+}
 
 function tlvBreadth.visit_block(block, visitor)
 	local block_list = {}
@@ -223,6 +222,7 @@ function tlvBreadth.visit(vFileEnv)
 	local visitor = {
 		override = visitor_override,
 		after = visitor_after,
+		before = visitor_before,
 		func_block_list = {},
 		env = vFileEnv,
 		log_error = log_error,
