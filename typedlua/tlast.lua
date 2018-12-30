@@ -77,15 +77,13 @@ local tlast = {}
 
 -- namelist : (number, ident, ident*) -> (namelist)
 function tlast.namelist (pos, id, ...)
-  local t = { tag = "NameList", pos = pos, ... }
-  table.insert(t, 1, id)
+  local t = { tag = "NameList", pos = pos, id, ... }
   return t
 end
 
 -- explist : (number, expr, expr*) -> (explist)
 function tlast.explist (pos, expr, ...)
-  local t = { tag = "ExpList", pos = pos, ... }
-  table.insert(t, 1, expr)
+  local t = { tag = "ExpList", pos = pos, expr, ... }
   return t
 end
 
@@ -141,6 +139,9 @@ function tlast.statForin (pos, namelist, explist, block)
   return s
 end
 
+function tlast.decoIdent(pos, str)
+	return { tag = "Comment", sub_tag = "Id", str}
+end
 
 function tlast.decoList(...)
 	return {...}
@@ -404,9 +405,9 @@ function tlast.exprIndex (pos, e)
   return { tag = "Index", pos = pos, [1] = e }
 end
 
--- ident : (number, string, type?) -> (ident)
-function tlast.ident (pos, str, t)
-  return { tag = "Id", pos = pos, [1] = str, [2] = t }
+-- ident : (number, string) -> (ident)
+function tlast.ident (pos, str)
+  return { tag = "Id", pos = pos, [1] = str }
 end
 
 -- index : (number, expr, expr) -> (lhs)
