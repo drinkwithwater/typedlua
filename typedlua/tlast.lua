@@ -168,10 +168,10 @@ function tlast.statDecoFunc(pos, decoFunc, stat)
 	local funcNode = stat[2][1]
 	assert(funcNode.tag == "Function")
 	-- deco input
-	local parlist = funcNode[1] -- parlist or namelist
-	local inputDecoList = decoFunc[1]
-	for i, name in ipairs(parlist) do
-		name.left_deco = inputDecoList[i]
+	local nParList = funcNode[1] -- parlist or namelist
+	local nInputTuple = decoFunc[1]
+	for i, name in ipairs(nParList) do
+		name.left_deco = nInputTuple[i]
 	end
 	-- deco output
 	local outputDecoList = decoFunc[2]

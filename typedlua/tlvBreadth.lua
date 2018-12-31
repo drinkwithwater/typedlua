@@ -109,6 +109,7 @@ local visitor_stm = {
 				elseif nVarNode.tag == "Id" then
 					local nWrapper = tltOper._set_assign(visitor, nVarNode, nExprNode)
 					local nIdent = visitor.env.ident_tree[nVarNode.refer]
+					-- TODO merge namenode??????????????????
 					oper_merge(visitor, nIdent, nWrapper)
 				else
 					error("assign to node:tag="..tostring(node.tag))
@@ -249,21 +250,18 @@ local visitor_exp = {
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
 function tlvBreadth.visit_block(block, visitor)
-	local block_list = {}
-	visitor.func_block_list = block_list
+	local nBlockList = {}
+	visitor.func_block_list = nBlockList
 	tlvisitor.visit_obj(block, visitor)
 	visitor.func_block_list = nil
-	for _, sub_block in pairs(block_list) do
+	for _, sub_block in pairs(nBlockList) do
 		-- TODO don't implement function first
-		-- tlvBreadth.visit_block(sub_block, visitor)
+		tlvBreadth.visit_block(sub_block, visitor)
 	end
 end
 
 function tlvBreadth.visit(vFileEnv)
 	local visitor = {
-		override = visitor_override,
-		after = visitor_after,
-		before = visitor_before,
 		object_dict = visitor_object_dict,
 		func_block_list = {},
 		env = vFileEnv,

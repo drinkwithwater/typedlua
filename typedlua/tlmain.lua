@@ -30,8 +30,10 @@ function tlmain.main(subject, filename, strict, integer, color)
 	local global_env = tlenv.GlobalEnv(subject, filename, ast)
 	-- print(tlutils.dumpast(global_env.ast))
 
+	print("==========================================tlvRequire=======================")
 	tlvRequire.requireAll(global_env)
 
+	print("==========================================tlvDefine=======================")
 	tlvDefine.defineAll(global_env)
 
 	--[[for k,v in pairs(global_env.interface_dict) do
@@ -47,6 +49,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	global_env.ident_tree = identTree
 
+	print("==========================================tlvBreadth=======================")
 	tlvBreadth.visit(global_env)
 
 	print(tlutils.dumpLambda(global_env.ast, function(node)

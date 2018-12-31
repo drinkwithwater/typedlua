@@ -13,11 +13,12 @@ end
 function tltOper._index_get(visitor, vPrefixWrapper, vKeyWrapper)
 	local nType1 = vPrefixWrapper.type
 	local nType2 = vKeyWrapper.type
+	local nField = nil
 	if nType1.tag == "TTable" then
 		nField = tltable.index_field(nType1, nType2)
 	else
 		-- TODO check node is Table
-		visitor:log_error(node, "index for non-table type not implement...")
+		visitor:log_error(vPrefixWrapper, "index for non-table type not implement...")
 	end
 	local nReType = nil
 	if not nField then
@@ -40,12 +41,12 @@ function tltOper._index_set(visitor, vPrefixWrapper, vKeyWrapper, vValueWrapper)
 			local nField = tltable.index_field(nPrefixType, nKeyType)
 			if not nField then
 				tltable.insert(nPrefixType, tltable.NilableField(
-					nVarNode[2].type,
-					tltRelation.general(nExprNode.type)
+					nKeyType,
+					tltRelation.general(nValueType)
 				))
 			else
 				if not tltRelation.sub(nValueType, nField[2]) then
-					visitor:log_error(vPrefixWrapper, "table index set fail:", nValueType.tag, nField[2].tag)
+					visitor:log_error(vPrefixWrapper, "table set index fail:", nValueType.tag, nField[2].tag)
 				end
 			end
 		else
@@ -68,13 +69,17 @@ function tltOper._set_assign(visitor, vNameWrapper, vExprWrapper)
 	end
 	local nLeftDeco = vNameWrapper.left_deco
 	if nLeftDeco then
-		if not tltRelation.sub(nRighType, nLeftDeco) then
-			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to "..nLeftDeco.tag)
+		if not tltRelation.sub(nRightType, nLeftDeco) then
+			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to decotype:"..nLeftDeco.tag)
 		end
 		return {
 			type = nLeftDeco
 		}
 	else
+		local nLeftType = vNameWrapper.type
+		if not tltRelation.sub(nRightType, nLeftType) then
+			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to type:"..nLeftType.tag)
+		end
 		return {
 			type = nRightType
 		}
