@@ -2,8 +2,8 @@
 This module implements Typed Lua tltype.
 ]]
 
-local tlutils = require "typedlua.tlutils"
-local seri = require "typedlua.seri"
+--local tlutils = require "typedlua.tlutils"
+--local seri = require "typedlua.seri"
 if not table.unpack then table.unpack = unpack end
 
 local tltype = {}
@@ -402,6 +402,14 @@ end
 function tltype.consistent_subtype(vLeft, vRight)
 	local nRelation = tltRelation or (require "typedlua/tltRelation")
 	return nRelation.sub(vLeft, vRight)
+end
+
+function tltype.first(vType)
+	if vType.tag == "TTuple" then
+		return vType[1]
+	else
+		return vType
+	end
 end
 
 -- Built-in functions

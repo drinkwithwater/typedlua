@@ -10,6 +10,48 @@ local function check_type(visitor, vWrapper, vType)
 	end
 end
 
+function tltOper._reforge_tuple(visitor, vExpListWrapper)
+	local nTypeList= {}
+	local nLength = #vExpListWrapper
+	-- #vExpListWrapper == 0 return {}
+	if nLength <= 0 then
+		return nTypeList
+	end
+	local nLastType = vExpListWrapper[nLength].type
+	-- #vExpListWrapper >=1 merge and return
+	for i = 1, nLength - 1 do
+		nTypeList[i] = tltype.first(vExpListWrapper[i])
+	end
+
+	-- if type1,type2,...,type3,type4 return {type1,type2,...,type3,type4}
+	if nLastType.type ~= "TTuple" then
+		nTypeList[nLength] = nLastType
+		return nTypeList
+	end
+
+	-- if type1,type2,...,type3,tuple return {type1,type2,...,type3,table.unpack(tuple)}
+	for i=1, #nLastType do
+		nTypeList[nLength + i - 1] = nLastType[i]
+	end
+
+	return nTypeList
+end
+
+function tltOper._call(visitor, vCalleeWrapper, vTypeList)
+	local nFunctionType = vCalleeWrapper.type
+	if nFunctionType.tag == "TFunction" then
+		print("TODO tltOper._call check args")
+		return {
+			type=nFunctionType[2]
+		}
+	else
+		visitor:log_error(vCalleeWrapper, "function call type error")
+		return {
+			type=tltype.Nil()
+		}
+	end
+end
+
 function tltOper._index_get(visitor, vPrefixWrapper, vKeyWrapper)
 	local nType1 = vPrefixWrapper.type
 	local nType2 = vKeyWrapper.type
@@ -32,21 +74,20 @@ function tltOper._index_get(visitor, vPrefixWrapper, vKeyWrapper)
 end
 
 -- TODO think which one is better ... -- no return
-function tltOper._index_set(visitor, vPrefixWrapper, vKeyWrapper, vValueWrapper)
+function tltOper._index_set(visitor, vPrefixWrapper, vKeyWrapper, vValueType, vLeftDeco)
 	local nPrefixType = vPrefixWrapper.type
 	local nKeyType = vKeyWrapper.type
-	local nValueType = vValueWrapper.type
 	if nPrefixType.tag == "TTable" then
 		if nPrefixType.sub_tag == "TOpenTable" then
 			local nField = tltable.index_field(nPrefixType, nKeyType)
 			if not nField then
 				tltable.insert(nPrefixType, tltable.NilableField(
 					nKeyType,
-					tltRelation.general(nValueType)
+					tltRelation.general(vValueType)
 				))
 			else
-				if not tltRelation.sub(nValueType, nField[2]) then
-					visitor:log_error(vPrefixWrapper, "table set index fail:", nValueType.tag, nField[2].tag)
+				if not tltRelation.sub(vValueType, nField[2]) then
+					visitor:log_error(vPrefixWrapper, "table set index fail:", vValueType.tag, nField[2].tag)
 				end
 			end
 		else
@@ -59,60 +100,47 @@ function tltOper._index_set(visitor, vPrefixWrapper, vKeyWrapper, vValueWrapper)
 end
 
 -- set -- return assign
-function tltOper._set_assign(visitor, vNameWrapper, vExprWrapper)
-	local nRightType = nil
-	if not vExprWrapper then
-		nRightType = tltype.Nil()
+function tltOper._set_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
+	if not vRightType then
+		vRightType = tltype.Nil()
 		visitor:log_error(vNameWrapper, vNameWrapper.tag, "set assign missing")
-	else
-		nRightType = vExprWrapper.type
 	end
-	local nLeftDeco = vNameWrapper.left_deco
-	if nLeftDeco then
-		if not tltRelation.sub(nRightType, nLeftDeco) then
-			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to decotype:"..nLeftDeco.tag)
+	if vLeftDeco then
+		if not tltRelation.sub(vRightType, vLeftDeco) then
+			visitor:log_error(vNameWrapper, vRightType.tag, "can't be assigned to decotype:"..vLeftDeco.tag)
 		end
 		return {
-			type = nLeftDeco
+			type = vLeftDeco
 		}
 	else
 		local nLeftType = vNameWrapper.type
-		if not tltRelation.sub(nRightType, nLeftType) then
-			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to type:"..nLeftType.tag)
+		if not tltRelation.sub(vRightType, nLeftType) then
+			visitor:log_error(vNameWrapper, vRightType.tag, "can't be assigned to type:"..nLeftType.tag)
 		end
 		return {
-			type = nRightType
+			type = vRightType
 		}
 	end
 end
 
 -- local -- return assign
-function tltOper._init_assign(visitor, vNameWrapper, vExprWrapper)
-	local nRightType = nil
-	if not vExprWrapper then
-		nRightType = tltype.Nil()
+function tltOper._init_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
+	if not vRightType then
+		vRightType = tltype.Nil()
 		visitor:log_error(vNameWrapper, vNameWrapper.tag, "local assign missing")
-	else
-		nRightType = vExprWrapper.type
 	end
-	local nLeftDeco = vNameWrapper.left_deco
-	if nLeftDeco then
-		if not tltRelation.sub(nRightType, nLeftDeco) then
-			visitor:log_error(vNameWrapper, nRightType.tag, "can't be assigned to "..nLeftDeco.tag)
+	if vLeftDeco then
+		if not tltRelation.sub(vRightType, vLeftDeco) then
+			visitor:log_error(vNameWrapper, vRightType.tag, "can't be assigned to "..vLeftDeco.tag)
 		end
 		return {
-			type = nLeftDeco
+			type = vLeftDeco
 		}
 	else
 		return {
-			type = nRightType
+			type = vRightType
 		}
 	end
-end
-
-function tltOper._call(visitor, vFuncWrapper, ...)
-	visitor:log_warning("_call TODO")
-	error("TODO")
 end
 
 -- logic operator

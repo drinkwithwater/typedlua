@@ -432,12 +432,12 @@ end
 
 -- call : (number, expr, expr*) -> (apply)
 function tlast.call (pos, ...)
-  return { tag = "Call", pos = pos, [1] = false, [2] = tlast.explist(pos, ...) }
+  return { tag = "Call", pos = pos, [1] = nil, [2] = tlast.explist(pos, ...) }
 end
 
 -- invoke : (number, expr, expr, expr*) -> (apply)
 function tlast.invoke (pos, e1, e2, ...)
-  return { tag = "Invoke", pos = pos, [1] = false, [2] = e1, [3] = tlast.explist(pos, ...) }
+  return { tag = "Invoke", pos = pos, [1] = nil, [2] = e1, [3] = tlast.explist(pos, ...) }
 end
 
 -- setConst : (expr|field|id) -> (expr|field|id)

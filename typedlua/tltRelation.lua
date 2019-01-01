@@ -37,6 +37,7 @@ local TypeContainDict = {
 		TTable=false,
 		TUnion=unionNil,
 		TNil=false,
+		TFunction=false,
 	},
 	TBase={
 		TLiteral=function(vBase, vSubLiteral)
@@ -60,6 +61,7 @@ local TypeContainDict = {
 		TTable=false,
 		TUnion=unionNil,
 		TNil=false,
+		TFunction=false,
 	},
 	TGlobalVariable={
 		TLiteral=false,
@@ -68,6 +70,7 @@ local TypeContainDict = {
 		TTable=false,
 		TUnion=unionNil,
 		TNil=false,
+		TFunction=false,
 	},
 	TTable={
 		TLiteral=false,
@@ -127,6 +130,7 @@ local TypeContainDict = {
 		end,
 		TUnion=unionNil,
 		TNil=false,
+		TFunction=false,
 	},
 	TUnion=setmetatable({
 		TUnion=function(vUnion, vSubUnion)
@@ -167,7 +171,7 @@ local TypeContainDict = {
 			end
 			rawset(t, vSubTypeTag, nContain)
 			return nContain
-		end
+		end,
 	}),
 	TNil={
 		TLiteral=false,
@@ -176,6 +180,12 @@ local TypeContainDict = {
 		TTable=false,
 		TUnion=false,
 		TNil=function()
+			return true
+		end,
+		TFunction=false,
+	},
+	TFunction={
+		TFunction=function(vFunctionType, vFunctionType)
 			return true
 		end,
 	}

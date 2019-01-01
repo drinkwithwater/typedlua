@@ -44,11 +44,13 @@ local function log_warning(visitor, node, ...)
 end
 
 local function oper_merge(visitor, vNode, vWrapper)
+	local nFirstType = tltype.first(vWrapper.type)
+
 	if vNode.type then
 		-- log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
-		vNode.type = vWrapper.type
+		vNode.type = nFirstType
 	else
-		vNode.type = vWrapper.type
+		vNode.type = nFirstType
 	end
 end
 
@@ -71,8 +73,8 @@ end
 local visitor_stm = {
 	Block={
 		override=function(visitor, node, visit_node, self_visit)
-			local pre_node = visitor.stack[#visitor.stack - 1]
-			if pre_node and pre_node.tag == "Function" then
+			local nParentNode = visitor.stack[#visitor.stack - 1]
+			if nParentNode and nParentNode.tag == "Function" then
 				visitor.func_block_list[#visitor.func_block_list + 1] = node
 			else
 				self_visit(visitor, node)
@@ -87,7 +89,7 @@ local visitor_stm = {
 			end
 			-- oper subNode 1
 			local nNameNode = node[1]
-			local nWrapper = tltOper._init_assign(visitor, nNameNode, node[2])
+			local nWrapper = tltOper._init_assign(visitor, nNameNode, tltype.Number())
 			oper_merge(visitor, nNameNode, nWrapper)
 
 			-- oper subNode 2, 3,..., #node-1
@@ -100,14 +102,14 @@ local visitor_stm = {
 	},
 	Set={
 		after=function(visitor, node)
-			local nExprList = node[2]
 			local nVarList = node[1]
+			local nTypeList = tltOper._reforge_tuple(visitor, node[2])
 			for i, nVarNode in ipairs(nVarList) do
-				local nExprNode = nExprList[i]
+				local nRightType = nTypeList[i]
 				if nVarNode.tag == "Index" then
-					tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nExprNode)
+					tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nRightType, nVarNode.left_deco)
 				elseif nVarNode.tag == "Id" then
-					local nWrapper = tltOper._set_assign(visitor, nVarNode, nExprNode)
+					local nWrapper = tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
 					local nIdent = visitor.env.ident_tree[nVarNode.refer]
 					-- TODO merge namenode??????????????????
 					oper_merge(visitor, nIdent, nWrapper)
@@ -125,10 +127,10 @@ local visitor_stm = {
 	Local={
 		after=function(visitor, node)
 			local nNameList = node[1]
-			local nExprList = node[2]
+			local nTypeList = tltOper._reforge_tuple(visitor, node[2])
 			for i, nNameNode in ipairs(nNameList) do
-				local nExprNode = nExprList[i]
-				local nWrapper = tltOper._init_assign(visitor, nNameNode, nExprNode)
+				local nRightType = nTypeList[i]
+				local nWrapper = tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
 				local nIdent = visitor.env.ident_tree[nNameNode.refer]
 				oper_merge(visitor, nNameNode, nWrapper)
 				oper_merge(visitor, nIdent, nWrapper)
@@ -165,8 +167,14 @@ local visitor_exp = {
 		end,
 	},
 
-	--
 	Function={
+		after=function(visitor, vFunctionNode)
+			if vFunctionNode.right_deco then
+				vFunctionNode.type = vFunctionNode.right_deco
+			else
+				print("function auto type TODO")
+			end
+		end,
 	},
 	Table={
 		after=function(visitor, node)
@@ -206,18 +214,8 @@ local visitor_exp = {
 	},
 	Paren={
 		after=function(visitor, vNode)
-			vNode.type = vNode[1].type
+			oper_merge(visitor, vNode, vNode[1])
 		end,
-	},
-	Call={
-		after=function(visitor, node)
-			print("func call TODO")
-		end
-	},
-	Invoke={
-		after=function(visitor, node)
-			print("func invoke TODO")
-		end
 	},
 	Id={
 		before=function(visitor, node)
@@ -244,6 +242,35 @@ local visitor_exp = {
 				oper_merge(visitor, vIndexNode, nWrapper)
 			end
 		end,
+	},
+	-- exp may be tuple: call, invoke, dots
+	Call={
+		after=function(visitor, vCallNode)
+			local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
+			local nWrapper = tltOper._call(visitor, vCallNode[1], nTypeList)
+			local nParentNode = visitor.stack[#visitor.stack - 1]
+			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
+				-- maybe tuple
+				vCallNode.type  = nWrapper.type
+			else
+				oper_merge(visitor, vCallNode, nWrapper)
+			end
+		end
+	},
+	Invoke={
+		after=function(visitor, node)
+			error("func invoke TODO")
+		end
+	},
+	Dots={
+		after=function(visitor, vDotsNode)
+			local nParentNode = visitor.stack[#visitor.stack - 1]
+			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
+				-- pass
+			else
+				vDotsNode.type = tltype.first(vDotsNode.type)
+			end
+		end
 	},
 }
 
