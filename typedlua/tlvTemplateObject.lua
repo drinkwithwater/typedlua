@@ -19,7 +19,7 @@ local visitor_stm = {
 	While={
 	},
 	Repeat={
-	}
+	},
 	If={
 	},
 	Fornum={
@@ -65,7 +65,7 @@ local visitor_exp = {
 }
 
 local visitor_list = {
-	ExpList={}
+	ExpList={},
 	Return={},
 	ParList={},
 	VarList={},

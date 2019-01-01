@@ -383,16 +383,15 @@ end
 function tlast.exprSuffixed (e1, e2)
   if e2 then
     if e2.tag == "Call" or e2.tag == "Invoke" then
-      local e = { tag = e2.tag, pos = e1.pos, [1] = e1 }
-      for _, v in ipairs(e2) do
-        table.insert(e, v)
-      end
-      return e
-    else
+		e2.pos = e1.pos
+		e2[1] = e1
+		return e2
+    elseif e2.tag == "Index" then
       return { tag = "Index", pos = e1.pos, [1] = e1, [2] = e2[1] }
     end
   else
-    return e1
+	  error("exprSuffixed args exception")
+	  return e1
   end
 end
 
@@ -432,23 +431,13 @@ end
 -- apply
 
 -- call : (number, expr, expr*) -> (apply)
-function tlast.call (pos, e1, ...)
-  local a = { tag = "Call", pos = pos, [1] = e1 }
-  local list = { ... }
-  for i = 1, #list do
-    a[i + 1] = list[i]
-  end
-  return a
+function tlast.call (pos, ...)
+  return { tag = "Call", pos = pos, [1] = false, [2] = tlast.explist(pos, ...) }
 end
 
 -- invoke : (number, expr, expr, expr*) -> (apply)
 function tlast.invoke (pos, e1, e2, ...)
-  local a = { tag = "Invoke", pos = pos, [1] = e1, [2] = e2 }
-  local list = { ... }
-  for i = 1, #list do
-    a[i + 2] = list[i]
-  end
-  return a
+  return { tag = "Invoke", pos = pos, [1] = false, [2] = e1, [3] = tlast.explist(pos, ...) }
 end
 
 -- setConst : (expr|field|id) -> (expr|field|id)

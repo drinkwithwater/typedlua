@@ -217,6 +217,9 @@ local G = lpeg.P { "TypedLua";
             lpeg.Cp() / tlast.parList0;
   FuncBody = lpeg.Cp() * tllexer.symb("(") * lpeg.V("ParList") * tllexer.symb(")") *
              lpeg.V("Block") * tllexer.kw("end") / exprFunction;
+
+
+  -- stat , normal set func & assign
   FuncStat = lpeg.Cp() * (tllexer.kw("const") * lpeg.Cc(true) + lpeg.Cc(false)) *
              tllexer.kw("function") * lpeg.V("FuncName") * lpeg.V("FuncBody") /
              tlast.statFuncSet;
@@ -227,6 +230,7 @@ local G = lpeg.P { "TypedLua";
 	  (lpeg.Cp() * lpeg.V("DecoName") * lpeg.V("AssignStat")/tlast.statDecoAssign) +
 	  (lpeg.Cp() * lpeg.V("DecoFunc") * lpeg.V("FuncStat")/tlast.statDecoFunc);
 
+  -- stat , normal local func & assign
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
               lpeg.V("Id") * lpeg.V("FuncBody") / tlast.statLocalrec;
   LocalAssign = lpeg.Cp() * tllexer.kw("local") * lpeg.V("NameList") *

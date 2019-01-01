@@ -193,20 +193,12 @@ visit_exp = setmetatable({
 	end,
 	Call = function(visitor, exp)
 		visit_exp(visitor, exp[1])
-		if exp[2] then
-			for i=2, #exp do
-				visit_exp(visitor, exp[i])
-			end
-		end
+		visit_list(visitor, exp[2])
 	end,
 	Invoke = function(visitor, exp)
 		visit_exp(visitor, exp[1])
 		visit_exp(visitor, exp[2])
-		if exp[3] then
-			for i=3, #exp do
-				visit_exp(visitor, exp[i])
-			end
-		end
+		visit_list(visitor, exp[3])
 	end,
 	Id = false,
 	Index = visit_var.Index,
@@ -292,20 +284,12 @@ visit_stm = setmetatable({
 	Break=false,
 	Call=function(visitor, stm)
 		visit_exp(visitor, stm[1])
-		if stm[2] then
-			for i=2, #stm do
-				visit_exp(visitor, stm[i])
-			end
-		end
+		visit_list(visitor, stm[2])
 	end,
 	Invoke=function(visitor, stm)
 		visit_exp(visitor, stm[1])
 		visit_exp(visitor, stm[2])
-		if stm[3] then
-			for i=3, #stm do
-				visit_exp(visitor, stm[i])
-			end
-		end
+		visit_list(visitor, stm[3])
 	end,
 	Interface=function(visitor, stm)
 		-- TODO? stm[1]
