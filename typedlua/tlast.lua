@@ -201,7 +201,7 @@ end
 
 -- statReturn : (number, expr*) -> (stat)
 function tlast.statReturn (pos, ...)
-  return { tag = "Return", pos = pos, ... }
+  return { tag = "Return", pos = pos, [1] = tlast.explist(pos, ...) }
 end
 
 -- statBreak : (number) -> (stat)

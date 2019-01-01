@@ -279,7 +279,7 @@ visit_stm = setmetatable({
 	Goto=false,
 	Label=false,
 	Return=function(visitor, stm)
-		visit_list(visitor, stm)
+		visit_list(visitor, stm[1])
 	end,
 	Break=false,
 	Call=function(visitor, stm)
@@ -325,7 +325,6 @@ end
 
 visit_list = setmetatable({
 	ExpList=visit_explist,
-	Return=visit_explist,
 	ParList=visit_parlist,
 	VarList=visit_varlist,
 	NameList=visit_varlist,
