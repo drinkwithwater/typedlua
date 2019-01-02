@@ -4,7 +4,6 @@ This module implements Typed Lua tltype.
 
 --local tlutils = require "typedlua.tlutils"
 --local seri = require "typedlua.seri"
-if not table.unpack then table.unpack = unpack end
 
 local tltype = {}
 

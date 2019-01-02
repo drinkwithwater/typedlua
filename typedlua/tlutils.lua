@@ -93,4 +93,34 @@ function tlutils.getcontents(fileName)
   return contents
 end
 
+local function isprint (x)
+  if (x >= 0 and x <= 31) or (x == 127) then return false end
+  if x >= 128 then return false end
+  return true
+end
+
+function tlutils.fixed_string(str)
+  local new_str = ""
+  for i=1,string.len(str) do
+    local char = string.byte(str, i)
+    if char == 34 then new_str = new_str .. string.format("\\\"")
+    elseif char == 92 then new_str = new_str .. string.format("\\\\")
+    elseif char == 7 then new_str = new_str .. string.format("\\a")
+    elseif char == 8 then new_str = new_str .. string.format("\\b")
+    elseif char == 12 then new_str = new_str .. string.format("\\f")
+    elseif char == 10 then new_str = new_str .. string.format("\\n")
+    elseif char == 13 then new_str = new_str .. string.format("\\r")
+    elseif char == 9 then new_str = new_str .. string.format("\\t")
+    elseif char == 11 then new_str = new_str .. string.format("\\v")
+    else
+      if isprint(char) then
+        new_str = new_str .. string.format("%c", char)
+      else
+        new_str = new_str .. string.format("\\%03d", char)
+      end
+    end
+  end
+  return new_str
+end
+
 return tlutils
