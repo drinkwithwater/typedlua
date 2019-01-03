@@ -74,7 +74,7 @@ local visitor_stm = {
 	Block={
 		override=function(visitor, node, visit_node, self_visit)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
-			if nParentNode and nParentNode.tag == "Function" then
+			if nParentNode and nParentNode.tag == "Function" and nParentNode.is_full_type then
 				visitor.func_block_list[#visitor.func_block_list + 1] = node
 			else
 				self_visit(visitor, node)
@@ -136,6 +136,20 @@ local visitor_stm = {
 				oper_merge(visitor, nIdent, nWrapper)
 			end
 		end,
+	},
+	Return={
+		after=function(visitor, node)
+			-- TODO case for none return block
+			local nTypeList = tltOper._reforge_tuple(visitor, node[1])
+			for i=#visitor.stack, 1, -1 do
+				local nPreNode = visitor.stack[i]
+				if nPreNode.tag == "Function" then
+					tltOper._return(visitor, nPreNode, nTypeList)
+					return
+				end
+			end
+			print("file return TODO")
+		end
 	}
 }
 
@@ -168,12 +182,14 @@ local visitor_exp = {
 	},
 
 	Function={
-		after=function(visitor, vFunctionNode)
+		before=function(visitor, vFunctionNode)
 			if vFunctionNode.right_deco then
 				vFunctionNode.type = vFunctionNode.right_deco
 			else
 				print("function auto type TODO")
 			end
+		end,
+		after=function(visitor, vFunctionNode)
 		end,
 	},
 	Table={

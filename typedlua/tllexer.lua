@@ -112,6 +112,10 @@ function tllexer.symb (str)
   return tllexer.token(lpeg.P(str), str)
 end
 
+function tllexer.decokw(str)
+  return tllexer.decotoken(lpeg.P(str)*-idRest, str)
+end
+
 function tllexer.kw (str)
   return tllexer.token(lpeg.P(str) * -idRest, str)
 end

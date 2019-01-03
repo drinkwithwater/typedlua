@@ -173,9 +173,13 @@ function tlast.statDecoFunc(pos, decoFunc, stat)
 	for i, name in ipairs(nParList) do
 		name.left_deco = nInputTuple[i]
 	end
-	-- deco output
+	-- if output existed then function is full type
 	local outputDecoList = decoFunc[2]
+	if outputDecoList then
+		funcNode.is_full_type = true
+	end
 	funcNode.right_deco = decoFunc
+	-- deco func node
 	return stat
 end
 

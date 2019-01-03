@@ -2,6 +2,7 @@
 local tltype = require "typedlua/tltype"
 local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
+local tlutils = require "typedlua/tlutils"
 local tltOper = {}
 
 local function check_type(visitor, vWrapper, vType)
@@ -10,31 +11,42 @@ local function check_type(visitor, vWrapper, vType)
 	end
 end
 
+function tltOper._return(visitor, vFunctionNode, vTupleType)
+	local nFunctionType = vFunctionNode.type
+	if not nFunctionType[2] then
+		-- auto set type
+		nFunctionType[2] = vTupleType
+	else
+		print("TODO check type")
+		-- check type
+	end
+end
+
 function tltOper._reforge_tuple(visitor, vExpListWrapper)
-	local nTypeList= {}
+	local nTupleType= { tag = "TTuple" }
 	local nLength = #vExpListWrapper
 	-- #vExpListWrapper == 0 return {}
 	if nLength <= 0 then
-		return nTypeList
+		return nTupleType
 	end
 	local nLastType = vExpListWrapper[nLength].type
 	-- #vExpListWrapper >=1 merge and return
 	for i = 1, nLength - 1 do
-		nTypeList[i] = tltype.first(vExpListWrapper[i])
+		nTupleType[i] = tltype.first(vExpListWrapper[i].type)
 	end
 
 	-- if type1,type2,...,type3,type4 return {type1,type2,...,type3,type4}
-	if nLastType.type ~= "TTuple" then
-		nTypeList[nLength] = nLastType
-		return nTypeList
+	if nLastType.tag ~= "TTuple" then
+		nTupleType[nLength] = nLastType
+		return nTupleType
 	end
 
 	-- if type1,type2,...,type3,tuple return {type1,type2,...,type3,table.unpack(tuple)}
 	for i=1, #nLastType do
-		nTypeList[nLength + i - 1] = nLastType[i]
+		nTupleType[nLength + i - 1] = nLastType[i]
 	end
 
-	return nTypeList
+	return nTupleType
 end
 
 function tltOper._call(visitor, vCalleeWrapper, vTypeList)
