@@ -95,7 +95,7 @@ function tltOper._index_set(visitor, vPrefixWrapper, vKeyWrapper, vValueType, vL
 			if not nField then
 				tltable.insert(nPrefixType, tltable.NilableField(
 					nKeyType,
-					tltRelation.general(vValueType)
+					tltype.general(vValueType)
 				))
 			else
 				if not tltRelation.sub(vValueType, nField[2]) then
@@ -116,6 +116,8 @@ function tltOper._set_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
 		visitor:log_error(vNameWrapper, vNameWrapper.tag, "set assign missing")
+	else
+		vRightType = tltype.general(vRightType)
 	end
 	if vLeftDeco then
 		if not tltRelation.sub(vRightType, vLeftDeco) then
@@ -140,6 +142,8 @@ function tltOper._init_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
 		visitor:log_error(vNameWrapper, vNameWrapper.tag, "local assign missing")
+	else
+		vRightType = tltype.general(vRightType)
 	end
 	if vLeftDeco then
 		if not tltRelation.sub(vRightType, vLeftDeco) then

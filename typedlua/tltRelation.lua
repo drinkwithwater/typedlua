@@ -7,6 +7,9 @@ local eq1 = function(vLeft, vRight)
 	return vLeft[1] == vRight[1]
 end
 
+tltRelation.CONTAIN_PART = 2
+tltRelation.CONTAIN_FULL = 1
+
 local function unionNil(vType, vUnion)
 	if #vUnion < 2 then
 		error("union 1 item...")
@@ -28,9 +31,15 @@ local function unionNil(vType, vUnion)
 end
 
 local TypeContainDict = {
+	TAny={
+	},
 	TLiteral={
 		TLiteral=function(vLiteral, vSubLiteral)
-			return (vLiteral[1] == vSubLiteral[1])
+			if (vLiteral[1] == vSubLiteral[1]) then
+				return 1
+			else
+				return false
+			end
 		end,
 		TBase=false,
 		TGlobalVariable=false,
@@ -41,21 +50,30 @@ local TypeContainDict = {
 	},
 	TBase={
 		TLiteral=function(vBase, vSubLiteral)
-			local nLeft = vSubLiteral[1]
-			local nRight = vBase[1]
-			if nRight == "integer" then
-				if type(nLeft) == "number" then
-					return nLeft % 1 == 0
-				else
-					return false
-				end
+			local nLeftDetail = vBase[1]
+			local nRightDetail = tltype.toBaseDetail(vSubLiteral[1])
+			if nLeftDetail == nRightDetail then
+				return 1
+			elseif nLeftDetail == "number" and nRightDetail == "integer" then
+				return 1
+			elseif nLeftDetail == "integer" and nRightDetail == "number" then
+				return 2
 			else
-				return type(nLeft) == nRight
+				return false
 			end
 		end,
 		TBase=function(vBase, vSubBase)
-			return (vBase[1] == vSubBase[1]) or
-			(vSubBase[1] == "integer" and vBase[1] == "number")
+			local nBaseDetail = vBase[1]
+			local nSubBaseDetail = vSubBase[1]
+			if nBaseDetail == nSubBaseDetail then
+				return 1
+			elseif nBaseDetail == "number" and nSubBaseDetail == "integer" then
+				return 1
+			elseif nBaseDetail == "integer" and nSubBaseDetail == "number" then
+				return 2
+			else
+				return false
+			end
 		end,
 		TGlobalVariable=false,
 		TTable=false,
@@ -220,47 +238,4 @@ function tltRelation.sub(vLeft, vRight)
 	end
 end
 
-function tltRelation.general(vType)
-	if vType.tag == "TLiteral" then
-		return tltype.Base(type(vType[1]))
-	else
-		return vType
-	end
-end
-
 return tltRelation
-
-
---[[
-local List = {
-	TVoid = {
-		TVoid=VoidVoid,
-		TTuple=toTuple,
-		TVararg=toVararg,
-	},
-	TPrim = { },
-
-	TTuple = { },
-	TVararg = { },
-
-	TLiteral = { },
-	TBase = { },
-	TNil = { },
-
-	TValue = { },
-	TAny = { },
-
-	TUnion = {},
-
-	TFunction = { },
-
-	TTable = { },
-
-	TVariable = { },
-
-	TGlobalVariable = {},
-
-	-- not compatible type
-	-- TProj = { },
-}
-]]

@@ -36,7 +36,6 @@ local G = lpeg.P { "TypedLua";
   PrimaryType = lpeg.V("LiteralType") +
                 lpeg.V("BaseType") +
                 lpeg.V("NilType") +
-                lpeg.V("ValueType") +
                 lpeg.V("AnyType") +
                 lpeg.V("FunctionType") +
                 lpeg.V("TableType") +
@@ -51,7 +50,6 @@ local G = lpeg.P { "TypedLua";
              tllexer.decotoken("string", "Type") / tltype.String +
              tllexer.decotoken("integer", "Type") * lpeg.Carg(3) / tltype.Integer;
   NilType = tllexer.decotoken("nil", "Type") / tltype.Nil;
-  ValueType = tllexer.decotoken("value", "Type") / tltype.Value;
   AnyType = tllexer.decotoken("any", "Type") / tltype.Any;
 
   -- function type only use tuple
@@ -71,7 +69,7 @@ local G = lpeg.P { "TypedLua";
   HashType = lpeg.Cc(false) * tllexer.decosymb("[") * lpeg.V("KeyType") * tllexer.decosymb("]") *
 			 tllexer.decosymb("=") * lpeg.V("FieldType") / tltype.Field;
   ArrayType = lpeg.Carg(3) * lpeg.V("FieldType") / tltype.ArrayField;
-  KeyType = lpeg.V("BaseType") + lpeg.V("ValueType") + lpeg.V("AnyType");
+  KeyType = lpeg.V("BaseType") + lpeg.V("AnyType");
   FieldType = lpeg.V("Type") * lpeg.Cc(tltype.Nil()) / tltype.Union;
   VariableType = tllexer.decotoken(tllexer.Name, "Type") / tltype.Variable;
 

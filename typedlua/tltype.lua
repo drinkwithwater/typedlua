@@ -11,61 +11,9 @@ tltype.integer = false
 
 -- literal types
 
--- Literal : (boolean|number|string) -> (type)
-function tltype.Literal (l)
-  return { tag = "TLiteral", [1] = l }
-end
-
--- False : () -> (type)
-function tltype.False ()
-  return tltype.Literal(false)
-end
-
--- True : () -> (type)
-function tltype.True ()
-  return tltype.Literal(true)
-end
-
--- Num : (number) -> (type)
-function tltype.Num (n)
-  return tltype.Literal(n)
-end
-
--- Str : (string) -> (type)
-function tltype.Str (s)
-  return tltype.Literal(s)
-end
-
--- isLiteral : (type) -> (boolean)
-function tltype.isLiteral (t)
-  return t.tag == "TLiteral"
-end
-
--- isFloat : (type) -> (boolean)
-function tltype.isFloat (t)
-  if _VERSION == "Lua 5.3" then
-    return tltype.isLiteral(t) and math.type(t[1]) == "float"
-  else
-    return false
-  end
-end
-
--- isInt : (type) -> (boolean)
-function tltype.isInt (t)
-  if _VERSION == "Lua 5.3" then
-    return tltype.isLiteral(t) and math.type(t[1]) == "integer"
-  else
-    return false
-  end
-end
-
--- isStr : (type) -> (boolean)
-function tltype.isStr (t)
-  return tltype.isLiteral(t) and type(t[1]) == "string"
-end
-
-function tltype.isProj (t)
-  return t.tag == "TProj"
+--@ (boolean|number|string) -> auto
+function tltype.Literal (vValue)
+	return { tag = "TLiteral", [1] = vValue }
 end
 
 -- base types
@@ -105,103 +53,52 @@ function tltype.Nil ()
   return { tag = "TNil" }
 end
 
--- value type
-
--- Value : () -> (type)
-function tltype.Value ()
-  return { tag = "TValue" }
-end
-
--- dynamic type
-
 -- Any : () -> (type)
 function tltype.Any ()
   return { tag = "TAny" }
-end
-
--- isAny : (type) -> (boolean)
-function tltype.isAny (t)
-  return t.tag == "TAny"
-end
-
--- self type
-
--- Self : () -> (type)
-function tltype.Self ()
-  return { tag = "TSelf" }
 end
 
 -- union types
 
 -- Union : (type*) -> (type)
 function tltype.Union (...)
-  local l1 = {...}
-  -- remove unions of unions
-  local l2 = {}
-  for i = 1, #l1 do
-    if tltype.isUnion(l1[i]) then
-      for j = 1, #l1[i] do
-        table.insert(l2, l1[i][j])
-      end
-    else
-      table.insert(l2, l1[i])
-    end
-  end
-  if #l2 == 1 then -- short circuit
-    return l2[1]
-  end
-  -- remove duplicates
-  local l3 = {}
-  for i = 1, #l2 do
-    local enter = true
-    for j = i + 1, #l2 do
-      if tltype.subtype(l2[i], l2[j]) and tltype.subtype(l2[j], l2[i]) then
-        enter = false
-        break
-      end
-    end
-    if enter then table.insert(l3, l2[i]) end
-  end
-  if #l3 == 1 then -- short circuit
-    return l3[1]
-  end
-  -- simplify union
-  local t = { tag = "TUnion" }
-  for i = 1, #l3 do
-    local enter = true
-    for j = 1, #l3 do
-      if i ~= j and not tltype.isAny(l3[i]) and tltype.consistent_subtype(l3[i], l3[j]) then
-        enter = false
-        break
-      end
-    end
-    if enter then table.insert(t, l3[i]) end
-  end
-  if #t == 0 then
-    return tltype.Void()
-  elseif #t == 1 then
-    return t[1]
-  else
-    return t
-  end
-end
-
--- isUnion : (type, type?) -> (boolean)
-function tltype.isUnion (t1, t2)
-  if not t2 then
-    return t1.tag == "TUnion"
-  else
-    if t1.tag == "TUnion" then
-      for _, v in ipairs(t1) do
-        if tltype.subtype(t2, v) and tltype.subtype(v, t2) then
-          return true
-        end
-      end
-      return false
-    else
-      return false
-    end
-  end
+	local tltRelation = require "typedlua/tltRelation"
+	local nTypeList = {...}
+	local nUnionType = {tag = "TUnion"}
+	for i, nType in ipairs(nTypeList) do
+		local nRightList = nType
+		if nType.tag ~= "TUnion" then
+			nRightList = {nType}
+		end
+		for j, nRightType in ipairs(nRightList) do
+			local nFullContain = false
+			local nFullBelong = false
+			for k, nLeftType in ipairs(nUnionType) do
+				-- right in left, do nothing
+				local nLeftContainRight = tltRelation.contain(nLeftType, nRightType)
+				if nLeftContainRight == tltRelation.CONTAIN_FULL then
+					nFullContain = true
+				end
+				-- left in right, replace left with right
+				local nRightContainLeft = tltRelation.contain(nRightType, nLeftType)
+				if nRightContainLeft == tltRelation.CONTAIN_FULL then
+					nFullBelong = k
+				end
+				if nLeftContainRight == tltRelation.CONTAIN_PART
+					and nRightContainLeft == tltRelation.CONTAIN_PART then
+					print("union type in unimplement case")
+				end
+			end
+			if not nFullContain then
+				if nFullBelong then
+					nUnionType[nFullBelong] = nRightType
+				else
+					nUnionType[#nUnionType + 1] = nRightType
+				end
+			end
+		end
+	end
+	return nUnionType
 end
 
 -- UnionNil : (type, true?) -> (type)
@@ -213,36 +110,11 @@ function tltype.UnionNil (t, is_union_nil)
   end
 end
 
--- vararg types
-
--- Vararg : (type) -> (type)
-function tltype.Vararg (t)
-  return { tag = "TVararg", [1] = t, name = t.name and t.name .. "*" }
-end
-
--- isVararg : (type) -> (boolean)
-function tltype.isVararg (t)
-  return t.tag == "TVararg"
-end
-
 -- tuple types
 
 -- Tuple : ({number:type}, true?) -> (type)
 function tltype.Tuple (...)
   return { tag = "TTuple", ... }
-end
-
--- void type
-
--- Void : () -> (type)
-function tltype.Void ()
-  return { tag = "TVoid" }
-end
-
--- union of tuple types
-
-function tltype.Proj(label, idx)
-  return { tag = "TProj", label, idx }
 end
 
 -- function types
@@ -287,7 +159,7 @@ function tltype.Table (...)
   local nHashList = nTableType.hash_list
   for i, nField in ipairs(nTableType) do
 	  local nFieldKey = nField[1]
-	  if tltype.isLiteral(nFieldKey) then
+	  if nFieldKey.tag == "TLiteral" then
 		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
 		  nRecordDict[nFieldKey[1]] = i
 	  else
@@ -349,14 +221,6 @@ function tltype.isPrim (t)
   return t.tag == "TPrim"
 end
 
-function tltype.general (t)
-	error("TODO, tltype.general")
-end
-
-function tltype.first (t)
-	error("TODO, tltype.first")
-end
-
 -- tostring : (type) -> (string)
 function tltype.tostring (t, n)
 	error("TODO, tltype.tostring")
@@ -411,19 +275,22 @@ function tltype.first(vType)
 	end
 end
 
--- Built-in functions
+function tltype.toBaseDetail(vValue)
+	local nValueType = type(vValue)
+	if type(vValue) == "number" then
+		if vValue % 1 == 0 then
+			return "integer"
+		end
+	end
+	return nValueType
+end
 
---[[
-local tanyany = tltype.Table(tltype.Field(false, tltype.Any(), tltype.Any()))
-
-tltype.primtypes = {
-  ["type"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tltype.Value()}), tltype.outputTuple(tltype.Tuple{tltype.String()})),
-  ["math_type"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tltype.Value()}), tltype.outputTuple(tltype.Tuple{tltype.Union(tltype.String(),tltype.Nil())})),
-  ["assert"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tltype.Value(), tltype.Vararg(tltype.Value())}), tltype.outputTuple(tltype.Tuple{tltype.Vararg(tltype.Value())})),
-  ["error"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tltype.Value(), tltype.Union(tltype.Integer(), tltype.Nil())}), tltype.Void()),
-  ["require"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tltype.String()}), tltype.outputTuple(tltype.Tuple{tltype.Value()})),
-  ["setmetatable"] = tltype.Function(tltype.inputTuple(tltype.Tuple{tanyany, tltype.Union(tanyany, tltype.Nil())}), tltype.outputTuple(tltype.Tuple{tanyany}))
-}
-]]
+function tltype.general(vType)
+	if vType.tag == "TLiteral" then
+		return tltype.Base(tltype.toBaseDetail(vType[1]))
+	else
+		return vType
+	end
+end
 
 return tltype

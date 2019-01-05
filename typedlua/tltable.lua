@@ -15,10 +15,10 @@ function tltable.OpenTable(...)
 	  if nFieldKey.tag == "TLiteral" then
 		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
 		  nRecordDict[nFieldKey[1]] = i
-		  nTableType[i] = tltable.Field(nFieldKey, tltRelation.general(nFieldValue))
+		  nTableType[i] = tltable.Field(nFieldKey, tltype.general(nFieldValue))
 	  else
 		  nHashList[#nHashList + 1] = i
-		  nTableType[i] = tltable.Field(nFieldKey, tltRelation.general(nFieldValue))
+		  nTableType[i] = tltable.Field(nFieldKey, tltype.general(nFieldValue))
 	  end
   end
   return nTableType
