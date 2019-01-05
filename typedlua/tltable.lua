@@ -5,26 +5,25 @@ local tltRelation = require "typedlua.tltRelation"
 local tltable = {}
 
 function tltable.OpenTable(...)
-  local nTableType = { tag = "TTable", sub_tag="TOpenTable", record_dict={}, hash_list={}}
+	-- TODO check part contain type in keyset
+  local nTableType = { tag = "TTable", sub_tag="TOpenTable", record_dict={}, hash_list={}, ...}
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
-  for i=1, select("#", ...) do
-	  local nField = select(i, ...)
+  for i, nField in ipairs(nTableType) do
 	  local nFieldKey = nField[1]
 	  local nFieldValue = nField[2]
 	  if nFieldKey.tag == "TLiteral" then
 		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
 		  nRecordDict[nFieldKey[1]] = i
-		  nTableType[i] = tltable.Field(nFieldKey, tltype.general(nFieldValue))
 	  else
 		  nHashList[#nHashList + 1] = i
-		  nTableType[i] = tltable.Field(nFieldKey, tltype.general(nFieldValue))
 	  end
   end
   return nTableType
 end
 
 function tltable.CloseTable(...)
+	-- TODO check part contain type in keyset
   local nTableType = { tag = "TTable", sub_tag="TCloseTable", record_dict={}, hash_list={}, ... }
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
@@ -68,7 +67,11 @@ function tltable.index_field(vTableType, vKeyType)
 end
 
 function tltable.Field(vKeyType, vValueType)
-	return {tag = "TField", sub_tag = "TNotnilField", [1] = vKeyType, [2] = vValueType}
+	if vKeyType.tag == "TLiteral" then
+		return {tag = "TField", sub_tag = "TNotnilField", [1] = vKeyType, [2] = vValueType}
+	else
+		return {tag = "TField", sub_tag = "THashField", [1] = vKeyType, [2] = vValueType}
+	end
 end
 
 function tltable.ArrayField(vValueType)

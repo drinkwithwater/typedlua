@@ -198,9 +198,9 @@ local visitor_exp = {
 			local i = 1
 			for k, field in ipairs(node) do
 				if field.tag == "Pair" then
-					l[#l + 1] = tltable.Field(field[1].type, field[2].type)
+					l[#l + 1] = tltable.Field(field[1].type, tltype.general(field[2].type))
 				else
-					l[#l + 1] = tltable.Field(tltype.Literal(i), field.type)
+					l[#l + 1] = tltable.Field(tltype.Literal(i), tltype.general(field.type))
 				end
 			end
 

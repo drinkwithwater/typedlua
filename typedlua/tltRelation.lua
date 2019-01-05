@@ -7,8 +7,12 @@ local eq1 = function(vLeft, vRight)
 	return vLeft[1] == vRight[1]
 end
 
-tltRelation.CONTAIN_PART = 2
-tltRelation.CONTAIN_FULL = 1
+local CONTAIN_PART = 2
+local CONTAIN_FULL = 1
+local CONTAIN_NIL = false
+tltRelation.CONTAIN_PART = CONTAIN_PART
+tltRelation.CONTAIN_FULL = CONTAIN_FULL
+tltRelation.CONTAIN_NIL = CONTAIN_NIL
 
 local function unionNil(vType, vUnion)
 	if #vUnion < 2 then
@@ -53,26 +57,26 @@ local TypeContainDict = {
 			local nLeftDetail = vBase[1]
 			local nRightDetail = tltype.toBaseDetail(vSubLiteral[1])
 			if nLeftDetail == nRightDetail then
-				return 1
+				return CONTAIN_FULL
 			elseif nLeftDetail == "number" and nRightDetail == "integer" then
-				return 1
+				return CONTAIN_FULL
 			elseif nLeftDetail == "integer" and nRightDetail == "number" then
-				return 2
+				return CONTAIN_PART
 			else
-				return false
+				return CONTAIN_NIL
 			end
 		end,
 		TBase=function(vBase, vSubBase)
 			local nBaseDetail = vBase[1]
 			local nSubBaseDetail = vSubBase[1]
 			if nBaseDetail == nSubBaseDetail then
-				return 1
+				return CONTAIN_FULL
 			elseif nBaseDetail == "number" and nSubBaseDetail == "integer" then
-				return 1
+				return CONTAIN_FULL
 			elseif nBaseDetail == "integer" and nSubBaseDetail == "number" then
-				return 2
+				return CONTAIN_PART
 			else
-				return false
+				return CONTAIN_NIL
 			end
 		end,
 		TGlobalVariable=false,
@@ -95,55 +99,100 @@ local TypeContainDict = {
 		TBase=false,
 		TGlobalVariable=false,
 		TTable=function(vLeftTable, vRightTable)
-			if vLeftTable.sub_tag == "TOpenTable" and vRightTable.sub_tag == "TOpenTable" then
-				if vLeftTable == vRightTable then
-					return true, true
-				else
-					return false
-				end
-			end
-			if vLeftTable.sub_tag ~= "TOpenTable" and vRightTable.sub_tag == "TOpenTable" then
-				local nWarning = true
-				local nLeftRecordDict = vLeftTable.record_dict
-				for nRightKey, nRightRecordIndex in pairs(vRightTable.record_dict) do
-					local nLeftRecordIndex = nLeftRecordDict[nRightKey]
-					local nRightField = vRightTable[nRightRecordIndex]
-					if nLeftRecordIndex then
-						-- if has left record, compare record field
-						local nLeftField = vLeftTable[nLeftRecordIndex]
-						local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
-						if not nContainResult then
-							return false
-						elseif nFieldWarning then
-							nWarning = true
-						end
+			if vLeftTable.sub_tag == "TOpenTable" then
+				if vRightTable.sub_tag == "TOpenTable" then
+					if vLeftTable == vRightTable then
+						print("TODO opentable relation:equal if ref same obj???")
+						return CONTAIN_FULL
 					else
-						-- if left do not has left record, compare hash field
-						local nContain = true
-						for k, nLeftHashIndex in ipairs(vLeftTable.hash_list) do
-							local nLeftField = vLeftTable[nLeftHashIndex]
-							if tltRelation.contain(nLeftField[1], nRightField[1]) then
-								local nContainResult, nFieldWarning = tltRelation.contain(nLeftField[2], nRightField[2])
-								if not nContainResult then
-									return false
-								else
-									nContain = true
-									if nFieldWarning then
-										nWarning = true
-									end
-								end
+						return CONTAIN_NIL
+					end
+				else
+					return CONTAIN_NIL
+				end
+			elseif vLeftTable.sub_tag == "TCloseTable" then
+				local nLeftNotnilFieldDict = {}
+				for k, nField in ipairs(vLeftTable) do
+					if nField.sub_tag == "TNotnilField" then
+						nLeftNotnilFieldDict[k] = nField
+					end
+				end
+				local nPartContain = false
+				local nLeftRecordDict = vLeftTable.record_dict
+				for nRightIndex, nRightField in ipairs(vRightTable) do
+					local nLeftRecordIndex = nil
+					local nRightFieldKeyType = nRightField[1]
+					if nRightFieldKeyType.tag == "TLiteral" then
+						nLeftRecordIndex = nLeftRecordDict[nRightFieldKeyType[1]]
+					end
+					if nLeftRecordIndex then
+						nLeftNotnilFieldDict[nLeftRecordIndex] = nil
+						-- if has mapped left record, compare record field
+						local nLeftField = vLeftTable[nLeftRecordIndex]
+						local nContainResult = tltRelation.contain(nLeftField[2], nRightField[2])
+						if not nContainResult then
+							return CONTAIN_NIL
+						elseif nContainResult == CONTAIN_PART then
+							nPartContain = true
+						elseif nContainResult == CONTAIN_FULL then
+							if nLeftField.sub_tag == "TNotnilField"
+								and nRightField.sub_tag == "TNilableField" then
+								nPartContain = true
 							end
 						end
-						if not nContain then
-							return false
+					else
+						local nHashContainRight = false
+						-- if left do not has mapped left record, compare hash field
+						for k, nLeftHashIndex in ipairs(vLeftTable.hash_list) do
+							local nLeftField = vLeftTable[nLeftHashIndex]
+							local nKeyContainResult = tltRelation.contain(nLeftField[1], nRightField[1])
+							local nValueContainResult = tltRelation.contain(nLeftField[2], nRightField[2])
+							if nKeyContainResult == CONTAIN_FULL then
+								if not nValueContainResult then
+									return CONTAIN_NIL
+								elseif nValueContainResult == CONTAIN_FULL then
+									nHashContainRight = true
+									break
+								elseif nValueContainReulst == CONTAIN_PART then
+									nPartContain = true
+									nHashContainRight = true
+									break
+								end
+							elseif nKeyContainResult == CONTAIN_PART then
+								if not nValueContainResult then
+									return CONTAIN_NIL
+								else
+									nPartContain = true
+									nHashContainRight = true
+									break
+								end
+							else
+								-- continue
+							end
+						end
+						if not nHashContainRight then
+							return CONTAIN_NIL
 						end
 					end
 				end
-				if nWarning then
-					return true, true
-				else
-					return true
+				-- some notnil record field not existed in righttable
+				local nNotMappedAll = false
+				for k,v in pairs(nLeftNotnilFieldDict) do
+					nNotMappedAll = true
+					break
 				end
+				if nNotMappedAll then
+					return CONTAIN_NIL
+				else
+					if nPartContain then
+						return CONTAIN_PART
+					else
+						return CONTAIN_FULL
+					end
+				end
+			else
+				error("unexception table type")
+				return false
 			end
 		end,
 		TUnion=unionNil,
