@@ -10,6 +10,7 @@ local seri = require "typedlua/seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
 local tltype = require "typedlua.tltype"
+local tltable = require "typedlua.tltable"
 
 local function chainl1 (pat, sep)
   return lpeg.Cf(pat * lpeg.Cg(sep * pat)^0, tlast.exprBinaryOp)
@@ -56,19 +57,18 @@ local G = lpeg.P { "TypedLua";
   TupleType = tllexer.decosymb("(") * (lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0)^-1 * tllexer.decosymb(")") / tltype.Tuple;
   FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * (lpeg.V("TupleType") + tllexer.decokw("auto")) / tltype.Function;
 
-  TableType = tllexer.decosymb("{") * lpeg.V("TableTypeBody") * tllexer.decosymb("}") / tltype.Table;
+  TableType = tllexer.decosymb("{") * lpeg.V("TableTypeBody") * tllexer.decosymb("}") / tltable.OpenTable;
   TableTypeBody = lpeg.V("RecordType") +
                   lpeg.V("HashType") +
                   lpeg.V("ArrayType") +
                   lpeg.Cc(nil);
   RecordType = lpeg.V("RecordField") * (tllexer.decosymb(",") * lpeg.V("RecordField"))^0 *
                (tllexer.decosymb(",") * (lpeg.V("HashType") + lpeg.V("ArrayType")))^-1;
-  RecordField = ((tllexer.kw("const") * lpeg.Cc(true)) + lpeg.Cc(false)) *
-                tllexer.decosymb("[") * lpeg.V("LiteralType") * tllexer.decosymb("]") *
-				tllexer.decosymb("=") * lpeg.V("Type") / tltype.Field;
-  HashType = lpeg.Cc(false) * tllexer.decosymb("[") * lpeg.V("KeyType") * tllexer.decosymb("]") *
-			 tllexer.decosymb("=") * lpeg.V("FieldType") / tltype.Field;
-  ArrayType = lpeg.Carg(3) * lpeg.V("FieldType") / tltype.ArrayField;
+  RecordField = tllexer.decosymb("[") * lpeg.V("LiteralType") * tllexer.decosymb("]") *
+				tllexer.decosymb("=") * lpeg.V("Type") / tltable.Field;
+  HashType = tllexer.decosymb("[") * lpeg.V("KeyType") * tllexer.decosymb("]") *
+			 tllexer.decosymb("=") * lpeg.V("FieldType") / tltable.Field;
+  ArrayType = lpeg.V("FieldType") / tltable.ArrayField;
   KeyType = lpeg.V("BaseType") + lpeg.V("AnyType");
   FieldType = lpeg.V("Type") * lpeg.Cc(tltype.Nil()) / tltype.Union;
   VariableType = tllexer.decotoken(tllexer.Name, "Type") / tltype.Variable;
@@ -78,8 +78,8 @@ local G = lpeg.P { "TypedLua";
               lpeg.V("Id");
   IdList = lpeg.Cp() * lpeg.V("TypeDecId") * (tllexer.symb(",") * lpeg.V("TypeDecId"))^0 /
            tlast.namelist;
-  IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltype.fieldlist;
-  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltype.Table;
+  IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltable.fieldlist;
+  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.OpenTable;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
   Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
               tlast.statInterface +

@@ -68,11 +68,23 @@ function tltable.index_field(vTableType, vKeyType)
 end
 
 function tltable.Field(vKeyType, vValueType)
-	return {tag = "TField", [1] = vKeyType, [2] = vValueType}
+	return {tag = "TField", sub_tag = "TNotnilField", [1] = vKeyType, [2] = vValueType}
+end
+
+function tltable.ArrayField(vValueType)
+	return tltable.Field(tltype.Integer(i), vValueType)
 end
 
 function tltable.NilableField(vKeyType, vValueType)
 	return {tag = "TField", sub_tag = "TNilableField", [1] = vKeyType, [2] = vValueType}
+end
+
+function tltable.fieldlist(idlist, t)
+  local l = {}
+  for _, v in ipairs(idlist) do
+    table.insert(l, tltable.Field(tltype.Literal(v[1]), t))
+  end
+  return table.unpack(l)
 end
 
 return tltable
