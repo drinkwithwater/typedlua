@@ -96,7 +96,7 @@ end
 
 function tlast.chunk(block)
 	block.pos = 0
-	return block
+	return {tag = "Chunk", pos = 0, block}
 end
 
 -- statDo : (block) -> (stat)

@@ -194,18 +194,17 @@ local visitor_exp = {
 	},
 	Table={
 		after=function(visitor, node)
-			local l = {}
-			local i = 1
-			for k, field in ipairs(node) do
-				if field.tag == "Pair" then
-					l[#l + 1] = tltable.Field(field[1].type, tltype.general(field[2].type))
+			local nList = {}
+			for k, nSubNode in ipairs(node) do
+				if nSubNode.tag == "Pair" then
+					nList[#nList + 1] = tltable.Field(nSubNode[1].type, tltype.general(nSubNode[2].type))
 				else
-					l[#l + 1] = tltable.Field(tltype.Literal(i), tltype.general(field.type))
+					nList[#nList + 1] = tltable.Field(tltype.Literal(i), tltype.general(nSubNode.type))
 				end
 			end
 
 			-- if not deco type, ident is unique table
-			local nOpenTable = tltable.OpenTable(table.unpack(l))
+			local nOpenTable = tltable.OpenTable(table.unpack(nList))
 			local nNewIndex = #visitor.env.unique_table_list + 1
 			visitor.env.unique_table_list[nNewIndex] = nOpenTable
 

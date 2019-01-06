@@ -18,6 +18,7 @@ function tlnode.createNodeClass(tag)
 end
 
 local TAG = {
+	"Chunk",
 	"Set",
 	"While",
 	"Repeat",

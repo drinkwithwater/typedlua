@@ -303,6 +303,9 @@ visit_stm = setmetatable({
 })
 
 visit_block = setmetatable({
+	Chunk=function(visitor, chunk)
+		visit_block(visitor, chunk[1])
+	end,
 	Block=function(visitor, block)
 	  for k, v in ipairs(block) do
 		  visit_stm(visitor, v)
