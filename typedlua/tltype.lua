@@ -202,17 +202,6 @@ function tltype.error(env, node, msg)
   table.insert(env.messages, error_msg)
 end
 
-local tltRelation = nil
-function tltype.subtype(vLeft, vRight)
-	local nRelation = tltRelation or (require "typedlua/tltRelation")
-	return nRelation.sub(vLeft, vRight)
-end
-
-function tltype.consistent_subtype(vLeft, vRight)
-	local nRelation = tltRelation or (require "typedlua/tltRelation")
-	return nRelation.sub(vLeft, vRight)
-end
-
 function tltype.first(vType)
 	if vType.tag == "TTuple" then
 		return vType[1]
@@ -221,7 +210,7 @@ function tltype.first(vType)
 	end
 end
 
-function tltype.toBaseDetail(vValue)
+function tltype.to_base_detail(vValue)
 	local nValueType = type(vValue)
 	if type(vValue) == "number" then
 		if vValue % 1 == 0 then
@@ -233,7 +222,7 @@ end
 
 function tltype.general(vType)
 	if vType.tag == "TLiteral" then
-		return tltype.Base(tltype.toBaseDetail(vType[1]))
+		return tltype.Base(tltype.to_base_detail(vType[1]))
 	else
 		return vType
 	end

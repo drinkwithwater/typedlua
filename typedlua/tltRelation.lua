@@ -53,7 +53,7 @@ local TypeContainDict = {
 	TBase={
 		TLiteral=function(vBase, vSubLiteral)
 			local nLeftDetail = vBase[1]
-			local nRightDetail = tltype.toBaseDetail(vSubLiteral[1])
+			local nRightDetail = tltype.to_base_detail(vSubLiteral[1])
 			if nLeftDetail == nRightDetail then
 				return CONTAIN_FULL
 			elseif nLeftDetail == "number" and nRightDetail == "integer" then
