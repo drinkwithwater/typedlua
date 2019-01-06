@@ -2,11 +2,6 @@ local tltype = require "typedlua/tltype"
 local seri = require "typedlua/seri"
 local tltRelation = {}
 
--- The first element in node are equal.
-local eq1 = function(vLeft, vRight)
-	return vLeft[1] == vRight[1]
-end
-
 local CONTAIN_PART = 2
 local CONTAIN_FULL = 1
 local CONTAIN_NIL = false
@@ -14,24 +9,27 @@ tltRelation.CONTAIN_PART = CONTAIN_PART
 tltRelation.CONTAIN_FULL = CONTAIN_FULL
 tltRelation.CONTAIN_NIL = CONTAIN_NIL
 
-local function unionNil(vType, vUnion)
+-- The first element in node are equal.
+local eq1 = function(vLeft, vRight)
+	if vLeft[1] == vRight[1] then
+		return CONTAIN_FULL
+	else
+		return CONTAIN_NIL
+	end
+end
+
+local function singleContainUnion(vType, vUnion)
 	if #vUnion < 2 then
 		error("union 1 item...")
-	elseif #vUnion > 2 then
-		return false
 	end
-	local nSubType = nil
-	if vUnion[1].tag == "TNil" then
-		nSubType = vUnion[2]
-	elseif vUnion[2].tag == "TNil" then
-		nSubType = vUnion[1]
-	else
-		return false
+	for i, nSubType in ipairs(vUnion) do
+		local nContainResult = tltRelation.contain(vType, nSubType)
+		if nContainResult then
+			-- singletype can only contain part uniontype
+			return CONTAIN_PART
+		end
 	end
-	if tltRelation.contain(vType, nSubType) then
-		return true, true
-	end
-	return false
+	return CONTAIN_NIL
 end
 
 local TypeContainDict = {
@@ -40,15 +38,15 @@ local TypeContainDict = {
 	TLiteral={
 		TLiteral=function(vLiteral, vSubLiteral)
 			if (vLiteral[1] == vSubLiteral[1]) then
-				return 1
+				return CONTAIN_FULL
 			else
-				return false
+				return CONTAIN_NIL
 			end
 		end,
 		TBase=false,
 		TGlobalVariable=false,
 		TTable=false,
-		TUnion=unionNil,
+		TUnion=singleContainUnion,
 		TNil=false,
 		TFunction=false,
 	},
@@ -81,7 +79,7 @@ local TypeContainDict = {
 		end,
 		TGlobalVariable=false,
 		TTable=false,
-		TUnion=unionNil,
+		TUnion=singleContainUnion,
 		TNil=false,
 		TFunction=false,
 	},
@@ -90,7 +88,7 @@ local TypeContainDict = {
 		TBase=false,
 		TGlobalVariable=eq1,
 		TTable=false,
-		TUnion=unionNil,
+		TUnion=singleContainUnion,
 		TNil=false,
 		TFunction=false,
 	},
@@ -192,49 +190,40 @@ local TypeContainDict = {
 				end
 			else
 				error("unexception table type")
-				return false
+				return CONTAIN_NIL
 			end
 		end,
-		TUnion=unionNil,
+		TUnion=singleContainUnion,
 		TNil=false,
 		TFunction=false,
 	},
 	TUnion=setmetatable({
 		TUnion=function(vUnion, vSubUnion)
-			local nWarning = false
+			local nContainPart = false
 			for k, nSubUnionItem in ipairs(vSubUnion) do
-				local nContainResult, nItemWarning = tltRelation.contain(vUnion, nSubUnionItem)
+				local nContainResult = tltRelation.contain(vUnion, nSubUnionItem)
 				if not nContainResult then
-					return false
-				elseif nItemWarning then
-					nWarning = true
+					return CONTAIN_NIL
+				elseif nContainResult == CONTAIN_PART then
+					nContainPart = true
 				end
 			end
-			if nWarning then
-				return true, true
+			if nContainPart then
+				return CONTAIN_PART
 			else
-				return true
+				return CONTAIN_FULL
 			end
 		end,
 		},{
 		__index=function(t, vSubTypeTag)
 			local nContain = function(vUnion, vSubType)
-				local nWarning = false
 				for k, nUnionItem in ipairs(vUnion) do
-					local nContainResult, nItemWarning = tltRelation.contain(nUnionItem, vSubType)
+					local nContainResult = tltRelation.contain(nUnionItem, vSubType)
 					if nContainResult then
-						if not nItemWarning then
-							return true
-						else
-							nWarning = true
-						end
+						return nContainResult
 					end
 				end
-				if nWarning then
-					return true, true
-				else
-					return false
-				end
+				return CONTAIN_NIL
 			end
 			rawset(t, vSubTypeTag, nContain)
 			return nContain
@@ -247,13 +236,18 @@ local TypeContainDict = {
 		TTable=false,
 		TUnion=false,
 		TNil=function()
-			return true
+			return CONTAIN_FULL
 		end,
 		TFunction=false,
 	},
 	TFunction={
-		TFunction=function(vFunctionType, vFunctionType)
-			return true
+		TFunction=function(vLeftFuncType, vRightFuncType)
+			print("function relation TODO")
+			if vLeftFuncType == vRightFuncType then
+				return CONTAIN_FULL
+			else
+				return CONTAIN_NIL
+			end
 		end,
 	}
 }
@@ -263,7 +257,7 @@ for nType, nRelation in pairs(TypeContainDict) do
 		setmetatable(nRelation, {
 			__index=function(t,k,v)
 				print(nType,k)
-				error("TODO... not implement")
+				error("TODO... contain not implement")
 			end
 		})
 	end
@@ -274,7 +268,7 @@ function tltRelation.contain(vLeft, vRight)
 	if nContain then
 		return nContain(vLeft, vRight)
 	else
-		return false
+		return CONTAIN_NIL
 	end
 end
 
@@ -283,7 +277,7 @@ function tltRelation.sub(vLeft, vRight)
 	if nContain then
 		return nContain(vRight, vLeft)
 	else
-		return false
+		return CONTAIN_NIL
 	end
 end
 
