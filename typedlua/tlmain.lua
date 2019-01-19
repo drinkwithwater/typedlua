@@ -43,7 +43,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	print("==========================================tlvRefer=======================")
 
-	local identTree = tlvRefer.refer(ast)
+	local identTree = tlvRefer.refer(global_env, ast)
 	--print(seri(identTree))
 	print(tlident.dump(identTree))
 

@@ -15,13 +15,13 @@ interface IdentDefine
 end
 ]]
 
-function tlident.new_ident_define(ident, index)
-	if ident.tag == "Id" then
-		return { tag = "IdentDefine", node=ident, ident[1], index}
-	elseif ident.tag == "Dots" then
-		return { tag = "IdentDefine", node=ident, "...", index}
+function tlident.new_ident(vIdent, vIndex)
+	if vIdent.tag == "Id" then
+		return { tag = "IdentDefine", node=vIdent, vIdent[1], vIndex}
+	elseif vIdent.tag == "Dots" then
+		return { tag = "IdentDefine", node=vIdent, "...", vIndex}
 	else
-		error("ident type error:"..tostring(ident.tag))
+		error("ident type error:"..tostring(vIdent.tag))
 	end
 end
 
@@ -34,16 +34,16 @@ interface IdentTable
 	record_dict:{string:integer}
 end
 ]]
-function tlident.new_table(parent, stm)
-	local obj = {
+function tlident.new_table(vParent, vStmNode)
+	local nObj = {
 		tag = "IdentTable",
-		node = stm,
-		parent = parent,
-		record_dict = parent and setmetatable({}, {
-			__index=parent.record_dict
+		node = vStmNode,
+		parent = vParent,
+		record_dict = vParent and setmetatable({}, {
+			__index=vParent.record_dict
 		}) or {},
 	}
-	return obj
+	return nObj
 end
 
 --[[@
@@ -57,55 +57,55 @@ end
 ]]
 
 --@(IdentTree, AstStm)
-function tlident.new_tree(ast)
-	local cur_table  = tlident.new_table(nil, ast)
-	local obj = {
+function tlident.new_tree(vFileEnv, vAst)
+	local nCurTable = tlident.new_table(nil, vAst)
+	local nObj = {
 		tag = "IdentTree",
-		cur_table = cur_table,
-		root_table = cur_table,
+		cur_table = nCurTable,
+		root_table = nCurTable,
 	}
-	return obj
+	return nObj
 end
 
 --@(IdentTree, AstStm)
-function tlident.begin_scope(tree, stm)
-	local new_table = tlident.new_table(tree.cur_table, stm)
-	tree.cur_table[#tree.cur_table + 1] = new_table
-	tree.cur_table = new_table
+function tlident.begin_scope(vTree, vStmNode)
+	local new_table = tlident.new_table(vTree.cur_table, vStmNode)
+	vTree.cur_table[#vTree.cur_table + 1] = new_table
+	vTree.cur_table = new_table
 end
 
-function tlident.end_scope(tree)
-	assert(tree.cur_table.parent)
-	local parent = tree.cur_table.parent
-	tree.cur_table.parent = nil
-	tree.cur_table = parent
+function tlident.end_scope(vTree)
+	assert(vTree.cur_table.parent)
+	local nParent = vTree.cur_table.parent
+	vTree.cur_table.parent = nil
+	vTree.cur_table = nParent
 end
 
-function tlident.ident_define(tree, ident)
-	local new_index = #tree + 1
-	local new_ident_define = tlident.new_ident_define(ident, new_index)
-	tree[new_index] = new_ident_define
-	tree.cur_table[#tree.cur_table + 1] = new_ident_define
-	tree.cur_table.record_dict[new_ident_define[1]] = new_index
-	return new_index
+function tlident.ident_define(vTree, vIdent)
+	local nNewIndex = #vTree + 1
+	local nNewIdent = tlident.new_ident(vIdent, nNewIndex)
+	vTree[nNewIndex] = nNewIdent
+	vTree.cur_table[#vTree.cur_table + 1] = nNewIdent
+	vTree.cur_table.record_dict[nNewIdent[1]] = nNewIndex
+	return nNewIndex
 end
 
-function tlident.ident_refer(tree, ident)
-	local name
-	if ident.tag == "Id" then
-		name = ident[1]
-	elseif ident.tag == "Dots" then
-		name = "..."
+function tlident.ident_refer(vTree, vIdent)
+	local nName
+	if vIdent.tag == "Id" then
+		nName = vIdent[1]
+	elseif vIdent.tag == "Dots" then
+		nName = "..."
 	else
-		error("tlident refer error tag"..tostring(ident.tag))
+		error("tlident refer error tag"..tostring(vIdent.tag))
 	end
 	-- local refer_index = assert(tree.cur_table.record_dict[name], string.format("ident_refer fail, %s,%s", ident.l, ident.c))
-	local refer_index = tree.cur_table.record_dict[name]
-	return refer_index
+	local nReferIndex = vTree.cur_table.record_dict[nName]
+	return nReferIndex
 end
 
-function tlident.dump(tree)
-	return tlutils.dumpLambda(tree.root_table, function(child)
+function tlident.dump(vTree)
+	return tlutils.dumpLambda(vTree.root_table, function(child)
 		if child.tag == "IdentTable" then
 			return child.node, "", nil
 		else

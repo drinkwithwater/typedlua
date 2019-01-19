@@ -8,16 +8,18 @@ function tlenv.GlobalEnv(vSubject, vFileName, vAst)
 	local nGlobalEnv = tlenv.FileEnv(vSubject, vFileName, vAst)
 	nGlobalEnv.file_env_dict = {}
 	nGlobalEnv.interface_dict = {}
+	nGlobalEnv.chunction_scope_list = {}
 	return nGlobalEnv
 end
 
 function tlenv.FileEnv(vSubject, vFileName, vAst)
 	local env = {
 		ast = vAst,
-		ident_tree = nil,
 		subject = vSubject,
 		filename = vFileName,
 		unique_table_list = {},
+
+		ident_tree = nil,
 	}
 	return env
 end
