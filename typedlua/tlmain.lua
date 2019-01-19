@@ -11,7 +11,7 @@ local tlvRefer = require "typedlua/tlvRefer"
 local tlvBreadth = require "typedlua/tlvBreadth"
 
 -- utils
-local tlident = require "typedlua/tlident"
+local tleIdent = require "typedlua/tleIdent"
 local seri = require "typedlua/seri"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"
@@ -45,7 +45,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	local identTree = tlvRefer.refer(global_env, ast)
 	--print(seri(identTree))
-	print(tlident.dump(identTree))
+	print(tleIdent.dump(identTree))
 
 	global_env.ident_tree = identTree
 
