@@ -5,28 +5,44 @@ This module implements some env setting
 local tleIdent = require "typedlua/tleIdent"
 local tlast = require "typedlua/tlast"
 local tlenv = {}
+local tlutils = require "typedlua/tlutils"
+
+tlenv.G_REFER = 1
 
 function tlenv.GlobalEnv(vMainFileName)
 	-- function & chunk ?
 	-- open table ?
 	-- ident ?
-	-- tlenv.FileEnv(vSubject, vFileName, vAst)
-	local _GNode= tlast.ident(0, "_G")
-	_GNode.l=0
-	_GNode.c=0
-	_GNode.refer = 1 -- tleIdent.ident_define(nIdentTree, env_node)
-	local _GIdent= tleIdent.new_ident(_GNode, 1)
+
+
+	-- TODO add what node ???
+	local nNode= tlast.ident(0, "_G")
+	nNode.l=0
+	nNode.c=0
+	nNode.refer_ident = tlenv.G_REFER -- tleIdent.ident_define(nIdentTree, env_node)
 
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
 		file_env_dict = {},
 		interface_dict = {},
-		region_list = {},
 		env_stack = {},
 		cur_env = nil,
-		_G_node= _GNode,
-		_G_ident = _GIdent,
+		_G_node = nNode,
+		_G_ident = nIdent,
+		scope_list = {},
+		ident_list = {}
 	}
+
+	-- create and set root scope
+	local nRootScope = tlenv.create_scope(nGlobalEnv, nil, nNode)
+	nGlobalEnv.root_scope = nRootScope
+
+	-- create and bind ident
+	local nIdent = tlenv.create_ident(nGlobalEnv, nRootScope, nNode)
+	nRootScope.record_dict["_G"] = tlenv.G_REFER
+	nRootScope.record_dict["_ENV"] = tlenv.G_REFER
+
+
 	return nGlobalEnv
 end
 
@@ -36,14 +52,14 @@ function tlenv.FileEnv(vSubject, vFileName, vAst)
 		subject = vSubject,
 		filename = vFileName,
 		unique_table_list = {},
-		region_list = nil,
 
-
+		-- region
+		scope_list = nil,
 
 		-- ident
-		ident_tree = nil,
-		cur_ident_table = nil,
-		root_ident_table = nil,
+		ident_list = nil,
+
+		root_scope = nil,
 	}
 	return env
 end
@@ -57,20 +73,6 @@ function tlenv.begin_file(vGlobalEnv, vSubject, vFileName, vAst)
 	vGlobalEnv.file_env_dict[vFileName] = nFileEnv
 	vGlobalEnv.cur_env = nFileEnv
 
-
-	-- create ident list
-	nFileEnv.ident_list = {vGlobalEnv._G_node}
-
-	-- create root ident table
-	local nRootIdentTable = tleIdent.new_table(nil, vAst)
-	nFileEnv.cur_ident_table = nRootIdentTable
-	nFileEnv.root_ident_table = nRootIdentTable
-
-	-- put _G into root ident table
-	nRootIdentTable[1] = vGlobalEnv._G_ident
-	nRootIdentTable.record_dict["_G"] = 1
-	nRootIdentTable.record_dict["_ENV"] = 1
-
 end
 
 function tlenv.end_file(vGlobalEnv)
@@ -79,10 +81,48 @@ function tlenv.end_file(vGlobalEnv)
 	vGlobalEnv.cur_env = vGlobalEnv.env_stack[nLastIndex - 1]
 end
 
-function tlenv.begin_scope()
+function tlenv.create_scope(vFileEnv, vCurScope, vNode)
+	local nNewIndex = #vFileEnv.scope_list + 1
+	local nNextScope = {
+		tag = "Scope",
+		node = vNode,
+		record_dict = vCurScope and setmetatable({}, {
+			__index=vCurScope.record_dict
+		}) or {},
+		refer_scope = nNewIndex,
+	}
+	vFileEnv.scope_list[nNewIndex] = nNextScope
+	if vCurScope then
+		vCurScope[#vCurScope + 1] = nNextScope
+	end
+	return nNextScope
 end
 
-function tlenv.end_scope()
+function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
+	local nNewIndex = #vFileEnv.ident_list + 1
+	local nIdent = nil
+	if vIdentNode.tag == "Id" then
+		nIdent = { tag = "IdentDefine", node=vIdentNode, vIdentNode[1], nNewIndex}
+	elseif vIdent.tag == "Dots" then
+		nIdent = { tag = "IdentDefine", node=vIdentNode, "...", nNewIndex}
+	else
+		error("ident type error:"..tostring(vIdent.tag))
+	end
+	vFileEnv.ident_list[nNewIndex] = nIdent
+	vCurScope.record_dict[nIdent[1]] = nNewIndex
+	vCurScope[#vCurScope + 1] = nIdent
+	return nIdent
 end
+
+function tlenv.dump(vFileEnv)
+	return tlutils.dumpLambda(vFileEnv.root_scope, function(child)
+		if child.tag == "Scope" then
+			return child.node, "", nil
+		else
+			return child.node, nil, table.concat(child, ",")
+		end
+	end)
+end
+
 
 return tlenv

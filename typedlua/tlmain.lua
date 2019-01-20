@@ -46,9 +46,9 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	print("==========================================tlvRefer=======================")
 
-	tlvRefer.refer(nFileEnv, ast)
+	tlvRefer.refer(nFileEnv)
 	--print(seri(identTree))
-	print(tleIdent.dump(nFileEnv))
+	print(tlenv.dump(nFileEnv))
 
 	print("==========================================tlvBreadth=======================")
 	tlvBreadth.visit(nFileEnv)
