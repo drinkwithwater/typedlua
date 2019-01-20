@@ -11,7 +11,6 @@ local tlvRefer = require "typedlua/tlvRefer"
 local tlvBreadth = require "typedlua/tlvBreadth"
 
 -- utils
-local tleIdent = require "typedlua/tleIdent"
 local seri = require "typedlua/seri"
 local tlutils = require "typedlua/tlutils"
 local tltype = require "typedlua/tltype"

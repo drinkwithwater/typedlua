@@ -2,7 +2,6 @@
 This module implements some env setting
 ]]
 
-local tleIdent = require "typedlua/tleIdent"
 local tlast = require "typedlua/tlast"
 local tlenv = {}
 local tlutils = require "typedlua/tlutils"
@@ -19,7 +18,7 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nNode= tlast.ident(0, "_G")
 	nNode.l=0
 	nNode.c=0
-	nNode.refer_ident = tlenv.G_REFER -- tleIdent.ident_define(nIdentTree, env_node)
+	nNode.refer_ident = tlenv.G_REFER
 
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
@@ -100,14 +99,21 @@ end
 
 function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	local nNewIndex = #vFileEnv.ident_list + 1
-	local nIdent = nil
+	local nName
 	if vIdentNode.tag == "Id" then
-		nIdent = { tag = "IdentDefine", node=vIdentNode, vIdentNode[1], nNewIndex}
+		nName = vIdentNode[1]
 	elseif vIdent.tag == "Dots" then
-		nIdent = { tag = "IdentDefine", node=vIdentNode, "...", nNewIndex}
+		nName = "..."
 	else
 		error("ident type error:"..tostring(vIdent.tag))
 	end
+	local nIdent = {
+		tag = "IdentDefine",
+		node=vIdentNode,
+		refer_ident=nNewIndex,
+		nName,
+		nNewIndex,
+	}
 	vFileEnv.ident_list[nNewIndex] = nIdent
 	vCurScope.record_dict[nIdent[1]] = nNewIndex
 	vCurScope[#vCurScope + 1] = nIdent

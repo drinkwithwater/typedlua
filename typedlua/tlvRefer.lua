@@ -2,7 +2,6 @@
 This module add refer_ident & refer_region to some node.
 ]]
 local tlenv = require "typedlua.tlenv"
-local tleIdent = require "typedlua.tleIdent"
 local tlast = require "typedlua.tlast"
 local tlvisitor = require "typedlua.tlvisitor"
 local tlutils = require "typedlua.tlutils"
@@ -156,7 +155,7 @@ function tlvRefer.ident_refer(visitor, vIdentNode)
 		local nName = "..."
 		vIdentNode.refer_ident = assert(nCurScope.record_dict[nName], "dot no refer")
 	else
-		error("tleIdent refer error tag"..tostring(vIdentNode.tag))
+		error("ident refer error tag"..tostring(vIdentNode.tag))
 	end
 end
 
