@@ -9,13 +9,13 @@ local tlvRefer = {}
 
 local visitor_before = {
 	Do=function(visitor, stm)
-		tleIdent.begin_scope(visitor.ident_tree, stm)
+		tleIdent.begin_scope(visitor.file_env, stm)
 	end,
 	While=function(visitor, stm)
-		tleIdent.begin_scope(visitor.ident_tree, stm)
+		tleIdent.begin_scope(visitor.file_env, stm)
 	end,
 	Repeat=function(visitor, stm)
-		tleIdent.begin_scope(visitor.ident_tree, stm)
+		tleIdent.begin_scope(visitor.file_env, stm)
 	end,
 }
 
@@ -30,25 +30,25 @@ local visitor_override = {
 		else
 			block_node = stm[4]
 		end
-		tleIdent.begin_scope(visitor.ident_tree, stm)
+		tleIdent.begin_scope(visitor.file_env, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, block_node)
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 	Forin=function(visitor, stm, node_visit)
 		node_visit(visitor, stm[2])
 
-		tleIdent.begin_scope(visitor.ident_tree, stm)
+		tleIdent.begin_scope(visitor.file_env, stm)
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false
 		node_visit(visitor, stm[3])
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 	Function = function(visitor, func, node_visit)
-		tleIdent.begin_scope(visitor.ident_tree, func)
+		tleIdent.begin_scope(visitor.file_env, func)
 		visitor.define_pos = true
 		node_visit(visitor, func[1])
 		visitor.define_pos = false
@@ -57,15 +57,15 @@ local visitor_override = {
 		else
 			node_visit(visitor, func[2])
 		end
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 	Block=function(visitor, stm, node_visit, self_visit)
 		local stack = visitor.stack
 		local if_stm = stack[#stack - 1]
 		if if_stm and if_stm.tag == "If" then
-			tleIdent.begin_scope(visitor.ident_tree, stm)
+			tleIdent.begin_scope(visitor.file_env, stm)
 			self_visit(visitor, stm)
-			tleIdent.end_scope(visitor.ident_tree)
+			tleIdent.end_scope(visitor.file_env)
 		else
 			self_visit(visitor, stm)
 		end
@@ -86,17 +86,18 @@ local visitor_override = {
 	end,
 	Dots=function(visitor, node)
 		if visitor.define_pos then
-			node.refer = tleIdent.ident_define(visitor.ident_tree, node)
+			node.refer = tleIdent.ident_define(visitor.file_env, node)
 		else
 			-- TODO for ... in global
-			node.refer = assert(tleIdent.ident_refer(visitor.ident_tree, node))
+			error("... TODO in chunk scope")
+			node.refer = assert(tleIdent.ident_refer(visitor.file_env, node))
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
-			node.refer = tleIdent.ident_define(visitor.ident_tree, node)
+			node.refer = tleIdent.ident_define(visitor.file_env, node)
 		else
-			local refer = tleIdent.ident_refer(visitor.ident_tree, node)
+			local refer = tleIdent.ident_refer(visitor.file_env, node)
 			if refer then
 				node.refer = refer
 			else
@@ -106,7 +107,7 @@ local visitor_override = {
 				-- ident
 				local e1 = tlast.ident(node.pos, "_ENV")
 				e1.l, e1.c = node.l, node.c
-				e1.refer = tleIdent.ident_refer(visitor.ident_tree, e1)
+				e1.refer = tleIdent.ident_refer(visitor.file_env, e1)
 				node[1] = e1
 
 				-- key
@@ -120,35 +121,29 @@ local visitor_override = {
 
 local visitor_after = {
 	Do=function(visitor, stm)
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 	While=function(visitor, stm)
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 	Repeat=function(visitor, stm)
-		tleIdent.end_scope(visitor.ident_tree)
+		tleIdent.end_scope(visitor.file_env)
 	end,
 }
 
 
-function tlvRefer.refer(vGlobalEnv, ast)
-	local nIdentTree = tleIdent.new_tree(vGlobalEnv, ast)
+function tlvRefer.refer(vFileEnv)
 	local visitor = {
-		ident_tree = nIdentTree,
+		file_env = vFileEnv,
 		before = visitor_before,
 		override = visitor_override,
 		after = visitor_after,
 	}
-	-- TODO set type
-	local env_node = tlast.ident(0, "_ENV")
-	env_node.l=0
-	env_node.c=0
-	env_node.refer = tleIdent.ident_define(nIdentTree, env_node)
-	tleIdent.begin_scope(nIdentTree, ast)
-	tlvisitor.visit_raw(ast, visitor)
-	tleIdent.end_scope(nIdentTree)
+	tleIdent.begin_scope(vFileEnv, vFileEnv.ast)
+	tlvisitor.visit_raw(vFileEnv.ast, visitor)
+	tleIdent.end_scope(vFileEnv)
 
-	return nIdentTree
+	return vFileEnv
 end
 
 return tlvRefer

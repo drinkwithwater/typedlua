@@ -34,6 +34,7 @@ interface IdentTable
 	record_dict:{string:integer}
 end
 ]]
+
 function tleIdent.new_table(vParent, vStmNode)
 	local nObj = {
 		tag = "IdentTable",
@@ -46,51 +47,31 @@ function tleIdent.new_table(vParent, vStmNode)
 	return nObj
 end
 
---[[@
-interface IdentTree
-	tag:"IdentTree"
-	cur_table:IdentTable?
-	root_table:IdentTable?
-	record_dict:{string:integer}
-	[integer]:IdentDefine|IdentTree
-end
-]]
-
---@(IdentTree, AstStm)
-function tleIdent.new_tree(vFileEnv, vAst)
-	local nCurTable = tleIdent.new_table(nil, vAst)
-	local nObj = {
-		tag = "IdentTree",
-		cur_table = nCurTable,
-		root_table = nCurTable,
-	}
-	return nObj
+--@(FileEnv, AstStm)
+function tleIdent.begin_scope(vFileEnv, vStmNode)
+	local nNewTable = tleIdent.new_table(vFileEnv.cur_ident_table, vStmNode)
+	vFileEnv.cur_ident_table[#vFileEnv.cur_ident_table + 1] = nNewTable
+	vFileEnv.cur_ident_table = nNewTable
 end
 
---@(IdentTree, AstStm)
-function tleIdent.begin_scope(vTree, vStmNode)
-	local new_table = tleIdent.new_table(vTree.cur_table, vStmNode)
-	vTree.cur_table[#vTree.cur_table + 1] = new_table
-	vTree.cur_table = new_table
+function tleIdent.end_scope(vFileEnv)
+	assert(vFileEnv.cur_ident_table.parent)
+	local nParent = vFileEnv.cur_ident_table.parent
+	vFileEnv.cur_ident_table.parent = nil
+	vFileEnv.cur_ident_table = nParent
 end
 
-function tleIdent.end_scope(vTree)
-	assert(vTree.cur_table.parent)
-	local nParent = vTree.cur_table.parent
-	vTree.cur_table.parent = nil
-	vTree.cur_table = nParent
-end
-
-function tleIdent.ident_define(vTree, vIdent)
-	local nNewIndex = #vTree + 1
+function tleIdent.ident_define(vFileEnv, vIdent)
+	local nIdentList = vFileEnv.ident_list
+	local nNewIndex = #nIdentList + 1
 	local nNewIdent = tleIdent.new_ident(vIdent, nNewIndex)
-	vTree[nNewIndex] = nNewIdent
-	vTree.cur_table[#vTree.cur_table + 1] = nNewIdent
-	vTree.cur_table.record_dict[nNewIdent[1]] = nNewIndex
+	nIdentList[nNewIndex] = nNewIdent
+	vFileEnv.cur_ident_table[#vFileEnv.cur_ident_table + 1] = nNewIdent
+	vFileEnv.cur_ident_table.record_dict[nNewIdent[1]] = nNewIndex
 	return nNewIndex
 end
 
-function tleIdent.ident_refer(vTree, vIdent)
+function tleIdent.ident_refer(vFileEnv, vIdent)
 	local nName
 	if vIdent.tag == "Id" then
 		nName = vIdent[1]
@@ -100,12 +81,12 @@ function tleIdent.ident_refer(vTree, vIdent)
 		error("tleIdent refer error tag"..tostring(vIdent.tag))
 	end
 	-- local refer_index = assert(tree.cur_table.record_dict[name], string.format("ident_refer fail, %s,%s", ident.l, ident.c))
-	local nReferIndex = vTree.cur_table.record_dict[nName]
+	local nReferIndex = vFileEnv.cur_ident_table.record_dict[nName]
 	return nReferIndex
 end
 
-function tleIdent.dump(vTree)
-	return tlutils.dumpLambda(vTree.root_table, function(child)
+function tleIdent.dump(vFileEnv)
+	return tlutils.dumpLambda(vFileEnv.root_ident_table, function(child)
 		if child.tag == "IdentTable" then
 			return child.node, "", nil
 		else

@@ -27,32 +27,33 @@ function tlmain.main(subject, filename, strict, integer, color)
 		return
 	end
 
-	local global_env = tlenv.GlobalEnv(subject, filename, ast)
+	local nGlobalEnv = tlenv.GlobalEnv(filename)
+	tlenv.begin_file(nGlobalEnv, subject, filename, ast)
+
 	-- print(tlutils.dumpast(global_env.ast))
 
-	print("==========================================tlvRequire=======================")
-	tlvRequire.requireAll(global_env)
+	-- print("==========================================tlvRequire=======================")
+	-- tlvRequire.requireAll(global_env)
 
-	print("==========================================tlvDefine=======================")
-	tlvDefine.defineAll(global_env)
+	-- print("==========================================tlvDefine=======================")
+	-- tlvDefine.defineAll(global_env)
 
 	--[[for k,v in pairs(global_env.interface_dict) do
 		print(k, tlutils.dumptype(v))
 	end]]
-	print(tlutils.dumpast(global_env.ast))
+	local nFileEnv = nGlobalEnv.cur_env
+	print(tlutils.dumpast(nFileEnv.ast))
 
 	print("==========================================tlvRefer=======================")
 
-	local identTree = tlvRefer.refer(global_env, ast)
+	tlvRefer.refer(nFileEnv, ast)
 	--print(seri(identTree))
-	print(tleIdent.dump(identTree))
-
-	global_env.ident_tree = identTree
+	print(tleIdent.dump(nFileEnv))
 
 	print("==========================================tlvBreadth=======================")
-	tlvBreadth.visit(global_env)
+	tlvBreadth.visit(nFileEnv)
 
-	print(tlutils.dumpLambda(global_env.ast, function(node)
+	print(tlutils.dumpLambda(nFileEnv.ast, function(node)
 		if node.type then
 			return node, "", node.type.tag
 		else
@@ -63,6 +64,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	print(tlchecker.error_msgs(msgs,true,false,false))]]
 
+	tlenv.end_file(nFileEnv)
 	return ast
 end
 
