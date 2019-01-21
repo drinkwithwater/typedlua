@@ -18,7 +18,7 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nNode= tlast.ident(0, "_G")
 	nNode.l=0
 	nNode.c=0
-	nNode.refer_ident = tlenv.G_REFER
+	nNode.ident_refer = tlenv.G_REFER
 
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
@@ -26,20 +26,23 @@ function tlenv.GlobalEnv(vMainFileName)
 		interface_dict = {},
 		env_stack = {},
 		cur_env = nil,
-		_G_node = nNode,
-		_G_ident = nIdent,
+		_G_node = nil,
+		_G_ident = nil,
 		scope_list = {},
 		ident_list = {}
 	}
 
 	-- create and set root scope
 	local nRootScope = tlenv.create_scope(nGlobalEnv, nil, nNode)
-	nGlobalEnv.root_scope = nRootScope
 
 	-- create and bind ident
 	local nIdent = tlenv.create_ident(nGlobalEnv, nRootScope, nNode)
 	nRootScope.record_dict["_G"] = tlenv.G_REFER
 	nRootScope.record_dict["_ENV"] = tlenv.G_REFER
+
+	nGlobalEnv.root_scope = nRootScope
+	nGlobalEnv._G_node = nNode
+	nGlobalEnv._G_ident = nIdent
 
 
 	return nGlobalEnv
@@ -88,7 +91,7 @@ function tlenv.create_scope(vFileEnv, vCurScope, vNode)
 		record_dict = vCurScope and setmetatable({}, {
 			__index=vCurScope.record_dict
 		}) or {},
-		refer_scope = nNewIndex,
+		scope_refer = nNewIndex,
 	}
 	vFileEnv.scope_list[nNewIndex] = nNextScope
 	if vCurScope then
@@ -102,15 +105,15 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	local nName
 	if vIdentNode.tag == "Id" then
 		nName = vIdentNode[1]
-	elseif vIdent.tag == "Dots" then
+	elseif vIdentNode.tag == "Dots" then
 		nName = "..."
 	else
-		error("ident type error:"..tostring(vIdent.tag))
+		error("ident type error:"..tostring(vIdentNode.tag))
 	end
 	local nIdent = {
 		tag = "IdentDefine",
 		node=vIdentNode,
-		refer_ident=nNewIndex,
+		ident_refer=nNewIndex,
 		nName,
 		nNewIndex,
 	}

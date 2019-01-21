@@ -1,5 +1,5 @@
 --[[
-This module add refer_ident & refer_region to some node.
+This module add ident_refer & scope_refer & region_refer to some node.
 ]]
 local tlenv = require "typedlua.tlenv"
 local tlast = require "typedlua.tlast"
@@ -88,14 +88,14 @@ local visitor_override = {
 		if visitor.define_pos then
 			tlvRefer.ident_define(visitor, node)
 		else
-			tlvRefer.ident_refer(visitor, node)
+			tlvRefer.ident_use(visitor, node)
 		end
 	end,
 	Id=function(visitor, node)
 		if visitor.define_pos then
 			tlvRefer.ident_define(visitor, node)
 		else
-			tlvRefer.ident_refer(visitor, node)
+			tlvRefer.ident_use(visitor, node)
 		end
 	end,
 	Chunk=function(visitor, chunk, node_visit, self_visit)
@@ -121,7 +121,10 @@ function tlvRefer.scope_begin(visitor, vNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
 	local nNextScope = tlenv.create_scope(visitor.file_env, nCurScope, vNode)
 	table.insert(visitor.scope_stack, nNextScope)
-	vNode.refer_scope = nNextScope.refer_scope
+	vNode.scope_refer = nNextScope.scope_refer
+	if vNode.tag == "Function" or vNode.tag == "Chunk" then
+		vNode.region_refer = vNode.scope_refer
+	end
 	return nNextScope
 end
 
@@ -129,13 +132,36 @@ function tlvRefer.scope_end(visitor)
 	table.remove(visitor.scope_stack)
 end
 
-function tlvRefer.ident_refer(visitor, vIdentNode)
+function tlvRefer.get_region_refer(visitor)
+	for i=#visitor.scope_stack, 1, -1 do
+		local nScopeNode = visitor.scope_stack[i].node
+		if nScopeNode.tag == "Function" or nScopeNode.tag == "Chunk" then
+			return nScopeNode.region_refer
+		end
+	end
+	error("out side region...")
+end
+
+function tlvRefer.ident_define(visitor, vIdentNode)
+	-- create and set ident_refer
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+	local nNewIdent = tlenv.create_ident(visitor.file_env, nCurScope, vIdentNode)
+	vIdentNode.ident_refer = nNewIdent.ident_refer
+	-- set region_refer
+	local nRegionRefer = tlvRefer.get_region_refer(visitor)
+	nNewIdent.region_refer = nRegionRefer
+	vIdentNode.region_refer = nRegionRefer
+end
+
+function tlvRefer.ident_use(visitor, vIdentNode)
+	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+	local nRegionRefer = tlvRefer.get_region_refer(visitor)
 	if vIdentNode.tag == "Id" then
 		local nName = vIdentNode[1]
-		local nRefer = nCurScope.record_dict[nName]
-		if nRefer then
-			vIdentNode.refer_ident = nRefer
+		local nIdentRefer = nCurScope.record_dict[nName]
+		if nIdentRefer then
+			vIdentNode.ident_refer = nIdentRefer
+			vIdentNode.region_refer = nRegionRefer
 		else
 			-- unrefered ident converse to global
 			vIdentNode.tag = "Index"
@@ -143,7 +169,8 @@ function tlvRefer.ident_refer(visitor, vIdentNode)
 			-- ident
 			local e1 = tlast.ident(vIdentNode.pos, "_ENV")
 			e1.l, e1.c = vIdentNode.l, vIdentNode.c
-			e1.refer_ident = tlenv.G_REFER
+			e1.ident_refer = tlenv.G_REFER
+			e1.region_refer = nRegionRefer
 			vIdentNode[1] = e1
 
 			-- key
@@ -153,17 +180,11 @@ function tlvRefer.ident_refer(visitor, vIdentNode)
 		end
 	elseif vIdentNode.tag == "Dots" then
 		local nName = "..."
-		vIdentNode.refer_ident = assert(nCurScope.record_dict[nName], "dot no refer")
+		vIdentNode.ident_refer = assert(nCurScope.record_dict[nName], "dot no refer")
+		vIdentNode.region_refer = nRegionRefer
 	else
 		error("ident refer error tag"..tostring(vIdentNode.tag))
 	end
-end
-
-function tlvRefer.ident_define(visitor, vIdentNode)
-	-- create from ident_list
-	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
-	local nNewIdent = tlenv.create_ident(visitor.file_env, nCurScope, vIdentNode)
-	vIdentNode.refer_ident = nNewIdent[2]
 end
 
 function tlvRefer.refer(vFileEnv)

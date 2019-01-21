@@ -110,7 +110,7 @@ local visitor_stm = {
 					tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nRightType, nVarNode.left_deco)
 				elseif nVarNode.tag == "Id" then
 					local nWrapper = tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
-					local nIdent = visitor.env.ident_list[nVarNode.refer_ident]
+					local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
 					-- TODO merge namenode??????????????????
 					oper_merge(visitor, nIdent, nWrapper)
 				else
@@ -131,7 +131,7 @@ local visitor_stm = {
 			for i, nNameNode in ipairs(nNameList) do
 				local nRightType = nTypeList[i]
 				local nWrapper = tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
-				local nIdent = visitor.env.ident_list[nNameNode.refer_ident]
+				local nIdent = visitor.env.ident_list[nNameNode.ident_refer]
 				oper_merge(visitor, nNameNode, nWrapper)
 				oper_merge(visitor, nIdent, nWrapper)
 			end
@@ -234,7 +234,7 @@ local visitor_exp = {
 	},
 	Id={
 		before=function(visitor, node)
-			local ident = visitor.env.ident_list[node.refer_ident]
+			local ident = visitor.env.ident_list[node.ident_refer]
 			if node == ident.node then
 				-- ident set itself
 				if node.left_deco then
