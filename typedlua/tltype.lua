@@ -167,11 +167,6 @@ function tltype.isPrim (t)
   return t.tag == "TPrim"
 end
 
--- tostring : (type) -> (string)
-function tltype.tostring (t, n)
-	error("TODO, tltype.tostring")
-end
-
 function tltype.typeerror (env, tag, msg, pos)
   local function lineno (s, i)
     if i == 1 then return 1, 1 end
@@ -226,6 +221,54 @@ function tltype.general(vType)
 	else
 		return vType
 	end
+end
+
+local formatterDict ={
+	TGlobalVariable	= function(vType)
+		return string.format("TGlobalVariable(%s)", vType[1])
+	end,
+	TUnion			= function(vUnionType)
+		local nList = {}
+		for i, vType in ipairs(vUnionType) do
+			nList[#nList + 1] = tltype.tostring(vType)
+		end
+		return table.concat(nList, "|")
+	end,
+	TAny			= function(vType)
+		return "any"
+	end,
+
+	TLiteral		= function(vType)
+		if vType.tag == "string" then
+			return string.format("%q", vType[1])
+		else
+			return tostring(vType[1])
+		end
+	end,
+	TBase			= function(vType)
+		return vType[1]
+	end,
+	TNil			= function(vType)
+		return "nil"
+	end,
+	TTable			= function(vType)
+		return vType.sub_tag
+	end,
+	TFunction		= function(vType)
+		return tltype.tostring(vType[1]).."->"..tltype.tostring(vType[2])
+	end,
+	TTuple			= function()
+		local nList = {"("}
+		for i, vType in ipairs(vUnionType) do
+			nList[#nList + 1] = tltype.tostring(vType)
+		end
+		nList[#nList + 1] = ")"
+		return table.concat(nList, ",")
+	end
+}
+function tltype.tostring (vType)
+	local nFunc = formatterDict[vType.tag]
+	return vType.tag.."`"..nFunc(vType).."`"
 end
 
 return tltype

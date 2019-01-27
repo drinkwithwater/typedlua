@@ -47,7 +47,7 @@ local visitor_override = {
 		node_visit(visitor, stm[3])
 		tlvRefer.scope_end(visitor)
 	end,
-	Function = function(visitor, func, node_visit)
+	Function=function(visitor, func, node_visit)
 		tlvRefer.scope_begin(visitor, func)
 		visitor.define_pos = true
 		node_visit(visitor, func[1])
@@ -115,6 +115,15 @@ local visitor_after = {
 	Repeat=function(visitor, stm)
 		tlvRefer.scope_end(visitor)
 	end,
+
+	-- some node about open must contain region_refer
+	-- TODO write here or in tlvBreadth ?????
+	Call=function(visitor, vNode)
+		vNode.region_refer = assert(tlvRefer.get_region_refer(visitor), "region refer not found")
+	end,
+	Table=function(visitor, vNode)
+		vNode.region_refer = assert(tlvRefer.get_region_refer(visitor), "region refer not found")
+	end,
 }
 
 function tlvRefer.scope_begin(visitor, vNode)
@@ -147,21 +156,15 @@ function tlvRefer.ident_define(visitor, vIdentNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
 	local nNewIdent = tlenv.create_ident(visitor.file_env, nCurScope, vIdentNode)
 	vIdentNode.ident_refer = nNewIdent.ident_refer
-	-- set region_refer
-	local nRegionRefer = tlvRefer.get_region_refer(visitor)
-	nNewIdent.region_refer = nRegionRefer
-	vIdentNode.region_refer = nRegionRefer
 end
 
 function tlvRefer.ident_use(visitor, vIdentNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
-	local nRegionRefer = tlvRefer.get_region_refer(visitor)
 	if vIdentNode.tag == "Id" then
 		local nName = vIdentNode[1]
 		local nIdentRefer = nCurScope.record_dict[nName]
 		if nIdentRefer then
 			vIdentNode.ident_refer = nIdentRefer
-			vIdentNode.region_refer = nRegionRefer
 		else
 			-- unrefered ident converse to global
 			vIdentNode.tag = "Index"
@@ -169,8 +172,7 @@ function tlvRefer.ident_use(visitor, vIdentNode)
 			-- ident
 			local e1 = tlast.ident(vIdentNode.pos, "_ENV")
 			e1.l, e1.c = vIdentNode.l, vIdentNode.c
-			e1.ident_refer = tlenv.G_REFER
-			e1.region_refer = nRegionRefer
+			e1.ident_refer = tlenv.G_IDENT_REFER
 			vIdentNode[1] = e1
 
 			-- key
@@ -179,9 +181,9 @@ function tlvRefer.ident_use(visitor, vIdentNode)
 			vIdentNode[2] = e2
 		end
 	elseif vIdentNode.tag == "Dots" then
+		error("TODO dot refer not implement...")
 		local nName = "..."
 		vIdentNode.ident_refer = assert(nCurScope.record_dict[nName], "dot no refer")
-		vIdentNode.region_refer = nRegionRefer
 	else
 		error("ident refer error tag"..tostring(vIdentNode.tag))
 	end

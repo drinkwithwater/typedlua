@@ -9,6 +9,18 @@ tltRelation.CONTAIN_PART = CONTAIN_PART
 tltRelation.CONTAIN_FULL = CONTAIN_FULL
 tltRelation.CONTAIN_NIL = CONTAIN_NIL
 
+local function containFull()
+	return CONTAIN_FULL
+end
+
+local function containPart()
+	return CONTAIN_PART
+end
+
+local function containNil()
+	return CONTAIN_NIL
+end
+
 -- The first element in node are equal.
 local eq1 = function(vLeft, vRight)
 	if vLeft[1] == vRight[1] then
@@ -16,6 +28,10 @@ local eq1 = function(vLeft, vRight)
 	else
 		return CONTAIN_NIL
 	end
+end
+
+local function singleContainAny()
+	return CONTAIN_PART
 end
 
 local function singleContainUnion(vType, vUnion)
@@ -33,8 +49,12 @@ local function singleContainUnion(vType, vUnion)
 end
 
 local TypeContainDict = {
-	TAny={
-	},
+	TAny=setmetatable({},{
+		__index=function(vT, vSubTypeTag)
+			rawset(vT, vSubTypeTag, containFull)
+			return containFull
+		end
+	}),
 	TLiteral={
 		TLiteral=function(vLiteral, vSubLiteral)
 			if (vLiteral[1] == vSubLiteral[1]) then
@@ -43,12 +63,14 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TBase=false,
-		TGlobalVariable=false,
-		TTable=false,
-		TUnion=singleContainUnion,
-		TNil=false,
-		TFunction=false,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TBase			= containNil,
+		TGlobalVariable = containNil,
+		TTable			= containNil,
+		TNil			= containNil,
+		TFunction		= containNil,
 	},
 	TBase={
 		TLiteral=function(vBase, vSubLiteral)
@@ -77,25 +99,26 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TGlobalVariable=false,
-		TTable=false,
-		TUnion=singleContainUnion,
-		TNil=false,
-		TFunction=false,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TGlobalVariable	= containNil,
+		TTable			= containNil,
+		TNil			= containNil,
+		TFunction		= containNil,
 	},
 	TGlobalVariable={
-		TLiteral=false,
-		TBase=false,
-		TGlobalVariable=eq1,
-		TTable=false,
-		TUnion=singleContainUnion,
-		TNil=false,
-		TFunction=false,
+		TGlobalVariable	= eq1,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TLiteral		= containNil,
+		TBase			= containNil,
+		TTable			= containNil,
+		TNil			= containNil,
+		TFunction		= containNil,
 	},
 	TTable={
-		TLiteral=false,
-		TBase=false,
-		TGlobalVariable=false,
 		TTable=function(vLeftTable, vRightTable)
 			if vLeftTable.sub_tag == "TOpenTable" then
 				if vRightTable.sub_tag == "TOpenTable" then
@@ -151,7 +174,7 @@ local TypeContainDict = {
 								elseif nValueContainResult == CONTAIN_FULL then
 									nHashContainRight = true
 									break
-								elseif nValueContainReulst == CONTAIN_PART then
+								elseif nValueContainResult == CONTAIN_PART then
 									nPartContain = true
 									nHashContainRight = true
 									break
@@ -193,9 +216,14 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion=singleContainUnion,
-		TNil=false,
-		TFunction=false,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TLiteral		= containNil,
+		TBase			= containNil,
+		TGlobalVariable	= containNil,
+		TNil			= containNil,
+		TFunction		= containNil,
 	},
 	TUnion=setmetatable({
 		TUnion=function(vUnion, vSubUnion)
@@ -214,6 +242,7 @@ local TypeContainDict = {
 				return CONTAIN_FULL
 			end
 		end,
+		TAny=singleContainAny,
 		},{
 		__index=function(t, vSubTypeTag)
 			local nContain = function(vUnion, vSubType)
@@ -230,15 +259,15 @@ local TypeContainDict = {
 		end,
 	}),
 	TNil={
-		TLiteral=false,
-		TBase=false,
-		TGlobalVariable=false,
-		TTable=false,
-		TUnion=false,
-		TNil=function()
-			return CONTAIN_FULL
-		end,
-		TFunction=false,
+		TNil			= containFull,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TLiteral		= containNil,
+		TBase			= containNil,
+		TGlobalVariable	= containNil,
+		TTable			= containNil,
+		TFunction		= containNil,
 	},
 	TFunction={
 		TFunction=function(vLeftFuncType, vRightFuncType)
@@ -249,6 +278,14 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+
+		TLiteral		= containNil,
+		TBase			= containNil,
+		TGlobalVariable	= containNil,
+		TTable			= containNil,
+		TNil			= containNil,
 	}
 }
 

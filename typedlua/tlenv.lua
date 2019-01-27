@@ -6,7 +6,8 @@ local tlast = require "typedlua/tlast"
 local tlenv = {}
 local tlutils = require "typedlua/tlutils"
 
-tlenv.G_REFER = 1
+tlenv.G_IDENT_REFER = 1
+tlenv.G_SCOPE_REFER = 1
 
 function tlenv.GlobalEnv(vMainFileName)
 	-- function & chunk ?
@@ -18,7 +19,7 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nNode= tlast.ident(0, "_G")
 	nNode.l=0
 	nNode.c=0
-	nNode.ident_refer = tlenv.G_REFER
+	nNode.ident_refer = tlenv.G_IDENT_REFER
 
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
@@ -37,8 +38,8 @@ function tlenv.GlobalEnv(vMainFileName)
 
 	-- create and bind ident
 	local nIdent = tlenv.create_ident(nGlobalEnv, nRootScope, nNode)
-	nRootScope.record_dict["_G"] = tlenv.G_REFER
-	nRootScope.record_dict["_ENV"] = tlenv.G_REFER
+	nRootScope.record_dict["_G"] = tlenv.G_IDENT_REFER
+	nRootScope.record_dict["_ENV"] = tlenv.G_IDENT_REFER
 
 	nGlobalEnv.root_scope = nRootScope
 	nGlobalEnv._G_node = nNode

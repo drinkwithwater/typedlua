@@ -25,6 +25,7 @@ local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
 local tltOper = require "typedlua/tltOper"
 local tlvBreadth = {}
+local tlenv = require "typedlua/tlenv"
 
 local Nil = tltype.Nil()
 local Boolean = tltype.Boolean()
@@ -76,6 +77,7 @@ local visitor_stm = {
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and nParentNode.tag == "Function" and nParentNode.is_full_type then
 				visitor.func_block_list[#visitor.func_block_list + 1] = node
+				node.region_refer = assert(nParentNode.region_refer)
 			else
 				self_visit(visitor, node)
 			end
@@ -183,13 +185,23 @@ local visitor_exp = {
 
 	Function={
 		before=function(visitor, vFunctionNode)
+			visitor.region_stack[#visitor.region_stack + 1] = assert(vFunctionNode.region_refer)
 			if vFunctionNode.right_deco then
 				vFunctionNode.type = vFunctionNode.right_deco
 			else
-				print("function auto type TODO")
+				print("TODO:auto function deco for lambda")
+				-- auto deco for parameter
+				local nTypeList = {}
+				local nParList = vFunctionNode[1]
+				for k, nIdentNode in ipairs(nParList) do
+					nIdentNode.left_deco = tltype.Any()
+					nTypeList[k] = tltype.Any()
+				end
+				vFunctionNode.type = tltype.Function(tltype.Tuple(table.unpack(nTypeList)))
 			end
 		end,
 		after=function(visitor, vFunctionNode)
+			visitor.region_stack[#visitor.region_stack] = nil
 		end,
 	},
 	Table={
@@ -287,6 +299,14 @@ local visitor_exp = {
 			end
 		end
 	},
+	Chunk={
+		before=function(visitor, vChunkNode)
+			visitor.region_stack[#visitor.region_stack + 1] = assert(vChunkNode.region_refer)
+		end,
+		after=function(visitor, node)
+			visitor.region_stack[#visitor.region_stack] = nil
+		end
+	}
 }
 
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
@@ -298,13 +318,16 @@ function tlvBreadth.visit_block(block, visitor)
 	visitor.func_block_list = nil
 	for _, sub_block in pairs(nBlockList) do
 		-- TODO don't implement function first
+		visitor.region_stack[#visitor.region_stack + 1] = sub_block.region_refer
 		tlvBreadth.visit_block(sub_block, visitor)
+		visitor.region_stack[#visitor.region_stack] = nil
 	end
 end
 
 function tlvBreadth.visit(vFileEnv)
 	local visitor = {
 		object_dict = visitor_object_dict,
+		region_stack = {tlenv.G_SCOPE_REFER},
 		func_block_list = {},
 		env = vFileEnv,
 		log_error = log_error,
