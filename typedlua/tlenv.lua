@@ -3,8 +3,9 @@ This module implements some env setting
 ]]
 
 local tlast = require "typedlua/tlast"
-local tlenv = {}
+local tltPrime = require "typedlua/tltPrime"
 local tlutils = require "typedlua/tlutils"
+local tlenv = {}
 
 tlenv.G_IDENT_REFER = 1
 tlenv.G_SCOPE_REFER = 1
@@ -19,6 +20,7 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nNode= tlast.ident(0, "_G")
 	nNode.l=0
 	nNode.c=0
+	nNode.type = tltPrime
 	nNode.ident_refer = tlenv.G_IDENT_REFER
 
 	local nGlobalEnv = {

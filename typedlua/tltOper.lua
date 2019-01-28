@@ -7,7 +7,7 @@ local tltOper = {}
 
 local function check_type(visitor, vWrapper, vType)
 	if not tltRelation.sub(vWrapper.type, vType) then
-		visitor:log_error(vWrapper, tltype.tostring(vWrapper.type), "can't not belong", tltype.tostring(vType))
+		visitor:log_error(vWrapper, tltype.tostring(vWrapper.type), "can't belong to", tltype.tostring(vType))
 	end
 end
 
@@ -127,9 +127,7 @@ function tltOper._set_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
 				tltype.tostring(vRightType), "can't be assigned to decotype:",
 				tltype.tostring(vLeftDeco))
 		end
-		return {
-			type = vLeftDeco
-		}
+		-- return { type = vLeftDeco }
 	else
 		local nLeftType = vNameWrapper.type
 		if not tltRelation.sub(vRightType, nLeftType) then
@@ -137,9 +135,7 @@ function tltOper._set_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
 				tltype.tostring(vRightType), "can't be assigned to type:",
 				tltype.tostring(nLeftType))
 		end
-		return {
-			type = vRightType
-		}
+		-- return { type = vRightType }
 	end
 end
 

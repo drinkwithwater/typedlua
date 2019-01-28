@@ -239,11 +239,7 @@ local formatterDict ={
 	end,
 
 	TLiteral		= function(vType)
-		if vType.tag == "string" then
-			return string.format("%q", vType[1])
-		else
-			return tostring(vType[1])
-		end
+		return string.format("%q", vType[1])
 	end,
 	TBase			= function(vType)
 		return vType[1]
@@ -257,13 +253,12 @@ local formatterDict ={
 	TFunction		= function(vType)
 		return tltype.tostring(vType[1]).."->"..tltype.tostring(vType[2])
 	end,
-	TTuple			= function()
-		local nList = {"("}
-		for i, vType in ipairs(vUnionType) do
+	TTuple			= function(vTuple)
+		local nList = {}
+		for i, vType in ipairs(vTuple) do
 			nList[#nList + 1] = tltype.tostring(vType)
 		end
-		nList[#nList + 1] = ")"
-		return table.concat(nList, ",")
+		return "("..table.concat(nList, ",")..")"
 	end
 }
 function tltype.tostring (vType)

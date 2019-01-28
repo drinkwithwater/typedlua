@@ -173,11 +173,12 @@ function tlvRefer.ident_use(visitor, vIdentNode)
 			local e1 = tlast.ident(vIdentNode.pos, "_ENV")
 			e1.l, e1.c = vIdentNode.l, vIdentNode.c
 			e1.ident_refer = tlenv.G_IDENT_REFER
-			vIdentNode[1] = e1
 
 			-- key
 			local e2 = tlast.exprString(vIdentNode.pos, vIdentNode[1])
 			e2.l, e2.c = vIdentNode.l, vIdentNode.c
+
+			vIdentNode[1] = e1
 			vIdentNode[2] = e2
 		end
 	elseif vIdentNode.tag == "Dots" then

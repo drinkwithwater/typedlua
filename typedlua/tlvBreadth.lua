@@ -111,10 +111,10 @@ local visitor_stm = {
 				if nVarNode.tag == "Index" then
 					tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nRightType, nVarNode.left_deco)
 				elseif nVarNode.tag == "Id" then
-					local nWrapper = tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
-					local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
+					tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
+					-- local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
 					-- TODO merge namenode??????????????????
-					oper_merge(visitor, nIdent, nWrapper)
+					-- oper_merge(visitor, nIdent, nWrapper)
 				else
 					error("assign to node:tag="..tostring(node.tag))
 				end
@@ -122,8 +122,14 @@ local visitor_stm = {
 		end,
 	},
 	Localrec={
-		after=function(visitor, node)
-			print("local function TODO")
+		after=function(visitor, vLocalrecNode)
+			local nNameNode = vLocalrecNode[1][1]
+			local nExprNode = vLocalrecNode[2][1]
+
+			local nWrapper = tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.left_deco)
+			local nIdent = visitor.env.ident_list[nNameNode.ident_refer]
+			oper_merge(visitor, nNameNode, nWrapper)
+			-- oper_merge(visitor, nIdent, nWrapper)
 		end,
 	},
 	Local={
@@ -135,7 +141,7 @@ local visitor_stm = {
 				local nWrapper = tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
 				local nIdent = visitor.env.ident_list[nNameNode.ident_refer]
 				oper_merge(visitor, nNameNode, nWrapper)
-				oper_merge(visitor, nIdent, nWrapper)
+				-- oper_merge(visitor, nIdent, nWrapper)
 			end
 		end,
 	},

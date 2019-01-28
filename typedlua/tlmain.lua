@@ -41,11 +41,11 @@ function tlmain.main(subject, filename, strict, integer, color)
 		print(k, tlutils.dumptype(v))
 	end]]
 	local nFileEnv = nGlobalEnv.cur_env
-	print(tlutils.dumpast(nFileEnv.ast))
 
 	print("==========================================tlvRefer=======================")
 
 	tlvRefer.refer(nFileEnv)
+	print(tlutils.dumpast(nFileEnv.ast))
 	--print(seri(identTree))
 	print(tlenv.dump(nFileEnv))
 
