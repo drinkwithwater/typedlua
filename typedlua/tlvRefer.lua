@@ -182,7 +182,6 @@ function tlvRefer.ident_use(visitor, vIdentNode)
 			vIdentNode[2] = e2
 		end
 	elseif vIdentNode.tag == "Dots" then
-		error("TODO dot refer not implement...")
 		local nName = "..."
 		vIdentNode.ident_refer = assert(nCurScope.record_dict[nName], "dot no refer")
 	else

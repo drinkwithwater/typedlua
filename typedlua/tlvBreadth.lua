@@ -202,6 +202,9 @@ local visitor_exp = {
 				for k, nIdentNode in ipairs(nParList) do
 					nIdentNode.left_deco = tltype.Any()
 					nTypeList[k] = tltype.Any()
+					if nIdentNode.tag == "Dots" then
+						print("TODO:auto type for dots")
+					end
 				end
 				vFunctionNode.type = tltype.Function(tltype.Tuple(table.unpack(nTypeList)))
 			end
@@ -213,9 +216,11 @@ local visitor_exp = {
 	Table={
 		after=function(visitor, node)
 			local nList = {}
-			for k, nSubNode in ipairs(node) do
+			for i, nSubNode in ipairs(node) do
 				if nSubNode.tag == "Pair" then
 					nList[#nList + 1] = tltable.Field(nSubNode[1].type, tltype.general(nSubNode[2].type))
+				elseif nSubNode.tag == "Dots" then
+					print("TODO:Dots in table constructor...")
 				else
 					nList[#nList + 1] = tltable.Field(tltype.Literal(i), tltype.general(nSubNode.type))
 				end
@@ -298,10 +303,18 @@ local visitor_exp = {
 	Dots={
 		after=function(visitor, vDotsNode)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
-			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
-				-- pass
+			local nIdent = visitor.env.ident_list[vDotsNode.ident_refer]
+			if nIdent.node == vDotsNode then
+				-- dot define
+				if vDotsNode.left_deco then
+					vDotsNode.type = vDotsNode.left_deco
+				end
 			else
-				vDotsNode.type = tltype.first(vDotsNode.type)
+				if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Table") then
+					vDotsNode.type = nIdent.node.type
+				else
+					vDotsNode.type = tltype.first(nIdent.node.type)
+				end
 			end
 		end
 	},
