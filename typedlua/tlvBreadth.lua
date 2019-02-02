@@ -83,6 +83,25 @@ local visitor_stm = {
 			end
 		end,
 	},
+	Forin={
+		override=function(visitor, vForinNode, vNodeVisit, vSelfVisit)
+			vNodeVisit(visitor, vForinNode[2])
+			local nNextTableInitTuple = tltOper._reforge_tuple(visitor, vForinNode[2])
+			-- next, {}, nil
+			local nFunctionType = nNextTableInitTuple[1]
+			local nArgTypeList = tltype.Tuple()
+			for i = 2, #nNextTableInitTuple do
+				nArgTypeList[i-1] = nNextTableInitTuple[i]
+			end
+			local nForinTuple = tltOper._call(visitor, vForinNode[2], nFunctionType, nArgTypeList)
+			vNodeVisit(visitor, vForinNode[1])
+			for i, nNameNode in ipairs(vForinNode[1]) do
+				local nRightType = nForinTuple[i]
+				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
+			end
+			vNodeVisit(visitor, vForinNode[3])
+		end
+	},
 	Fornum={
 		override=function(visitor, node, visit_node, self_visit)
 			for i = 1, #node - 1 do
@@ -91,13 +110,12 @@ local visitor_stm = {
 			end
 			-- oper subNode 1
 			local nNameNode = node[1]
-			local nWrapper = tltOper._init_assign(visitor, nNameNode, tltype.Number())
-			oper_merge(visitor, nNameNode, nWrapper)
+			tltOper._init_assign(visitor, nNameNode, tltype.Number())
 
 			-- oper subNode 2, 3,..., #node-1
 			for i = 2, #node - 1 do
 				local nSubNode = node[i]
-				tltOper._assert(visitor, nSubNode, tltype.Number())
+				tltOper._fornum(visitor, nSubNode, nSubNode.type)
 			end
 			visit_node(visitor, node[#node])
 		end,
@@ -109,7 +127,7 @@ local visitor_stm = {
 			for i, nVarNode in ipairs(nVarList) do
 				local nRightType = nTypeList[i]
 				if nVarNode.tag == "Index" then
-					tltOper._index_set(visitor, nVarNode[1], nVarNode[2], nRightType, nVarNode.left_deco)
+					tltOper._index_set(visitor, nVarNode[1], nVarNode[2].type, nRightType, nVarNode.left_deco)
 				elseif nVarNode.tag == "Id" then
 					tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
 					-- local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
@@ -126,10 +144,7 @@ local visitor_stm = {
 			local nNameNode = vLocalrecNode[1][1]
 			local nExprNode = vLocalrecNode[2][1]
 
-			local nWrapper = tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.left_deco)
-			local nIdent = visitor.env.ident_list[nNameNode.ident_refer]
-			oper_merge(visitor, nNameNode, nWrapper)
-			-- oper_merge(visitor, nIdent, nWrapper)
+			tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.left_deco)
 		end,
 	},
 	Local={
@@ -138,10 +153,7 @@ local visitor_stm = {
 			local nTypeList = tltOper._reforge_tuple(visitor, node[2])
 			for i, nNameNode in ipairs(nNameList) do
 				local nRightType = nTypeList[i]
-				local nWrapper = tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
-				local nIdent = visitor.env.ident_list[nNameNode.ident_refer]
-				oper_merge(visitor, nNameNode, nWrapper)
-				-- oper_merge(visitor, nIdent, nWrapper)
+				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
 			end
 		end,
 	},
@@ -239,12 +251,10 @@ local visitor_exp = {
 			local nOP = vNode[1]
 			if #vNode== 3 then
 				local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
-				local nWrapper = nOper(visitor, vNode[2], vNode[3])
-				oper_merge(visitor, vNode, nWrapper)
+				vNode.type = nOper(visitor, vNode, vNode[2].type, vNode[3].type)
 			elseif #vNode == 2 then
 				local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
-				local nWrapper = nOper(visitor, vNode[2])
-				oper_merge(visitor, vNode, nWrapper)
+				vNode.type = nOper(visitor, vNode, vNode[2].type)
 			else
 				error("exception branch")
 			end
@@ -252,7 +262,7 @@ local visitor_exp = {
 	},
 	Paren={
 		after=function(visitor, vNode)
-			oper_merge(visitor, vNode, vNode[1])
+			vNode.type = tltype.first(vNode[1].type)
 		end,
 	},
 	Id={
@@ -276,8 +286,7 @@ local visitor_exp = {
 				-- set index
 				-- pass
 			else
-				local nWrapper = tltOper._index_get(visitor, vIndexNode[1], vIndexNode[2])
-				oper_merge(visitor, vIndexNode, nWrapper)
+				tltOper._index_get(visitor, vIndexNode, vIndexNode[1], vIndexNode[2])
 			end
 		end,
 	},
@@ -285,13 +294,13 @@ local visitor_exp = {
 	Call={
 		after=function(visitor, vCallNode)
 			local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
-			local nWrapper = tltOper._call(visitor, vCallNode[1], nTypeList)
+			local nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
 				-- maybe tuple
-				vCallNode.type  = nWrapper.type
+				vCallNode.type = nReturnTuple
 			else
-				oper_merge(visitor, vCallNode, nWrapper)
+				vCallNode.type = tltype.first(nReturnTuple)
 			end
 		end
 	},
