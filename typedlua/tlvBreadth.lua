@@ -72,17 +72,6 @@ local function add_type(visitor, node, t)
 end
 
 local visitor_stm = {
-	Block={
-		override=function(visitor, node, visit_node, self_visit)
-			local nParentNode = visitor.stack[#visitor.stack - 1]
-			if nParentNode and nParentNode.tag == "Function" and nParentNode.is_full_type then
-				visitor.func_block_list[#visitor.func_block_list + 1] = node
-				node.region_refer = assert(nParentNode.region_refer)
-			else
-				self_visit(visitor, node)
-			end
-		end,
-	},
 	Forin={
 		override=function(visitor, vForinNode, vNodeVisit, vSelfVisit)
 			vNodeVisit(visitor, vForinNode[2])
@@ -127,9 +116,9 @@ local visitor_stm = {
 			for i, nVarNode in ipairs(nVarList) do
 				local nRightType = nTypeList[i]
 				if nVarNode.tag == "Index" then
-					tltOper._index_set(visitor, nVarNode[1], nVarNode[2].type, nRightType, nVarNode.left_deco)
+					tltOper._index_set(visitor, nVarNode[1], nVarNode[1].type, nVarNode[2].type, nRightType, nVarNode.left_deco)
 				elseif nVarNode.tag == "Id" then
-					tltOper._set_assign(visitor, nVarNode, nRightType, nVarNode.left_deco)
+					tltOper._set_assign(visitor, nVarNode, nVarNode.type, nRightType, nVarNode.left_deco)
 					-- local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
 					-- TODO merge namenode??????????????????
 					-- oper_merge(visitor, nIdent, nWrapper)
@@ -204,6 +193,10 @@ local visitor_exp = {
 	Function={
 		before=function(visitor, vFunctionNode)
 			visitor.region_stack[#visitor.region_stack + 1] = assert(vFunctionNode.region_refer)
+			if #visitor.stack == 1 then
+				-- inner parse in override
+				return
+			end
 			if vFunctionNode.right_deco then
 				vFunctionNode.type = vFunctionNode.right_deco
 			else
@@ -220,9 +213,26 @@ local visitor_exp = {
 				end
 				vFunctionNode.type = tltype.Function(tltype.Tuple(table.unpack(nTypeList)))
 			end
+			--if vFunctionNode.type.auto_solving then
+			print("TODO thinking how to decide function auto")
+				local nAuto = tlenv.create_auto(visitor.env, vFunctionNode.region_refer)
+				vFunctionNode.type.auto_refer = nAuto.refer
+				vFunctionNode.auto_refer = nAuto.refer
+			--end
+		end,
+		override=function(visitor, vFunctionNode, visit_node, self_visit)
+			if #visitor.stack == 1 then
+				self_visit(visitor, vFunctionNode)
+			else
+				visitor.region_node_list[#visitor.region_node_list + 1] = vFunctionNode
+			end
 		end,
 		after=function(visitor, vFunctionNode)
 			visitor.region_stack[#visitor.region_stack] = nil
+			if #visitor.stack == 1 then
+				-- TODO solving all auto type in this region
+				vFunctionNode.type.auto_solving = true
+			end
 		end,
 	},
 	Table={
@@ -286,7 +296,7 @@ local visitor_exp = {
 				-- set index
 				-- pass
 			else
-				tltOper._index_get(visitor, vIndexNode, vIndexNode[1], vIndexNode[2])
+				vIndexNode.type = tltOper._index_get(visitor, vIndexNode, vIndexNode[1].type, vIndexNode[2].type)
 			end
 		end,
 	},
@@ -339,30 +349,27 @@ local visitor_exp = {
 
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
-function tlvBreadth.visit_block(block, visitor)
-	local nBlockList = {}
-	visitor.func_block_list = nBlockList
-	tlvisitor.visit_obj(block, visitor)
-	visitor.func_block_list = nil
-	for _, sub_block in pairs(nBlockList) do
+function tlvBreadth.visit_region(vFileEnv, vRegionNode)
+	local visitor = {
+		object_dict = visitor_object_dict,
+		region_stack = {tlenv.G_SCOPE_REFER},
+		region_node_list = {},
+		env = vFileEnv,
+		log_error = log_error,
+		log_warning = log_warning,
+	}
+	local nRegionNodeList = visitor.region_node_list
+	tlvisitor.visit_obj(vRegionNode, visitor)
+	for _, nSubRegionNode in ipairs(nRegionNodeList) do
 		-- TODO don't implement function first
-		visitor.region_stack[#visitor.region_stack + 1] = sub_block.region_refer
-		tlvBreadth.visit_block(sub_block, visitor)
+		visitor.region_stack[#visitor.region_stack + 1] = nSubRegionNode.region_refer
+		tlvBreadth.visit_region(vFileEnv, nSubRegionNode)
 		visitor.region_stack[#visitor.region_stack] = nil
 	end
 end
 
 function tlvBreadth.visit(vFileEnv)
-	local visitor = {
-		object_dict = visitor_object_dict,
-		region_stack = {tlenv.G_SCOPE_REFER},
-		func_block_list = {},
-		env = vFileEnv,
-		log_error = log_error,
-		log_warning = log_warning,
-	}
-
-	tlvBreadth.visit_block(vFileEnv.ast, visitor)
+	tlvBreadth.visit_region(vFileEnv, vFileEnv.ast)
 end
 
 return tlvBreadth

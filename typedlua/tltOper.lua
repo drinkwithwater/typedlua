@@ -22,17 +22,17 @@ function tltOper._return(visitor, vFunctionNode, vTupleType)
 	end
 end
 
-function tltOper._reforge_tuple(visitor, vExpListWrapper)
+function tltOper._reforge_tuple(visitor, vExpListNode)
 	local nTupleType = tltype.Tuple()
-	local nLength = #vExpListWrapper
-	-- #vExpListWrapper == 0 return {}
+	local nLength = #vExpListNode
+	-- #vExpListNode == 0 return {}
 	if nLength <= 0 then
 		return nTupleType
 	end
-	local nLastType = vExpListWrapper[nLength].type
-	-- #vExpListWrapper >=1 merge and return
+	local nLastType = vExpListNode[nLength].type
+	-- #vExpListNode >=1 merge and return
 	for i = 1, nLength - 1 do
-		nTupleType[i] = tltype.first(vExpListWrapper[i].type)
+		nTupleType[i] = tltype.first(vExpListNode[i].type)
 	end
 
 	-- if type1,type2,...,type3,type4 return {type1,type2,...,type3,type4}
@@ -59,15 +59,13 @@ function tltOper._call(visitor, vCallNode, vFunctionType, vArgTypeList)
 	end
 end
 
-function tltOper._index_get(visitor, vIndexNode, vPrefixWrapper, vKeyWrapper)
-	local nType1 = vPrefixWrapper.type
-	local nType2 = vKeyWrapper.type
+function tltOper._index_get(visitor, vIndexNode, vPrefixType, vKeyType)
 	local nField = nil
-	if nType1.tag == "TTable" then
-		nField = tltable.index_field(nType1, nType2)
+	if vPrefixType.tag == "TTable" then
+		nField = tltable.index_field(vPrefixType, vKeyType)
 	else
 		-- TODO check node is Table
-		visitor:log_error(vPrefixWrapper, "index for non-table type not implement...")
+		visitor:log_error(vIndexNode, "index for non-table type not implement...")
 	end
 	local nReType = nil
 	if not nField then
@@ -75,17 +73,16 @@ function tltOper._index_get(visitor, vIndexNode, vPrefixWrapper, vKeyWrapper)
 	else
 		nReType = nField[2]
 	end
-	vIndexNode.type = nReType
+	return nReType
 end
 
 -- TODO think which one is better ... -- no return
-function tltOper._index_set(visitor, vPrefixNode, vKeyType, vValueType, vLeftDeco)
-	local nPrefixType = vPrefixNode.type
-	if nPrefixType.tag == "TTable" then
-		if nPrefixType.sub_tag == "TOpenTable" then
-			local nField = tltable.index_field(nPrefixType, vKeyType)
+function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
+	if vPrefixType.tag == "TTable" then
+		if vPrefixType.sub_tag == "TOpenTable" then
+			local nField = tltable.index_field(vPrefixType, vKeyType)
 			if not nField then
-				tltable.insert(nPrefixType, tltable.NilableField(
+				tltable.insert(vPrefixType, tltable.NilableField(
 					vKeyType,
 					tltype.general(vValueType)
 				))
@@ -106,26 +103,25 @@ function tltOper._index_set(visitor, vPrefixNode, vKeyType, vValueType, vLeftDec
 end
 
 -- set -- return assign
-function tltOper._set_assign(visitor, vNameWrapper, vRightType, vLeftDeco)
+function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
-		visitor:log_warning(vNameWrapper, "set assign missing")
+		visitor:log_warning(vNameNode, "set assign missing")
 	else
 		vRightType = tltype.general(vRightType)
 	end
 	if vLeftDeco then
 		if not tltRelation.sub(vRightType, vLeftDeco) then
-			visitor:log_error(vNameWrapper,
+			visitor:log_error(vNameNode,
 				tltype.tostring(vRightType), "can't be assigned to decotype:",
 				tltype.tostring(vLeftDeco))
 		end
 		-- return { type = vLeftDeco }
 	else
-		local nLeftType = vNameWrapper.type
-		if not tltRelation.sub(vRightType, nLeftType) then
-			visitor:log_error(vNameWrapper,
+		if not tltRelation.sub(vRightType, vLeftType) then
+			visitor:log_error(vNameNode,
 				tltype.tostring(vRightType), "can't be assigned to type:",
-				tltype.tostring(nLeftType))
+				tltype.tostring(vLeftType))
 		end
 		-- return { type = vRightType }
 	end

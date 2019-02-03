@@ -32,7 +32,8 @@ function tlenv.GlobalEnv(vMainFileName)
 		_G_node = nil,
 		_G_ident = nil,
 		scope_list = {},
-		ident_list = {}
+		ident_list = {},
+		auto_list = {},
 	}
 
 	-- create and set root scope
@@ -95,6 +96,7 @@ function tlenv.create_scope(vFileEnv, vCurScope, vNode)
 			__index=vCurScope.record_dict
 		}) or {},
 		scope_refer = nNewIndex,
+		auto_list = {},
 	}
 	vFileEnv.scope_list[nNewIndex] = nNextScope
 	if vCurScope then
@@ -124,6 +126,19 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	vCurScope.record_dict[nIdent[1]] = nNewIndex
 	vCurScope[#vCurScope + 1] = nIdent
 	return nIdent
+end
+
+function tlenv.create_auto(vFileEnv, vCurRegion)
+	local nNewIndex = #vFileEnv.auto_list + 1
+	local nAuto = {
+		refer = nNewIndex,
+		node = vNode,
+		type = vType,
+	}
+	vFileEnv.auto_list[nNewIndex] = nAuto
+	local nScope = vFileEnv.scope_list[vCurRegion]
+	nScope.auto_list[#nScope.auto_list + 1] = nAuto
+	return nAuto
 end
 
 function tlenv.dump(vFileEnv)
