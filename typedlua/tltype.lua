@@ -124,6 +124,10 @@ function tltype.Function (t1, t2)
   return { tag = "TFunction", [1] = t1, [2] = t2 }
 end
 
+function tltype.AutoFunction(t1)
+  return { tag = "TFunction", [1] = t1, auto_solving = true}
+end
+
 -- type variables
 
 -- Variable : (string) -> (type)

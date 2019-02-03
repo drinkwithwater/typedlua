@@ -55,7 +55,8 @@ local G = lpeg.P { "TypedLua";
 
   -- function type only use tuple
   TupleType = tllexer.decosymb("(") * (lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0)^-1 * tllexer.decosymb(")") / tltype.Tuple;
-  FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * (lpeg.V("TupleType") + tllexer.decokw("auto")) / tltype.Function;
+  FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * lpeg.V("TupleType") / tltype.Function +
+				 lpeg.V("TupleType") * tllexer.decosymb("->") * tllexer.decokw("auto") / tltype.AutoFunction;
 
   TableType = tllexer.decosymb("{") * lpeg.V("TableTypeBody") * tllexer.decosymb("}") / tltable.OpenTable;
   TableTypeBody = lpeg.V("RecordType") +

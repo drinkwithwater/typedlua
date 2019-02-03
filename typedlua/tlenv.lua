@@ -128,7 +128,7 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	return nIdent
 end
 
-function tlenv.create_auto(vFileEnv, vCurRegion)
+function tlenv.create_auto(vFileEnv, vCurRegion, vNode, vType)
 	local nNewIndex = #vFileEnv.auto_list + 1
 	local nAuto = {
 		refer = nNewIndex,
