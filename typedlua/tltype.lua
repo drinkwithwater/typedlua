@@ -9,7 +9,7 @@ local tltype = {}
 
 tltype.AUTO_SOLVING_IDLE = 1
 tltype.AUTO_SOLVING_ACTIVE = 2
-tltype.AUTO_SOLVING_FINISH = false
+tltype.AUTO_SOLVING_FINISH = 3
 
 tltype.integer = false
 

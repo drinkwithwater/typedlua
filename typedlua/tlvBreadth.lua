@@ -196,11 +196,24 @@ local visitor_exp = {
 		end,
 		override=function(visitor, vFunctionNode, visit_node, self_visit)
 			if #visitor.stack == 1 then
-				vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_ACTIVE
-				self_visit(visitor, vFunctionNode)
-				-- TODO solving all auto type in this region when function visit end
-				vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_FINISH
+				local nSolvingState = vFunctionNode.type.auto_solving_state
+				if not nSolvingState then
+					-- if not auto function
+					self_visit(visitor, vFunctionNode)
+				elseif nSolvingState == tltype.AUTO_SOLVING_IDLE then
+					-- if auto function, change state and visit
+					vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_ACTIVE
+					self_visit(visitor, vFunctionNode)
+					-- TODO solving all auto type in this region when function visit end
+					vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_FINISH
+				elseif nSolvingState == tltype.AUTO_SOLVING_FINISH then
+					-- if auto solving finish, do nothing
+				else
+					visitor:log_error(vFunctionNode, "auto_solving_state unexception!!!", nSolvingState)
+				end
 			else
+				-- TODO thing visitor argments list in which step?
+				-- don't visit block
 				if vFunctionNode.right_deco then
 					vFunctionNode.type = vFunctionNode.right_deco
 				else
@@ -217,7 +230,7 @@ local visitor_exp = {
 					end
 					vFunctionNode.type = tltype.AutoFunction(tltype.Tuple(table.unpack(nTypeList)))
 				end
-				if vFunctionNode.type.auto_solving_state then
+				if vFunctionNode.type.auto_solving_state == tltype.AUTO_SOLVING_IDLE then
 					local nAuto = tlenv.create_auto(visitor.env, vFunctionNode.region_refer, vFunctionNode, vFunctionNode.type)
 					vFunctionNode.type.auto_refer = nAuto.refer
 					vFunctionNode.auto_refer = nAuto.refer
