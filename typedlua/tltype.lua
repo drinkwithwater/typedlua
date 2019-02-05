@@ -7,6 +7,10 @@ This module implements Typed Lua tltype.
 
 local tltype = {}
 
+tltype.AUTO_SOLVING_IDLE = 1
+tltype.AUTO_SOLVING_ACTIVE = 2
+tltype.AUTO_SOLVING_FINISH = false
+
 tltype.integer = false
 
 -- literal types
@@ -125,7 +129,7 @@ function tltype.Function (t1, t2)
 end
 
 function tltype.AutoFunction(t1)
-  return { tag = "TFunction", [1] = t1, auto_solving = true}
+  return { tag = "TFunction", [1] = t1, auto_solving_state = tltype.AUTO_SOLVING_IDLE}
 end
 
 -- type variables

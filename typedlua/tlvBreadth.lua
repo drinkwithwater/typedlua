@@ -193,45 +193,40 @@ local visitor_exp = {
 	Function={
 		before=function(visitor, vFunctionNode)
 			visitor.region_stack[#visitor.region_stack + 1] = assert(vFunctionNode.region_refer)
-			if #visitor.stack == 1 then
-				-- inner parse in override
-				return
-			end
-			if vFunctionNode.right_deco then
-				vFunctionNode.type = vFunctionNode.right_deco
-			else
-				print("TODO:auto function deco for lambda")
-				-- auto deco for parameter
-				local nTypeList = {}
-				local nParList = vFunctionNode[1]
-				for k, nIdentNode in ipairs(nParList) do
-					nIdentNode.left_deco = tltype.Any()
-					nTypeList[k] = tltype.Any()
-					if nIdentNode.tag == "Dots" then
-						print("TODO:auto type for dots")
-					end
-				end
-				vFunctionNode.type = tltype.AutoFunction(tltype.Tuple(table.unpack(nTypeList)))
-			end
-			if vFunctionNode.type.auto_solving then
-				local nAuto = tlenv.create_auto(visitor.env, vFunctionNode.region_refer, vFunctionNode, vFunctionNode.type)
-				vFunctionNode.type.auto_refer = nAuto.refer
-				vFunctionNode.auto_refer = nAuto.refer
-			end
 		end,
 		override=function(visitor, vFunctionNode, visit_node, self_visit)
 			if #visitor.stack == 1 then
+				vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_ACTIVE
 				self_visit(visitor, vFunctionNode)
+				-- TODO solving all auto type in this region when function visit end
+				vFunctionNode.type.auto_solving_state = tltype.AUTO_SOLVING_FINISH
 			else
+				if vFunctionNode.right_deco then
+					vFunctionNode.type = vFunctionNode.right_deco
+				else
+					print("TODO:auto function deco for lambda")
+					-- auto deco for parameter
+					local nTypeList = {}
+					local nParList = vFunctionNode[1]
+					for k, nIdentNode in ipairs(nParList) do
+						nIdentNode.left_deco = tltype.Any()
+						nTypeList[k] = tltype.Any()
+						if nIdentNode.tag == "Dots" then
+							print("TODO:auto type for dots")
+						end
+					end
+					vFunctionNode.type = tltype.AutoFunction(tltype.Tuple(table.unpack(nTypeList)))
+				end
+				if vFunctionNode.type.auto_solving_state then
+					local nAuto = tlenv.create_auto(visitor.env, vFunctionNode.region_refer, vFunctionNode, vFunctionNode.type)
+					vFunctionNode.type.auto_refer = nAuto.refer
+					vFunctionNode.auto_refer = nAuto.refer
+				end
 				visitor.region_node_list[#visitor.region_node_list + 1] = vFunctionNode
 			end
 		end,
 		after=function(visitor, vFunctionNode)
 			visitor.region_stack[#visitor.region_stack] = nil
-			if #visitor.stack == 1 then
-				-- TODO solving all auto type in this region
-				vFunctionNode.type.auto_solving = nil
-			end
 		end,
 	},
 	Table={
@@ -304,12 +299,18 @@ local visitor_exp = {
 		after=function(visitor, vCallNode)
 			-- auto parsing, parsing function when it's called
 			local nFunctionType = vCallNode[1].type
-			if nFunctionType.auto_solving then
-				local nAuto = visitor.env.auto_list[nFunctionType.auto_refer]
-				tlvBreadth.visit_region(visitor.env, nAuto.node)
+			local nReturnTuple = nil
+			if nFunctionType.auto_solving_state == tltype.AUTO_SOLVING_ACTIVE then
+				visitor:log_error(vCallNode, "function auto solving loop...")
+				nReturnTuple = tltype.Tuple(tltype.Any())
+			else
+				if nFunctionType.auto_solving_state == tltype.AUTO_SOLVING_IDLE then
+					local nAuto = visitor.env.auto_list[nFunctionType.auto_refer]
+					tlvBreadth.visit_region(visitor.env, nAuto.node)
+				end
+				local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
+				nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
 			end
-			local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
-			local nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
 				-- maybe tuple
