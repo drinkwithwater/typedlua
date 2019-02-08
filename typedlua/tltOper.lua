@@ -79,7 +79,7 @@ end
 -- TODO think which one is better ... -- no return
 function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
 	if vPrefixType.tag == "TTable" then
-		if vPrefixType.sub_tag == "TOpenTable" then
+		if vPrefixType.sub_tag == "TAutoTable" then
 			local nField = tltable.index_field(vPrefixType, vKeyType)
 			if not nField then
 				tltable.insert(vPrefixType, tltable.NilableField(

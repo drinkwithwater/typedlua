@@ -12,7 +12,7 @@ tlenv.G_SCOPE_REFER = 1
 
 function tlenv.GlobalEnv(vMainFileName)
 	-- function & chunk ?
-	-- open table ?
+	-- auto table ?
 	-- ident ?
 
 

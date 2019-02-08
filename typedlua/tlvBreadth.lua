@@ -256,11 +256,11 @@ local visitor_exp = {
 			end
 
 			-- if not deco type, ident is unique table
-			local nOpenTable = tltable.OpenTable(table.unpack(nList))
+			local nAutoTable = tltable.AutoTable(table.unpack(nList))
 			local nNewIndex = #visitor.env.unique_table_list + 1
-			visitor.env.unique_table_list[nNewIndex] = nOpenTable
+			visitor.env.unique_table_list[nNewIndex] = nAutoTable
 
-			add_type(visitor, node, nOpenTable)
+			add_type(visitor, node, nAutoTable)
 		end,
 	},
 	Op={
@@ -381,9 +381,9 @@ function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 	tlvisitor.visit_obj(vRegionNode, visitor)
 	for _, nSubRegionNode in ipairs(nRegionNodeList) do
 		-- TODO don't implement function first
-		visitor.region_stack[#visitor.region_stack + 1] = nSubRegionNode.region_refer
+		-- visitor.region_stack[#visitor.region_stack + 1] = nSubRegionNode.region_refer
 		tlvBreadth.visit_region(vFileEnv, nSubRegionNode)
-		visitor.region_stack[#visitor.region_stack] = nil
+		-- visitor.region_stack[#visitor.region_stack] = nil
 	end
 end
 

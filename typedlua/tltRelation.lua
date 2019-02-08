@@ -120,10 +120,10 @@ local TypeContainDict = {
 	},
 	TTable={
 		TTable=function(vLeftTable, vRightTable)
-			if vLeftTable.sub_tag == "TOpenTable" then
-				if vRightTable.sub_tag == "TOpenTable" then
+			if vLeftTable.sub_tag == "TAutoTable" then
+				if vRightTable.sub_tag == "TAutoTable" then
 					if vLeftTable == vRightTable then
-						print("TODO opentable relation:equal if ref same obj???")
+						print("TODO autotable relation:equal if ref same obj???")
 						return CONTAIN_FULL
 					else
 						return CONTAIN_NIL
@@ -131,7 +131,7 @@ local TypeContainDict = {
 				else
 					return CONTAIN_NIL
 				end
-			elseif vLeftTable.sub_tag == "TCloseTable" then
+			elseif vLeftTable.sub_tag ~= "TAutoTable" then
 				local nLeftNotnilFieldDict = {}
 				for k, nField in ipairs(vLeftTable) do
 					if nField.sub_tag == "TNotnilField" then

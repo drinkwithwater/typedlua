@@ -2,7 +2,7 @@
 local tltype = require "typedlua/tltype"
 local tltable = require "typedlua/tltable"
 
-local mGlobalTable = tltable.OpenTable()
+local mGlobalTable = tltable.AutoTable()
 
 local Any = tltype.Any()
 
@@ -55,7 +55,7 @@ local tableKeys = {
 
 for k, nStr in pairs(tableKeys) do
 	local nKey = tltype.Literal(nStr)
-	local nValue = tltable.CloseTable(tltable.Field(Any, Any))
+	local nValue = tltable.Table(tltable.Field(Any, Any))
 	local nField = tltable.Field(Any, Any)
 	tltable.insert(mGlobalTable, nField)
 end

@@ -129,7 +129,11 @@ function tltype.Function (t1, t2)
 end
 
 function tltype.AutoFunction(t1)
-  return { tag = "TFunction", [1] = t1, auto_solving_state = tltype.AUTO_SOLVING_IDLE}
+  return {
+	  tag = "TFunction", sub_tag = "TAutoFunction",
+	  auto_solving_state = tltype.AUTO_SOLVING_IDLE,
+	  [1] = t1,
+  }
 end
 
 -- type variables
@@ -256,7 +260,7 @@ local formatterDict ={
 		return "nil"
 	end,
 	TTable			= function(vType)
-		return vType.sub_tag
+		return vType.sub_tag or vType.tag
 	end,
 	TFunction		= function(vType)
 		return tltype.tostring(vType[1]).."->"..tltype.tostring(vType[2])
