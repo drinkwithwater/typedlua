@@ -4,28 +4,6 @@ local tltRelation = require "typedlua.tltRelation"
 
 local tltable = {}
 
-function tltable.AutoTable(...)
-	-- TODO check part contain type in keyset
-  local nTableType = {
-	  tag = "TTable", sub_tag="TAutoTable",
-	  auto_solving_state = tltype.AUTO_SOLVING_IDLE,
-	  record_dict={}, hash_list={},
-	  ...
-  }
-  local nRecordDict = nTableType.record_dict
-  local nHashList = nTableType.hash_list
-  for i, nField in ipairs(nTableType) do
-	  local nFieldKey = nField[1]
-	  local nFieldValue = nField[2]
-	  if nFieldKey.tag == "TLiteral" then
-		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
-		  nRecordDict[nFieldKey[1]] = i
-	  else
-		  error("error!!!!!!!!!!!!, auto table cannot has hash field...")
-	  end
-  end
-  return nTableType
-end
 
 function tltable.Table(...)
 	-- TODO check part contain type in keyset

@@ -71,6 +71,8 @@ local TypeContainDict = {
 		TTable			= containNil,
 		TNil			= containNil,
 		TFunction		= containNil,
+
+		TAutoLink		= containNil,
 	},
 	TBase={
 		TLiteral=function(vBase, vSubLiteral)
@@ -106,6 +108,8 @@ local TypeContainDict = {
 		TTable			= containNil,
 		TNil			= containNil,
 		TFunction		= containNil,
+
+		TAutoLink		= containNil,
 	},
 	TGlobalVariable={
 		TGlobalVariable	= eq1,
@@ -117,6 +121,8 @@ local TypeContainDict = {
 		TTable			= containNil,
 		TNil			= containNil,
 		TFunction		= containNil,
+
+		TAutoLink		= containNil,
 	},
 	TTable={
 		TTable=function(vLeftTable, vRightTable)
@@ -224,6 +230,8 @@ local TypeContainDict = {
 		TGlobalVariable	= containNil,
 		TNil			= containNil,
 		TFunction		= containNil,
+
+		TAutoLink		= containNil,
 	},
 	TUnion=setmetatable({
 		TUnion=function(vUnion, vSubUnion)
@@ -243,6 +251,7 @@ local TypeContainDict = {
 			end
 		end,
 		TAny=singleContainAny,
+		TAutoLink		= containNil,
 		},{
 		__index=function(t, vSubTypeTag)
 			local nContain = function(vUnion, vSubType)
@@ -268,6 +277,8 @@ local TypeContainDict = {
 		TGlobalVariable	= containNil,
 		TTable			= containNil,
 		TFunction		= containNil,
+
+		TAutoLink		= containNil,
 	},
 	TFunction={
 		TFunction=function(vLeftFuncType, vRightFuncType)
@@ -286,7 +297,15 @@ local TypeContainDict = {
 		TGlobalVariable	= containNil,
 		TTable			= containNil,
 		TNil			= containNil,
-	}
+
+		TAutoLink		= containNil,
+	},
+	TAutoLink=setmetatable({},{
+		__index=function(t,k,v)
+			print("AutoLink relation TODO")
+			return containFull
+		end
+	})
 }
 
 for nType, nRelation in pairs(TypeContainDict) do

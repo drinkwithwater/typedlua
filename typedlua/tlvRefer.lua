@@ -128,12 +128,23 @@ local visitor_after = {
 
 function tlvRefer.scope_begin(visitor, vNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
-	local nNextScope = tlenv.create_scope(visitor.file_env, nCurScope, vNode)
+	local nNextScope = nil
+	if vNode.tag == "Function" or vNode.tag == "Chunk" then
+		local nParentRegion = nil
+		for i=#visitor.scope_stack, 1, -1 do
+			local nScope = visitor.scope_stack[i]
+			if nScope.sub_tag == "Region" then
+				nParentRegion = nScope
+				break
+			end
+		end
+		nNextScope = tlenv.create_region(visitor.file_env, nParentRegion, nCurScope, vNode)
+		vNode.region_refer = nNextScope.scope_refer
+	else
+		nNextScope = tlenv.create_scope(visitor.file_env, nCurScope, vNode)
+	end
 	table.insert(visitor.scope_stack, nNextScope)
 	vNode.scope_refer = nNextScope.scope_refer
-	if vNode.tag == "Function" or vNode.tag == "Chunk" then
-		vNode.region_refer = vNode.scope_refer
-	end
 	return nNextScope
 end
 

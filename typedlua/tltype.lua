@@ -7,10 +7,6 @@ This module implements Typed Lua tltype.
 
 local tltype = {}
 
-tltype.AUTO_SOLVING_IDLE = 1
-tltype.AUTO_SOLVING_ACTIVE = 2
-tltype.AUTO_SOLVING_FINISH = 3
-
 tltype.integer = false
 
 -- literal types
@@ -126,14 +122,6 @@ end
 -- Function : (type, type) -> (type)
 function tltype.Function (t1, t2)
   return { tag = "TFunction", [1] = t1, [2] = t2 }
-end
-
-function tltype.AutoFunction(t1)
-  return {
-	  tag = "TFunction", sub_tag = "TAutoFunction",
-	  auto_solving_state = tltype.AUTO_SOLVING_IDLE,
-	  [1] = t1,
-  }
 end
 
 -- type variables
@@ -271,8 +259,12 @@ local formatterDict ={
 			nList[#nList + 1] = tltype.tostring(vType)
 		end
 		return "("..table.concat(nList, ",")..")"
+	end,
+	TAutoLink		= function(vTuple)
+		return "autostrTODO"
 	end
 }
+
 function tltype.tostring (vType)
 	local nFunc = formatterDict[vType.tag]
 	return vType.tag.."`"..nFunc(vType).."`"

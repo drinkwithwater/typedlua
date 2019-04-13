@@ -9,6 +9,7 @@ local tlenv = {}
 
 tlenv.G_IDENT_REFER = 1
 tlenv.G_SCOPE_REFER = 1
+tlenv.G_REGION_REFER = 1
 
 function tlenv.GlobalEnv(vMainFileName)
 	-- function & chunk ?
@@ -34,10 +35,13 @@ function tlenv.GlobalEnv(vMainFileName)
 		scope_list = {},
 		ident_list = {},
 		auto_list = {},
+		closure_list = {},
 	}
 
+	nGlobalEnv.region_list = nGlobalEnv.scope_list
+
 	-- create and set root scope
-	local nRootScope = tlenv.create_scope(nGlobalEnv, nil, nNode)
+	local nRootScope = tlenv.create_region(nGlobalEnv, nil, nil, nNode)
 
 	-- create and bind ident
 	local nIdent = tlenv.create_ident(nGlobalEnv, nRootScope, nNode)
@@ -57,7 +61,6 @@ function tlenv.FileEnv(vSubject, vFileName, vAst)
 		ast = vAst,
 		subject = vSubject,
 		filename = vFileName,
-		unique_table_list = {},
 
 		-- region
 		scope_list = nil,
@@ -96,13 +99,28 @@ function tlenv.create_scope(vFileEnv, vCurScope, vNode)
 			__index=vCurScope.record_dict
 		}) or {},
 		scope_refer = nNewIndex,
-		auto_list = {},
 	}
 	vFileEnv.scope_list[nNewIndex] = nNextScope
-	if vCurScope then
-		vCurScope[#vCurScope + 1] = nNextScope
-	end
+	-- if vCurScope then
+		-- vCurScope[#vCurScope + 1] = nNextScope
+	-- end
 	return nNextScope
+end
+
+function tlenv.create_region(vFileEnv, vParentRegion, vCurScope, vNode)
+	local nRegion = tlenv.create_scope(vFileEnv, vCurScope, vNode)
+	nRegion.sub_tag = "Region"
+	nRegion.region_refer = nRegion.scope_refer
+	nRegion.upvalue_list = {}
+	nRegion.invalue_list = {}
+	nRegion.child_refer_list = {}
+	if nRegion.region_refer ~= tlenv.G_REGION_REFER then
+		vParentRegion.child_refer_list[#vParentRegion.child_refer_list + 1] = nRegion.region_refer
+		nRegion.parent_refer = vParentRegion.region_refer
+	else
+		nRegion.parent_refer = false
+	end
+	return nRegion
 end
 
 function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
@@ -128,19 +146,6 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	return nIdent
 end
 
-function tlenv.create_auto(vFileEnv, vCurRegion, vNode, vType)
-	local nNewIndex = #vFileEnv.auto_list + 1
-	local nAuto = {
-		refer = nNewIndex,
-		node = vNode,
-		type = vType,
-	}
-	vFileEnv.auto_list[nNewIndex] = nAuto
-	local nScope = vFileEnv.scope_list[vCurRegion]
-	nScope.auto_list[#nScope.auto_list + 1] = nAuto
-	return nAuto
-end
-
 function tlenv.dump(vFileEnv)
 	return tlutils.dumpLambda(vFileEnv.root_scope, function(child)
 		if child.tag == "Scope" then
@@ -151,5 +156,48 @@ function tlenv.dump(vFileEnv)
 	end)
 end
 
+function tlenv.region_push_invalue(vFileEnv, vRegionRefer, vAutoType)
+	local nRegion = vFileEnv.region_list[vRegionRefer]
+	local nNewIndex = #nRegion.invalue_list + 1
+	nRegion.invalue_list[nNewIndex] = vAutoType
+	return nNewIndex
+end
+
+function tlenv.region_index(vFileEnv, vRegionRefer, vTypeRefer)
+	if vTypeRefer.sub_tag == "TAutoTypeReferUp" then
+	end
+end
+
+function tlenv.create_closure(vFileEnv, vRunRegionRefer, vDefineRegionRefer)
+	local nDefineRegion = vFileEnv.region_list[nDefineRegionRefer]
+	local nRunRegion = vFileEnv.region_list[nRunRegionRefer]
+	local nClosure = {
+		tag = "TClosure",
+		run_region_refer = nRunRegionRefer,
+		run_index = #nRunRegion.invalue_list + 1,
+		length = #nDefineRegion.invalue_list,
+	}
+	nRunRegion.invalue_list[nClosure.index] = nClosure
+	for i, nInvalue in ipairs(nDefineRegion.invalue_list) do
+		if nInvalue.tag == "TFunction" then
+			-- TODO
+		elseif nInvalue.tag == "TTable" then
+			-- TODO
+		end
+	end
+end
+
+--[[
+function tlenv.create_closure(vFileEnv, vRegionRefer, vParentRefer)
+	local nNewIndex = #vFileEnv.closure_list + 1
+	local nClosure = {
+		refer = nNewIndex,
+		parent_refer = vParentRefer,
+		region_refer = vRegionRefer,
+	}
+	vFileEnv.closure_list[nNewIndex] = nClosure
+	return nClosure
+end
+]]
 
 return tlenv

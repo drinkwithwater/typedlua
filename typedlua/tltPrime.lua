@@ -1,8 +1,9 @@
 
 local tltype = require "typedlua/tltype"
 local tltable = require "typedlua/tltable"
+local tltAuto = require "typedlua/tltAuto"
 
-local mGlobalTable = tltable.AutoTable()
+local mGlobalTable = tltAuto.AutoTable()
 
 local Any = tltype.Any()
 
