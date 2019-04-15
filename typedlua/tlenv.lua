@@ -3,6 +3,8 @@ This module implements some env setting
 ]]
 
 local tlast = require "typedlua/tlast"
+local tltAuto = require "typedlua/tltAuto"
+local tltable = require "typedlua/tltable"
 local tltPrime = require "typedlua/tltPrime"
 local tlutils = require "typedlua/tlutils"
 local tlenv = {}
@@ -111,8 +113,7 @@ function tlenv.create_region(vFileEnv, vParentRegion, vCurScope, vNode)
 	local nRegion = tlenv.create_scope(vFileEnv, vCurScope, vNode)
 	nRegion.sub_tag = "Region"
 	nRegion.region_refer = nRegion.scope_refer
-	nRegion.upvalue_list = {}
-	nRegion.invalue_list = {}
+	nRegion.auto_stack  = {}
 	nRegion.child_refer_list = {}
 	if nRegion.region_refer ~= tlenv.G_REGION_REFER then
 		vParentRegion.child_refer_list[#vParentRegion.child_refer_list + 1] = nRegion.region_refer
@@ -156,48 +157,122 @@ function tlenv.dump(vFileEnv)
 	end)
 end
 
-function tlenv.region_push_invalue(vFileEnv, vRegionRefer, vAutoType)
+function tlenv.region_push_auto(vFileEnv, vRegionRefer, vAutoType)
 	local nRegion = vFileEnv.region_list[vRegionRefer]
-	local nNewIndex = #nRegion.invalue_list + 1
-	nRegion.invalue_list[nNewIndex] = vAutoType
+	local nNewIndex = #nRegion.auto_stack + 1
+	nRegion.auto_stack[nNewIndex] = vAutoType
+	vAutoType.def_region_refer = vRegionRefer
+	vAutoType.def_index = nNewIndex
+	vAutoType.run_region_refer = vRegionRefer
+	vAutoType.run_index = nNewIndex
+	print("push:", vRegionRefer, vAutoType.def_index, vAutoType.tag)
 	return nNewIndex
 end
 
-function tlenv.region_index(vFileEnv, vRegionRefer, vTypeRefer)
-	if vTypeRefer.sub_tag == "TAutoTypeReferUp" then
-	end
-end
-
-function tlenv.create_closure(vFileEnv, vRunRegionRefer, vDefineRegionRefer)
-	local nDefineRegion = vFileEnv.region_list[nDefineRegionRefer]
-	local nRunRegion = vFileEnv.region_list[nRunRegionRefer]
+function tlenv.create_closure(vFileEnv, vRunRegionRefer, vFunctionType)
+	local nRunRegion = vFileEnv.region_list[vRunRegionRefer]
+	local nFunctionOwnRegion = vFileEnv.region_list[vFunctionType.own_region_refer]
+	local nClosureIndex = #nRunRegion.auto_stack + 1
 	local nClosure = {
 		tag = "TClosure",
-		run_region_refer = nRunRegionRefer,
-		run_index = #nRunRegion.invalue_list + 1,
-		length = #nDefineRegion.invalue_list,
+		def_region_refer = vRunRegionRefer,
+		def_index = nClosureIndex,
+		run_region_refer = vRunRegionRefer,
+		run_index = nClosureIndex,
+		length = #nFunctionOwnRegion.auto_stack,
+		caller_auto_link = tltAuto.AutoLink(vFunctionType.run_region_refer, vFunctionType.run_index),
 	}
-	nRunRegion.invalue_list[nClosure.index] = nClosure
-	for i, nInvalue in ipairs(nDefineRegion.invalue_list) do
-		if nInvalue.tag == "TFunction" then
-			-- TODO
-		elseif nInvalue.tag == "TTable" then
-			-- TODO
+	nRunRegion.auto_stack[nClosureIndex] = nClosure
+	for i, nAutoType in ipairs(nFunctionOwnRegion.auto_stack) do
+		local nNewIndex = #nRunRegion.auto_stack + 1
+		local nCopyType = nil
+		if nAutoType.tag == "TFunction" then
+			nCopyType = tlenv.closure_copy_function(vFileEnv, nClosure, nAutoType)
+		elseif nAutoType.tag == "TTable" then
+			nCopyType = tlenv.closure_copy_table(vFileEnv, nClosure, nAutoType)
+		elseif nAutoType.tag == "TClosure" then
+			nCopyType = {
+				tag = "TClosure",
+				def_region_refer = vRunRegionRefer,
+				def_index = nNewIndex,
+				length = nAutoType.length,
+				caller_auto_link = tlenv.closure_relink(vFileEnv, nClosure, nAutoType.caller_auto_link),
+			}
 		end
+		nRunRegion.auto_stack[nNewIndex] = nCopyType
+		nCopyType.run_region_refer = vRunRegionRefer
+		nCopyType.run_index = nNewIndex
 	end
 end
 
---[[
-function tlenv.create_closure(vFileEnv, vRegionRefer, vParentRefer)
-	local nNewIndex = #vFileEnv.closure_list + 1
-	local nClosure = {
-		refer = nNewIndex,
-		parent_refer = vParentRefer,
-		region_refer = vRegionRefer,
-	}
-	vFileEnv.closure_list[nNewIndex] = nClosure
-	return nClosure
+function tlenv.closure_copy_table(vFileEnv, vClosure, vAutoTable)
+	local nCopyTable = tltAuto.AutoTable()
+	nCopyTable.auto_solving_state = tltAuto.AUTO_SOLVING_IDLE
+	nCopyTable.def_region_refer = vAutoTable.def_region_refer
+	nCopyTable.def_index  = vAutoTable.def_index
+	for i, nField in ipairs(vAutoTable) do
+		local nFieldKey = nField[1]
+		local nFieldValue = nField[2]
+		if nFieldValue.tag == "TAutoLink" then
+			nFieldValue = tlenv.closure_relink(vFileEnv, vClosure, nFieldValue)
+		end
+		nCopyTable.record_dict[nFieldKey[1]] = i
+		nCopyTable[i] = tltable.Field(nFieldKey, nFieldValue)
+	end
+	return nCopyTable
 end
-]]
+
+function tlenv.closure_copy_function(vFileEnv, vClosure, vAutoFunction)
+	local nCopyFunction = tltAuto.AutoFunction(vAutoFunction.own_region_refer, vAutoFunction[1])
+	nCopyFunction.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
+	nCopyFunction.def_region_refer = vAutoFunction.def_region_refer
+	nCopyFunction.def_index = vAutoFunction.def_index
+	-- input is static type...
+	nCopyFunction[1] = vAutoFunction[1]
+	if not vAutoFunction[2] then
+		print("auto function nil return...")
+	else
+		local nOutputTuple = tltype.Tuple()
+		for i, nType in ipairs(vAutoFunction[2]) do
+			if nType.tag == "TAutoLink" then
+				nOutputTuple[i] = tlenv.closure_relink(vFileEnv, vClosure, nType)
+			else
+				nOutputTuple[i] = nType
+			end
+		end
+		nCopyFunction[2] = nOutputTuple
+	end
+	return nCopyFunction
+end
+
+-- change link from link-stack to link-closure-from-stack
+function tlenv.closure_relink(vFileEnv, vClosure, vAutoLink)
+	assert(vAutoLink.tag == "TAutoLink", "closure_relink called with unexcept type:"..tostring(vAutoLink.tag))
+	local nClosure = vClosure
+	while (nClosure ~= nil) and (nClosure.own_region_refer ~= vAutoLink.link_region_refer) do
+		local nCallerLink = vClosure.caller_auto_link
+		local nCallerType = vFileEnv.region_list[nCallerLink.link_region_refer].auto_stack[nCallerLink.link_index]
+		nClosure = tlenv.type_find_closure(vFileEnv, nCallerType)
+	end
+	if nClosure == nil then
+		return tltAuto.AutoLink(vAutoLink.run_region_refer, vAutoLink.run_index)
+	else
+		local nAutoType = tlenv.closure_index_type(vFileEnv, nClosure, vAutoLink.link_index)
+		return tltAuto.AutoLink(nAutoType.run_region_refer, nAutoType.run_index)
+	end
+end
+
+function tlenv.closure_index_type(vFileEnv, vClosure, vIndex)
+	return vFileEnv.region_list[vClosure.run_region_refer].auto_stack[vClosure.run_index + vIndex]
+end
+
+function tlenv.type_find_closure(vFileEnv, vType)
+	local nClosureIndex = vType.run_index - vType.def_index
+	if nClosureIndex > 0 then
+		return vFileEnv.region_list[vType.run_region_refer].auto_stack[nClosureIndex]
+	else
+		return nil
+	end
+end
 
 return tlenv

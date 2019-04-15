@@ -14,6 +14,7 @@ function tltAuto.AutoLink(vRegionRefer, vIndex)
 	}
 end
 
+-- TODO
 function tltAuto.PlaceHolder()
 	return {tag="TPlaceHolder"}
 end
@@ -22,17 +23,13 @@ function tltAuto.AutoFunction(vRegionRefer, vInputTuple)
   return {
 	  tag = "TFunction", sub_tag = "TAutoFunction",
 	  auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
-	  region_refer = vRegionRefer,
+	  own_region_refer = vRegionRefer,
+	  run_region_refer = nil,
+	  run_index = nil,
+	  def_region_refer = nil,
+	  def_index = nil,
 	  [1] = vInputTuple,
   }
-end
-
-function tltAuto.closure_copy_function(vAutoFunction)
-	local nCopyFunction = {}
-	for k,v in pairs(vAutoFunction) do
-		nCopyFunction[k] = v
-	end
-	return nCopyFunction
 end
 
 function tltAuto.AutoTable(...)
@@ -40,7 +37,8 @@ function tltAuto.AutoTable(...)
   local nTableType = {
 	  tag = "TTable", sub_tag="TAutoTable",
 	  auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
-	  record_dict={}, hash_list={},
+	  record_dict={},
+	  hash_list={},
 	  ...
   }
   local nRecordDict = nTableType.record_dict
@@ -56,15 +54,6 @@ function tltAuto.AutoTable(...)
 	  end
   end
   return nTableType
-end
-
-function tltAuto.closure_copy_table(vAutoTable)
-	local nCopyTable = {
-		tag = "TTable", sub_tag = "TAutoTable",
-		auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
-	}
-	error("TODO")
-	return nCopyTable
 end
 
 return tltAuto

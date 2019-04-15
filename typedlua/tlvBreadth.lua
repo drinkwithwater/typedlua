@@ -72,6 +72,18 @@ local function add_type(visitor, node, t)
 	end
 end
 
+local function link_type(visitor, vAutoLink)
+	if vAutoLink.tag ~= "TAutoLink" then
+		return vAutoLink
+	end
+	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+	local nRegion = visitor.env.region_list[nRegionRefer]
+	while nRegion.region_refer ~= vAutoLink.link_region_refer do
+		nRegion = visitor.env.region_list[nRegion.parent_refer]
+	end
+	return nRegion.auto_stack[vAutoLink.link_index]
+end
+
 local visitor_stm = {
 	Forin={
 		override=function(visitor, vForinNode, vNodeVisit, vSelfVisit)
@@ -83,6 +95,7 @@ local visitor_stm = {
 			for i = 2, #nNextTableInitTuple do
 				nArgTypeList[i-1] = nNextTableInitTuple[i]
 			end
+			error("for in caller TODO")
 			local nForinTuple = tltOper._call(visitor, vForinNode[2], nFunctionType, nArgTypeList)
 			vNodeVisit(visitor, vForinNode[1])
 			for i, nNameNode in ipairs(vForinNode[1]) do
@@ -234,10 +247,11 @@ local visitor_exp = {
 						print("TODO:auto type for dots")
 					end
 				end
-				local nRegionRefer = vFunctionNode.region_refer
-				local nAutoFunction = tltAuto.AutoFunction(nRegionRefer, tltype.Tuple(table.unpack(nTypeList)))
-				local nInvalueIndex = tlenv.region_push_invalue(visitor.env, nRegionRefer, nAutoFunction)
-				local nAutoLink = tltAuto.AutoLink(nRegionRefer, nInvalueIndex)
+				local nOwnRegionRefer = vFunctionNode.region_refer
+				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer, tltype.Tuple(table.unpack(nTypeList)))
+				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_refer
+				local nStackIndex = tlenv.region_push_auto(visitor.env, nParentRefer, nAutoFunction)
+				local nAutoLink = tltAuto.AutoLink(nParentRefer, nStackIndex)
 				vFunctionNode.type = nAutoLink
 				visitor.breadth_region_node_list[#visitor.breadth_region_node_list + 1] = vFunctionNode
 			end
@@ -263,9 +277,9 @@ local visitor_exp = {
 
 			-- if not deco type, ident is unique table
 			local nAutoTable = tltAuto.AutoTable(table.unpack(nList))
-			local nInvalueIndex = tlenv.region_push_invalue(visitor.env, nRegionRefer, nAutoTable)
+			local nStackIndex = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
 
-			local nAutoLink = tltAuto.AutoLink(nRegionRefer, nInvalueIndex)
+			local nAutoLink = tltAuto.AutoLink(nRegionRefer, nStackIndex)
 			add_type(visitor, node, nAutoLink)
 
 			-- local nAuto = tlenv.create_auto(visitor.env, nRegionRefer, node, nAutoTable)
@@ -322,15 +336,20 @@ local visitor_exp = {
 	Call={
 		after=function(visitor, vCallNode)
 			-- auto parsing, parsing function when it's called
-			local nFunctionType = vCallNode[1].type
+			local nFunctionType = visitor:link_type(vCallNode[1].type)
 			local nReturnTuple = nil
 			if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_ACTIVE then
 				visitor:log_error(vCallNode, "function auto solving loop...")
 				nReturnTuple = tltype.Tuple(tltype.Any())
 			else
+				-- maybe function is not visited, because node was breadth-first visited.
+				-- so visit without breadth
 				if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
-					local nScope = visitor.env.scope_list[nFunctionType.region_refer]
+					local nScope = visitor.env.scope_list[nFunctionType.own_region_refer]
 					tlvBreadth.visit_region(visitor.env, nScope.node)
+				end
+				if nFunctionType.sub_tag == "TAutoFunction" then
+					tlenv.create_closure(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
 				end
 				local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
 				nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
@@ -379,16 +398,13 @@ local visitor_exp = {
 
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
-function tlvBreadth.expand_closure(visitor, vCallNode)
-	local nFunctionType = vCallNode.type
-	if nFunctionType.sub_tag ~= "TAutoFunction" then
+function tlvBreadth.visit_region(vFileEnv, vRegionNode)
+	if not vRegionNode.visited then
+		vRegionNode.visited = true
+	else
+		print("region breadth visit twice...")
 		return
 	end
-	local nDefineRegionRefer = nFunctionType.region_refer
-	local nRunRegionRefer = visitor.region_stack[#visitor.region_stack]
-end
-
-function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 	local visitor = {
 		object_dict = visitor_object_dict,
 		region_stack = {tlenv.G_SCOPE_REFER},
@@ -396,6 +412,7 @@ function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 		env = vFileEnv,
 		log_error = log_error,
 		log_warning = log_warning,
+		link_type = link_type,
 	}
 	local nRegionNodeList = visitor.breadth_region_node_list
 	tlvisitor.visit_obj(vRegionNode, visitor)

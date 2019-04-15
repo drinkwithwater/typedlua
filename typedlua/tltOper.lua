@@ -12,7 +12,7 @@ local function check_type(visitor, vAnchorNode, vType, vMustType)
 end
 
 function tltOper._return(visitor, vFunctionNode, vTupleType)
-	local nFunctionType = vFunctionNode.type
+	local nFunctionType = visitor:link_type(vFunctionNode.type)
 	if not nFunctionType[2] then
 		-- auto set type
 		nFunctionType[2] = vTupleType
@@ -50,6 +50,7 @@ function tltOper._reforge_tuple(visitor, vExpListNode)
 end
 
 function tltOper._call(visitor, vCallNode, vFunctionType, vArgTypeList)
+	vFunctionType = visitor:link_type(vFunctionType)
 	if vFunctionType.tag == "TFunction" then
 		print("TODO tltOper._call check args")
 		return vFunctionType[2]
@@ -60,6 +61,7 @@ function tltOper._call(visitor, vCallNode, vFunctionType, vArgTypeList)
 end
 
 function tltOper._index_get(visitor, vIndexNode, vPrefixType, vKeyType)
+	vPrefixType = visitor:link_type(vPrefixType)
 	local nField = nil
 	if vPrefixType.tag == "TTable" then
 		nField = tltable.index_field(vPrefixType, vKeyType)
