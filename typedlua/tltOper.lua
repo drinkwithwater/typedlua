@@ -80,6 +80,7 @@ end
 
 -- TODO think which one is better ... -- no return
 function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
+	vPrefixType = visitor:link_type(vPrefixType)
 	if vPrefixType.tag == "TTable" then
 		if vPrefixType.sub_tag == "TAutoTable" then
 			local nField = tltable.index_field(vPrefixType, vKeyType)

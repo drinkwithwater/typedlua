@@ -349,10 +349,13 @@ local visitor_exp = {
 					tlvBreadth.visit_region(visitor.env, nScope.node)
 				end
 				if nFunctionType.sub_tag == "TAutoFunction" then
-					tlenv.create_closure(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+
+					nReturnTuple = tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+				else
+					print("TODO: thinking how to redesign tltOper.lua")
+					local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
+					nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
 				end
-				local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
-				nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
 			end
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
@@ -399,12 +402,11 @@ local visitor_exp = {
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
 function tlvBreadth.visit_region(vFileEnv, vRegionNode)
-	if not vRegionNode.visited then
-		vRegionNode.visited = true
-	else
-		print("region breadth visit twice...")
+	assert(vRegionNode.tag == "Function" or vRegionNode.tag == "Chunk")
+	if vRegionNode.breadth_visited then
 		return
 	end
+	vRegionNode.breadth_visited = true
 	local visitor = {
 		object_dict = visitor_object_dict,
 		region_stack = {tlenv.G_SCOPE_REFER},

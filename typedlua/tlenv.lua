@@ -3,6 +3,7 @@ This module implements some env setting
 ]]
 
 local tlast = require "typedlua/tlast"
+local tltype = require "typedlua/tltype"
 local tltAuto = require "typedlua/tltAuto"
 local tltable = require "typedlua/tltable"
 local tltPrime = require "typedlua/tltPrime"
@@ -165,16 +166,16 @@ function tlenv.region_push_auto(vFileEnv, vRegionRefer, vAutoType)
 	vAutoType.def_index = nNewIndex
 	vAutoType.run_region_refer = vRegionRefer
 	vAutoType.run_index = nNewIndex
-	print("push:", vRegionRefer, vAutoType.def_index, vAutoType.tag)
 	return nNewIndex
 end
 
-function tlenv.create_closure(vFileEnv, vRunRegionRefer, vFunctionType)
+function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
 	local nRunRegion = vFileEnv.region_list[vRunRegionRefer]
 	local nFunctionOwnRegion = vFileEnv.region_list[vFunctionType.own_region_refer]
 	local nClosureIndex = #nRunRegion.auto_stack + 1
 	local nClosure = {
 		tag = "TClosure",
+		own_region_refer = vFunctionType.own_region_refer,
 		def_region_refer = vRunRegionRefer,
 		def_index = nClosureIndex,
 		run_region_refer = vRunRegionRefer,
@@ -202,6 +203,19 @@ function tlenv.create_closure(vFileEnv, vRunRegionRefer, vFunctionType)
 		nRunRegion.auto_stack[nNewIndex] = nCopyType
 		nCopyType.run_region_refer = vRunRegionRefer
 		nCopyType.run_index = nNewIndex
+	end
+	if vFunctionType[2] then
+		local nOutputTuple = tltype.Tuple()
+		for i, nType in ipairs(vFunctionType[2]) do
+			if nType.tag == "TAutoLink" then
+				nOutputTuple[i] = tlenv.closure_relink(vFileEnv, nClosure, nType)
+			else
+				nOutputTuple[i] = nType
+			end
+		end
+		return nOutputTuple
+	else
+		return tltype.Tuple()
 	end
 end
 
@@ -250,12 +264,12 @@ function tlenv.closure_relink(vFileEnv, vClosure, vAutoLink)
 	assert(vAutoLink.tag == "TAutoLink", "closure_relink called with unexcept type:"..tostring(vAutoLink.tag))
 	local nClosure = vClosure
 	while (nClosure ~= nil) and (nClosure.own_region_refer ~= vAutoLink.link_region_refer) do
-		local nCallerLink = vClosure.caller_auto_link
+		local nCallerLink = nClosure.caller_auto_link
 		local nCallerType = vFileEnv.region_list[nCallerLink.link_region_refer].auto_stack[nCallerLink.link_index]
 		nClosure = tlenv.type_find_closure(vFileEnv, nCallerType)
 	end
 	if nClosure == nil then
-		return tltAuto.AutoLink(vAutoLink.run_region_refer, vAutoLink.run_index)
+		return tltAuto.AutoLink(vAutoLink.link_region_refer, vAutoLink.link_index)
 	else
 		local nAutoType = tlenv.closure_index_type(vFileEnv, nClosure, vAutoLink.link_index)
 		return tltAuto.AutoLink(nAutoType.run_region_refer, nAutoType.run_index)
