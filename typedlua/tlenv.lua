@@ -248,7 +248,7 @@ function tlenv.closure_copy_function(vFileEnv, vClosure, vAutoFunction)
 	else
 		local nOutputTuple = tltype.Tuple()
 		for i, nType in ipairs(vAutoFunction[2]) do
-			if nType.tag == "TAutoLink" then
+			if nType.tag == "TAutoLink" and nType.link_region_refer ~= vAutoFunction.own_region_refer then
 				nOutputTuple[i] = tlenv.closure_relink(vFileEnv, vClosure, nType)
 			else
 				nOutputTuple[i] = nType
