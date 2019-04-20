@@ -6,6 +6,7 @@ This module implements Typed Lua tltype.
 --local seri = require "typedlua.seri"
 
 local tltype = {}
+local tltRelation = require "typedlua/tltRelation"
 
 tltype.integer = false
 
@@ -62,7 +63,6 @@ end
 
 -- Union : (type*) -> (type)
 function tltype.Union (...)
-	local tltRelation = require "typedlua/tltRelation"
 	local nTypeList = {...}
 	local nUnionType = {tag = "TUnion"}
 	for i, nType in ipairs(nTypeList) do
@@ -205,15 +205,7 @@ function tltype.first(vType)
 	end
 end
 
-function tltype.to_base_detail(vValue)
-	local nValueType = type(vValue)
-	if type(vValue) == "number" then
-		if vValue % 1 == 0 then
-			return "integer"
-		end
-	end
-	return nValueType
-end
+tltype.to_base_detail = tltRelation.to_base_detail
 
 function tltype.general(vType)
 	if vType.tag == "TLiteral" then
