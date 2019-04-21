@@ -56,4 +56,12 @@ function tltAuto.AutoTable(...)
   return nTableType
 end
 
+function tltAuto.is_auto_type(vType)
+	if vType.sub_tag == "TAutoTable" or vType.sub_tag == "TAutoFunction" then
+		return true
+	else
+		return false
+	end
+end
+
 return tltAuto

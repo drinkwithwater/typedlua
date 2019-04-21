@@ -63,6 +63,9 @@ end
 
 -- Union : (type*) -> (type)
 function tltype.Union (...)
+	if select("#", ...) == 1 then
+		return ...
+	end
 	local nTypeList = {...}
 	local nUnionType = {tag = "TUnion"}
 	for i, nType in ipairs(nTypeList) do

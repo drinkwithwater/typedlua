@@ -268,11 +268,18 @@ function tlenv.closure_relink(vFileEnv, vClosure, vAutoLink)
 		local nCallerType = vFileEnv.region_list[nCallerLink.link_region_refer].auto_stack[nCallerLink.link_index]
 		nClosure = tlenv.type_find_closure(vFileEnv, nCallerType)
 	end
-	if nClosure == nil then
-		return tltAuto.AutoLink(vAutoLink.link_region_refer, vAutoLink.link_index)
+	local nLinkedType = nil
+	if not nClosure then
+		nLinkedType = vFileEnv.region_list[vAutoLink.link_region_refer].auto_stack[vAutoLink.link_index]
+		-- return tltAuto.AutoLink(vAutoLink.link_region_refer, vAutoLink.link_index)
 	else
-		local nAutoType = tlenv.closure_index_type(vFileEnv, nClosure, vAutoLink.link_index)
-		return tltAuto.AutoLink(nAutoType.run_region_refer, nAutoType.run_index)
+		nLinkedType = tlenv.closure_index_type(vFileEnv, nClosure, vAutoLink.link_index)
+		-- return tltAuto.AutoLink(nLinkedType.run_region_refer, nLinkedType.run_index)
+	end
+	if tltAuto.is_auto_type(nLinkedType) then
+		return tltAuto.AutoLink(nLinkedType.run_region_refer, nLinkedType.run_index)
+	else
+		return nLinkedType
 	end
 end
 

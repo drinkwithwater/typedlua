@@ -41,15 +41,41 @@ function visitor_meta.oper_call(visitor, vCallerType, vArgTuple)
 	return tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
 end
 
-function visitor_meta.finish_auto(visitor, vLeftType, vAutoLink)
+function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 	if vAutoLink.link_region_refer ~= nRegionRefer then
-		-- TODO, thinking about finish auto in other region...
-		return
+		visitor:log_error(visitor.stack[#visitor.stack], "can't finish auto in from out region")
+		return false
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
 	local nRightType = nRegion.auto_stack[vAutoLink.link_index]
-	if vLeftType.tag == "TTable" and vRightType.tag == "TTable" then
+	if vLeftType.tag == "TTable" and nRightType.tag == "TTable" then
+		for i, nField in ipairs(nRightType) do
+			if nField[2].tag == "TAutoLink" then
+				assert(nField[1].tag == "TLiteral")
+				local nLeftField = tltable.index_field(vLeftType, nField[1])
+				if not nLeftField then
+					visitor:log_error(visitor.stack[#visitor.stack],
+						"finish auto fail for field", tltype.tostring(nField[1]))
+					return false
+				end
+				if not visitor:cast_auto(visitor, nLeftField[2], nField[2]) then
+					visitor:log_error(visitor.stack[#visitor.stack],
+						"recursive finish auto fail for field", tltype.tostring(nField[1]))
+					return false
+				end
+				nField[2] = nLeftField[2]
+			end
+		end
+		if not tltRelation.contain(vLeftType, nRightType) then
+			visitor:log_error(visitor.stack[#visitor.stack], "finish auto fail for relation")
+			return false
+		end
+		nRegion.auto_stack[vAutoLink.link_index] = vLeftType
+		return true
+	elseif vLeftType.tag == "TFunction" and nRightType.tag == "TFunction" then
+		print("finish auto TODO")
+		return false
 	end
 end
 

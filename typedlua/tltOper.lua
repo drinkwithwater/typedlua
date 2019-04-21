@@ -98,7 +98,7 @@ function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueT
 			end
 		else
 			if vValueType.tag == "TAutoLink" then
-				visitor:finish_auto(nField[2], vValueType)
+				visitor:cast_auto(nField[2], vValueType)
 			else
 				if not tltRelation.contain(nField[2], vValueType) then
 					visitor:log_error(vPrefixNode,
@@ -123,9 +123,9 @@ function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDec
 	end
 	if vRightType.tag == "TAutoLink" then
 		if vLeftDeco then
-			visitor:finish_auto(vLeftDeco, vRightType)
+			visitor:cast_auto(vLeftDeco, vRightType)
 		else
-			visitor:finish_auto(vLeftType, vRightType)
+			visitor:cast_auto(vLeftType, vRightType)
 		end
 	else
 		if vLeftDeco then
@@ -154,7 +154,7 @@ function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
 	end
 	if vLeftDeco then
 		if vRightType.tag == "TAutoLink" then
-			visitor:finish_auto(vLeftDeco, vRightType)
+			visitor:cast_auto(vLeftDeco, vRightType)
 		else
 			if not tltRelation.sub(vRightType, vLeftDeco) then
 				visitor:log_error(vNameNode,
