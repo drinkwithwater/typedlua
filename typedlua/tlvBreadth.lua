@@ -33,27 +33,49 @@ local Boolean = tltype.Boolean()
 local Number = tltype.Number()
 local String = tltype.String()
 
-local function log_error (visitor, node, ...)
+local visitor_meta = {}
+
+-- TODO use duck type....
+function visitor_meta.oper_call(visitor, vCallerType, vArgTuple)
+	local nFunctionType = visitor:link_type(vCallerType)
+	return tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+end
+
+function visitor_meta.finish_auto(visitor, vLeftType, vAutoLink)
+	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+	if vAutoLink.link_region_refer ~= nRegionRefer then
+		-- TODO, thinking about finish auto in other region...
+		return
+	end
+	local nRegion = visitor.env.region_list[nRegionRefer]
+	local nRightType = nRegion.auto_stack[vAutoLink.link_index]
+	if vLeftType.tag == "TTable" and vRightType.tag == "TTable" then
+	end
+end
+
+function visitor_meta.link_type(visitor, vAutoLink)
+	if vAutoLink.tag ~= "TAutoLink" then
+		return vAutoLink
+	end
+	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+	local nRegion = visitor.env.region_list[nRegionRefer]
+	while nRegion.region_refer ~= vAutoLink.link_region_refer do
+		nRegion = visitor.env.region_list[nRegion.parent_refer]
+	end
+	return nRegion.auto_stack[vAutoLink.link_index]
+end
+
+
+function visitor_meta.log_error (visitor, node, ...)
 	local filename = visitor.env.filename
 	local head = string.format("%s:%d:%d:[ERROR]", filename, node.l, node.c)
 	print(head, ...)
 end
 
-local function log_warning(visitor, node, ...)
+function visitor_meta.log_warning(visitor, node, ...)
 	local filename = visitor.env.filename
 	local head = string.format("%s:%d:%d:[WARNING]", filename, node.l, node.c)
 	print(head, ...)
-end
-
-local function oper_merge(visitor, vNode, vWrapper)
-	local nFirstType = tltype.first(vWrapper.type)
-
-	if vNode.type then
-		-- log_error(visitor, vNode, "add type but node.type existed", vNode.type.tag, vWrapper.type.tag)
-		vNode.type = nFirstType
-	else
-		vNode.type = nFirstType
-	end
 end
 
 -- expr add type, check right_deco
@@ -66,22 +88,10 @@ local function add_type(visitor, node, t)
 		end
 	end]]
 	if node.type then
-		log_error(visitor, node, "add type but node.type existed", node.type.tag, t.tag)
+		visitor:log_error(node, "add type but node.type existed", node.type.tag, t.tag)
 	else
 		node.type = t
 	end
-end
-
-local function link_type(visitor, vAutoLink)
-	if vAutoLink.tag ~= "TAutoLink" then
-		return vAutoLink
-	end
-	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
-	local nRegion = visitor.env.region_list[nRegionRefer]
-	while nRegion.region_refer ~= vAutoLink.link_region_refer do
-		nRegion = visitor.env.region_list[nRegion.parent_refer]
-	end
-	return nRegion.auto_stack[vAutoLink.link_index]
 end
 
 local visitor_stm = {
@@ -209,22 +219,21 @@ local visitor_exp = {
 			visitor.region_stack[#visitor.region_stack + 1] = assert(vFunctionNode.region_refer)
 		end,
 		override=function(visitor, vFunctionNode, visit_node, self_visit)
-			-- if #stack == 1 then visit function in a seperate stack
+			-- if #stack == 1 then visit function in an isolating stack
 			if #visitor.stack == 1 then
-				local nSolvingState = vFunctionNode.type.auto_solving_state
-				if not nSolvingState then
-					-- if not auto function
-					self_visit(visitor, vFunctionNode)
-				elseif nSolvingState == tltAuto.AUTO_SOLVING_IDLE then
-					-- if auto function, change state and visit
-					vFunctionNode.type.auto_solving_state = tltAuto.AUTO_SOLVING_ACTIVE
+				local nFunctionType = visitor:link_type(vFunctionNode.type)
+				if nFunctionType.sub_tag == "TAutoFunction"
+					and nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
+					-- if auto function and idle, change state and visit
+					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_START
 					self_visit(visitor, vFunctionNode)
 					-- TODO solving all auto type in this region when function visit end
-					vFunctionNode.type.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
-				elseif nSolvingState == tltAuto.AUTO_SOLVING_FINISH then
-					-- if auto solving finish, do nothing
+					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
 				else
-					visitor:log_error(vFunctionNode, "auto_solving_state unexception!!!", nSolvingState)
+					-- assert not looping
+					assert(nFunctionType.auto_solving_state ~= tltAuto.AUTO_SOLVING_START)
+					-- if not auto function or auto finish
+					self_visit(visitor, vFunctionNode)
 				end
 			-- if #stack > 1 then visit function in parent's stack
 			-- create AutoFunction right now but visit when it's called
@@ -284,7 +293,6 @@ local visitor_exp = {
 
 			-- local nAuto = tlenv.create_auto(visitor.env, nRegionRefer, node, nAutoTable)
 
-			-- TODO..... 20190301
 
 		end,
 	},
@@ -338,7 +346,7 @@ local visitor_exp = {
 			-- auto parsing, parsing function when it's called
 			local nFunctionType = visitor:link_type(vCallNode[1].type)
 			local nReturnTuple = nil
-			if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_ACTIVE then
+			if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_START then
 				visitor:log_error(vCallNode, "function auto solving loop...")
 				nReturnTuple = tltype.Tuple(tltype.Any())
 			else
@@ -348,14 +356,8 @@ local visitor_exp = {
 					local nScope = visitor.env.scope_list[nFunctionType.own_region_refer]
 					tlvBreadth.visit_region(visitor.env, nScope.node)
 				end
-				if nFunctionType.sub_tag == "TAutoFunction" then
-
-					nReturnTuple = tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
-				else
-					print("TODO: thinking how to redesign tltOper.lua")
-					local nTypeList = tltOper._reforge_tuple(visitor, vCallNode[2])
-					nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTypeList)
-				end
+				local nTuple = tltOper._reforge_tuple(visitor, vCallNode[2])
+				nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTuple)
 			end
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
@@ -399,6 +401,7 @@ local visitor_exp = {
 	},
 }
 
+
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
 function tlvBreadth.visit_region(vFileEnv, vRegionNode)
@@ -407,15 +410,14 @@ function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 		return
 	end
 	vRegionNode.breadth_visited = true
-	local visitor = {
+	local visitor = setmetatable({
 		object_dict = visitor_object_dict,
 		region_stack = {tlenv.G_SCOPE_REFER},
 		breadth_region_node_list = {},
 		env = vFileEnv,
-		log_error = log_error,
-		log_warning = log_warning,
-		link_type = link_type,
-	}
+	}, {
+		__index=visitor_meta,
+	})
 	local nRegionNodeList = visitor.breadth_region_node_list
 	tlvisitor.visit_obj(vRegionNode, visitor)
 	for _, nSubRegionNode in ipairs(nRegionNodeList) do
@@ -428,6 +430,13 @@ end
 
 function tlvBreadth.visit(vFileEnv)
 	tlvBreadth.visit_region(vFileEnv, vFileEnv.ast)
+	--[[
+	local seri = require "typedlua.seri"
+	for k, nScope in ipairs(vFileEnv.scope_list) do
+		if nScope.sub_tag == "Region" then
+			print(k, seri(nScope.auto_stack))
+		end
+	end]]
 end
 
 return tlvBreadth

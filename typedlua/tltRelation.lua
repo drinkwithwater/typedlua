@@ -311,7 +311,7 @@ local TypeContainDict = {
 	},
 	TAutoLink=setmetatable({},{
 		__index=function(t,k,v)
-			print("AutoLink relation TODO")
+			print("TODO AutoLink relation ...........")
 			return containFull
 		end
 	})

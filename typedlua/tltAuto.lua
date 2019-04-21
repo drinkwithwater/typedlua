@@ -2,7 +2,7 @@
 local tltAuto = {}
 
 tltAuto.AUTO_SOLVING_IDLE = 1
-tltAuto.AUTO_SOLVING_ACTIVE = 2
+tltAuto.AUTO_SOLVING_START = 2
 tltAuto.AUTO_SOLVING_FINISH = 3
 
 

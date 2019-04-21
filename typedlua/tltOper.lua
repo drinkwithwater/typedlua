@@ -49,13 +49,17 @@ function tltOper._reforge_tuple(visitor, vExpListNode)
 	return nTupleType
 end
 
-function tltOper._call(visitor, vCallNode, vFunctionType, vArgTypeList)
-	vFunctionType = visitor:link_type(vFunctionType)
-	if vFunctionType.tag == "TFunction" then
+function tltOper._call(visitor, vCallNode, vCallerType, vArgTuple)
+	local nFunctionType = visitor:link_type(vCallerType)
+	if nFunctionType.tag == "TFunction" then
 		print("TODO tltOper._call check args")
-		return vFunctionType[2]
+		if nFunctionType.sub_tag == "TAutoFunction" then
+			return visitor:oper_call(vCallerType, vArgTuple)
+		else
+			return nFunctionType[2]
+		end
 	else
-		visitor:log_error(vCallNode, tltype.tostring(vFunctionType), "is not function type")
+		visitor:log_error(vCallNode, tltype.tostring(nFunctionType), "is not function type")
 		return tltype.Tuple(tltype.Nil())
 	end
 end
@@ -82,22 +86,26 @@ end
 function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
 	vPrefixType = visitor:link_type(vPrefixType)
 	if vPrefixType.tag == "TTable" then
-		if vPrefixType.sub_tag == "TAutoTable" then
-			local nField = tltable.index_field(vPrefixType, vKeyType)
-			if not nField then
+		local nField = tltable.index_field(vPrefixType, vKeyType)
+		if not nField then
+			if vPrefixType.sub_tag == "TAutoTable" then
 				tltable.insert(vPrefixType, tltable.NilableField(
 					vKeyType,
 					tltype.general(vValueType)
 				))
 			else
-				if not tltRelation.sub(vValueType, nField[2]) then
+				visitor:log_error(vPrefixNode, "non-auto table set in empty field", tltype.tostring(nField[2]))
+			end
+		else
+			if vValueType.tag == "TAutoLink" then
+				visitor:finish_auto(nField[2], vValueType)
+			else
+				if not tltRelation.contain(nField[2], vValueType) then
 					visitor:log_error(vPrefixNode,
-						tltype.tostring(vValueType), "set index",
+						tltype.tostring(vValueType), "index set",
 						tltype.tostring(nField[2]), "failed")
 				end
 			end
-		else
-			-- TODO
 		end
 	else
 		-- TODO check node is Table
@@ -113,20 +121,26 @@ function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDec
 	else
 		vRightType = tltype.general(vRightType)
 	end
-	if vLeftDeco then
-		if not tltRelation.sub(vRightType, vLeftDeco) then
-			visitor:log_error(vNameNode,
-				tltype.tostring(vRightType), "can't be assigned to decotype:",
-				tltype.tostring(vLeftDeco))
+	if vRightType.tag == "TAutoLink" then
+		if vLeftDeco then
+			visitor:finish_auto(vLeftDeco, vRightType)
+		else
+			visitor:finish_auto(vLeftType, vRightType)
 		end
-		-- return { type = vLeftDeco }
 	else
-		if not tltRelation.sub(vRightType, vLeftType) then
-			visitor:log_error(vNameNode,
-				tltype.tostring(vRightType), "can't be assigned to type:",
-				tltype.tostring(vLeftType))
+		if vLeftDeco then
+			if not tltRelation.sub(vRightType, vLeftDeco) then
+				visitor:log_error(vNameNode,
+					tltype.tostring(vRightType), "can't be assigned to decotype:",
+					tltype.tostring(vLeftDeco))
+			end
+		else
+			if not tltRelation.sub(vRightType, vLeftType) then
+				visitor:log_error(vNameNode,
+					tltype.tostring(vRightType), "can't be assigned to type:",
+					tltype.tostring(vLeftType))
+			end
 		end
-		-- return { type = vRightType }
 	end
 end
 
@@ -139,10 +153,14 @@ function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
 		vRightType = tltype.general(vRightType)
 	end
 	if vLeftDeco then
-		if not tltRelation.sub(vRightType, vLeftDeco) then
-			visitor:log_error(vNameNode,
-				tltype.tostring(vRightType), "can't be assigned to ",
-				tltype.tostring(vLeftDeco))
+		if vRightType.tag == "TAutoLink" then
+			visitor:finish_auto(vLeftDeco, vRightType)
+		else
+			if not tltRelation.sub(vRightType, vLeftDeco) then
+				visitor:log_error(vNameNode,
+					tltype.tostring(vRightType), "can't be assigned to ",
+					tltype.tostring(vLeftDeco))
+			end
 		end
 		vNameNode.type=vLeftDeco
 	else
