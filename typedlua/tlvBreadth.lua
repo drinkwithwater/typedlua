@@ -285,8 +285,7 @@ local visitor_exp = {
 				local nOwnRegionRefer = vFunctionNode.region_refer
 				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer, tltype.Tuple(table.unpack(nTypeList)))
 				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_refer
-				local nStackIndex = tlenv.region_push_auto(visitor.env, nParentRefer, nAutoFunction)
-				local nAutoLink = tltAuto.AutoLink(nParentRefer, nStackIndex)
+				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nAutoFunction)
 				vFunctionNode.type = nAutoLink
 				visitor.breadth_region_node_list[#visitor.breadth_region_node_list + 1] = vFunctionNode
 			end
@@ -312,9 +311,8 @@ local visitor_exp = {
 
 			-- if not deco type, ident is unique table
 			local nAutoTable = tltAuto.AutoTable(table.unpack(nList))
-			local nStackIndex = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
+			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
 
-			local nAutoLink = tltAuto.AutoLink(nRegionRefer, nStackIndex)
 			add_type(visitor, node, nAutoLink)
 
 			-- local nAuto = tlenv.create_auto(visitor.env, nRegionRefer, node, nAutoTable)

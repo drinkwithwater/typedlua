@@ -109,7 +109,7 @@ function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueT
 		end
 	else
 		-- TODO check node is Table
-		visitor:log_error(vPrefixNode, "index for non-table type not implement...")
+		visitor:log_error(vPrefixNode, "index for non-table type not implement...", vPrefixType.tag)
 	end
 end
 

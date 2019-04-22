@@ -57,7 +57,7 @@ local tableKeys = {
 for k, nStr in pairs(tableKeys) do
 	local nKey = tltype.Literal(nStr)
 	local nValue = tltable.Table(tltable.Field(Any, Any))
-	local nField = tltable.Field(Any, Any)
+	local nField = tltable.Field(nKey, nValue)
 	tltable.insert(mGlobalTable, nField)
 end
 

@@ -21,10 +21,10 @@ function tlenv.GlobalEnv(vMainFileName)
 
 
 	-- TODO add what node ???
-	local nNode= tlast.ident(0, "_G")
+	local nNode = tlast.ident(0, "_G")
 	nNode.l=0
 	nNode.c=0
-	nNode.type = tltPrime
+	-- nNode.type = tltPrime
 	nNode.ident_refer = tlenv.G_IDENT_REFER
 
 	local nGlobalEnv = {
@@ -50,6 +50,10 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nIdent = tlenv.create_ident(nGlobalEnv, nRootScope, nNode)
 	nRootScope.record_dict["_G"] = tlenv.G_IDENT_REFER
 	nRootScope.record_dict["_ENV"] = tlenv.G_IDENT_REFER
+
+	-- put _G as auto type
+	nNode.type = tlenv.region_push_auto(nGlobalEnv, tlenv.G_REGION_REFER, tltPrime)
+
 
 	nGlobalEnv.root_scope = nRootScope
 	nGlobalEnv._G_node = nNode
@@ -166,7 +170,7 @@ function tlenv.region_push_auto(vFileEnv, vRegionRefer, vAutoType)
 	vAutoType.def_index = nNewIndex
 	vAutoType.run_region_refer = vRegionRefer
 	vAutoType.run_index = nNewIndex
-	return nNewIndex
+	return tltAuto.AutoLink(vRegionRefer, nNewIndex)
 end
 
 function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
