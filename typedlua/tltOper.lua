@@ -7,7 +7,7 @@ local tltOper = {}
 
 local function check_type(visitor, vAnchorNode, vType, vMustType)
 	if not tltRelation.sub(vType, vMustType) then
-		visitor:log_error(vAnchorNode, tltype.tostring(vType), "can't belong to", tltype.tostring(vMustType))
+		visitor:log_error(tltype.tostring(vType), "can't belong to", tltype.tostring(vMustType))
 	end
 end
 
@@ -63,7 +63,7 @@ function tltOper._call(visitor, vCallNode, vCallerType, vArgTuple)
 			return nFunctionType[2]
 		end
 	else
-		visitor:log_error(vCallNode, tltype.tostring(nFunctionType), "is not function type")
+		visitor:log_error(tltype.tostring(nFunctionType), "is not function type")
 		return tltype.Tuple(tltype.Nil())
 	end
 end
@@ -75,7 +75,7 @@ function tltOper._index_get(visitor, vIndexNode, vPrefixType, vKeyType)
 		nField = tltable.index_field(vPrefixType, vKeyType)
 	else
 		-- TODO check node is Table
-		visitor:log_error(vIndexNode, "index for non-table type not implement...")
+		visitor:log_error("index for non-table type not implement...")
 	end
 	local nReType = nil
 	if not nField then
@@ -90,7 +90,7 @@ end
 function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
 	if not vValueType then
 		vValueType = tltype.Nil()
-		visitor:log_warning(vPrefixNode, "set assign missing")
+		visitor:log_warning("set assign missing")
 	else
 		vValueType = tltype.general(vValueType)
 	end
@@ -104,14 +104,14 @@ function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueT
 					tltype.general(vValueType)
 				))
 			else
-				visitor:log_error(vPrefixNode, "non-auto table set in empty field", tltype.tostring(nField[2]))
+				visitor:log_error("non-auto table set in empty field", tltype.tostring(nField[2]))
 			end
 		else
 			if vValueType.tag == "TAutoLink" then
 				visitor:cast_auto(nField[2], vValueType)
 			else
 				if not tltRelation.contain(nField[2], vValueType) then
-					visitor:log_error(vPrefixNode,
+					visitor:log_error(
 						tltype.tostring(vValueType), "index set",
 						tltype.tostring(nField[2]), "failed")
 				end
@@ -119,7 +119,7 @@ function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueT
 		end
 	else
 		-- TODO check node is Table
-		visitor:log_error(vPrefixNode, "index for non-table type not implement...", vPrefixType.tag)
+		visitor:log_error("index for non-table type not implement...", vPrefixType.tag)
 	end
 end
 
@@ -127,7 +127,7 @@ end
 function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
-		visitor:log_warning(vNameNode, "set assign missing")
+		visitor:log_warning("set assign missing")
 	else
 		vRightType = tltype.general(vRightType)
 	end
@@ -140,13 +140,13 @@ function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDec
 	else
 		if vLeftDeco then
 			if not tltRelation.sub(vRightType, vLeftDeco) then
-				visitor:log_error(vNameNode,
+				visitor:log_error(
 					tltype.tostring(vRightType), "can't be assigned to decotype:",
 					tltype.tostring(vLeftDeco))
 			end
 		else
 			if not tltRelation.sub(vRightType, vLeftType) then
-				visitor:log_error(vNameNode,
+				visitor:log_error(
 					tltype.tostring(vRightType), "can't be assigned to type:",
 					tltype.tostring(vLeftType))
 			end
@@ -158,7 +158,7 @@ end
 function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
-		visitor:log_warning(vNameNode, "init assign missing")
+		visitor:log_warning("init assign missing")
 	else
 		vRightType = tltype.general(vRightType)
 	end
@@ -167,7 +167,7 @@ function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
 			visitor:cast_auto(vLeftDeco, vRightType)
 		else
 			if not tltRelation.sub(vRightType, vLeftDeco) then
-				visitor:log_error(vNameNode,
+				visitor:log_error(
 					tltype.tostring(vRightType), "can't be assigned to ",
 					tltype.tostring(vLeftDeco))
 			end
@@ -181,17 +181,17 @@ end
 -- logic operator
 
 function tltOper._not(visitor, vNode, vType)
-	visitor:log_warning(vNode, "_not TODO")
+	visitor:log_warning("_not TODO")
 	return tltype.Boolean()
 end
 
 function tltOper._and(visitor, vNode, vLeftType, vRightType)
-	visitor:log_warning(vNode, "_and TODO")
+	visitor:log_warning("_and TODO")
 	return vRightType
 end
 
 function tltOper._or(visitor, vNode, vLeftType, vRightType)
-	visitor:log_warning(vNode, "_or TODO")
+	visitor:log_warning("_or TODO")
 	return vLeftType
 end
 
@@ -298,7 +298,7 @@ end
 -- equivalence comparison operators
 
 function tltOper.__eq(visitor, vNode, vLeftType, vRightType)
-	visitor:log_warning(vNode, "__eq oper TODO")
+	visitor:log_warning("__eq oper TODO")
 	return tltype.Boolean()
 end
 
@@ -317,7 +317,7 @@ end
 -- equivalence comparison operators not meta
 
 function tltOper._ne(visitor, vNode, vLeftType, vRightType)
-	visitor:log_warning(vNode, "_ne  oper TODO")
+	visitor:log_warning("_ne  oper TODO")
 	return tltype.Boolean()
 end
 

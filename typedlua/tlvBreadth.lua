@@ -44,7 +44,7 @@ end
 function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 	if vAutoLink.link_region_refer ~= nRegionRefer then
-		visitor:log_error(visitor.stack[#visitor.stack], "can't finish auto in from out region")
+		visitor:log_error("can't finish auto in from out region")
 		return false
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
@@ -55,20 +55,18 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 				assert(nField[1].tag == "TLiteral")
 				local nLeftField = tltable.index_field(vLeftType, nField[1])
 				if not nLeftField then
-					visitor:log_error(visitor.stack[#visitor.stack],
-						"finish auto fail for field", tltype.tostring(nField[1]))
+					visitor:log_error("finish auto fail for field", tltype.tostring(nField[1]))
 					return false
 				end
 				if not visitor:cast_auto(visitor, nLeftField[2], nField[2]) then
-					visitor:log_error(visitor.stack[#visitor.stack],
-						"recursive finish auto fail for field", tltype.tostring(nField[1]))
+					visitor:log_error("recursive finish auto fail for field", tltype.tostring(nField[1]))
 					return false
 				end
 				nField[2] = nLeftField[2]
 			end
 		end
 		if not tltRelation.contain(vLeftType, nRightType) then
-			visitor:log_error(visitor.stack[#visitor.stack], "finish auto fail for relation")
+			visitor:log_error("finish auto fail for relation")
 			return false
 		end
 		nRegion.auto_stack[vAutoLink.link_index] = vLeftType
@@ -78,11 +76,11 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 			nRegion.auto_stack[vAutoLink.link_index] = vLeftType
 			return true
 		else
-			visitor:log_error(visitor.stack[#visitor.stack], "finish auto fail because function is not idle")
+			visitor:log_error("finish auto fail because function is not idle")
 			return false
 		end
 	else
-		visitor:log_error(visitor.stack[#visitor.stack], "cast_auto type unexception", vLeftType.tag, nRightType.tag, nRightType.sub_tag)
+		visitor:log_error("cast_auto type unexception", vLeftType.tag, nRightType.tag, nRightType.sub_tag)
 	end
 end
 
@@ -99,14 +97,16 @@ function visitor_meta.link_type(visitor, vAutoLink)
 end
 
 
-function visitor_meta.log_error (visitor, node, ...)
+function visitor_meta.log_error (visitor, ...)
 	local filename = visitor.env.filename
+	local node = visitor.stack[#visitor.stack]
 	local head = string.format("%s:%d:%d:[ERROR]", filename, node.l, node.c)
 	print(head, ...)
 end
 
-function visitor_meta.log_warning(visitor, node, ...)
+function visitor_meta.log_warning(visitor, ...)
 	local filename = visitor.env.filename
+	local node = visitor.stack[#visitor.stack]
 	local head = string.format("%s:%d:%d:[WARNING]", filename, node.l, node.c)
 	print(head, ...)
 end
@@ -121,7 +121,7 @@ local function add_type(visitor, node, t)
 		end
 	end]]
 	if node.type then
-		visitor:log_error(node, "add type but node.type existed", node.type.tag, t.tag)
+		visitor:log_error("add type but node.type existed", node.type.tag, t.tag)
 	else
 		node.type = t
 	end
@@ -392,7 +392,7 @@ local visitor_exp = {
 			local nFunctionType = visitor:link_type(vCallNode[1].type)
 			local nReturnTuple = nil
 			if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_START then
-				visitor:log_error(vCallNode, "function auto solving loop...")
+				visitor:log_error("function auto solving loop...")
 				nReturnTuple = tltype.Tuple(tltype.Any())
 			else
 				-- maybe function is not visited, because node was breadth-first visited.
