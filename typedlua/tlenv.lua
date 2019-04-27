@@ -224,8 +224,11 @@ function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
 end
 
 function tlenv.closure_copy_table(vFileEnv, vClosure, vAutoTable)
+	if vAutoTable.sub_tag ~= "TAutoTable" then
+		return vAutoTable
+	end
 	local nCopyTable = tltAuto.AutoTable()
-	nCopyTable.auto_solving_state = tltAuto.AUTO_SOLVING_IDLE
+	nCopyTable.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
 	nCopyTable.def_region_refer = vAutoTable.def_region_refer
 	nCopyTable.def_index  = vAutoTable.def_index
 	for i, nField in ipairs(vAutoTable) do
@@ -241,6 +244,9 @@ function tlenv.closure_copy_table(vFileEnv, vClosure, vAutoTable)
 end
 
 function tlenv.closure_copy_function(vFileEnv, vClosure, vAutoFunction)
+	if vAutoFunction.sub_tag ~= "TAutoFunction" then
+		return vAutoFunction
+	end
 	local nCopyFunction = tltAuto.AutoFunction(vAutoFunction.own_region_refer, vAutoFunction[1])
 	nCopyFunction.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
 	nCopyFunction.def_region_refer = vAutoFunction.def_region_refer

@@ -145,37 +145,19 @@ end
 
 -- statDecoAssign
 function tlast.statDecoAssign(pos, decoList, stat)
-	assert(stat.tag == "Local" or stat.tag == "Set")
+	assert(stat.tag == "Local" or stat.tag == "Set" or stat.tag == "Localrec")
 	local namelist = stat[1]
 	if #namelist ~= #decoList then
 		-- print("decorated namelist's size not equal with decolist's size")
 	end
 	for i, name in ipairs(namelist) do
-		name.left_deco = decoList[i]
+		name.deco_type = decoList[i]
 	end
+	--[[
 	local explist = stat[2]
 	for i, exp in ipairs(explist) do
 		exp.right_deco = decoList[i]
-	end
-	return stat
-end
-
--- statDecoFunc
-function tlast.statDecoFunc(pos, decoFunc, stat)
-	assert(stat.tag == "Localrec" or stat.tag == "Set")
-	local lhsNode = stat[1][1]
-	lhsNode.left_deco = decoFunc
-	local funcNode = stat[2][1]
-	assert(funcNode.tag == "Function")
-	-- deco input
-	local nParList = funcNode[1] -- parlist or namelist
-	local nInputTuple = decoFunc[1]
-	for i, name in ipairs(nParList) do
-		name.left_deco = nInputTuple[i]
-	end
-	-- TODO check auto
-	-- deco func node
-	funcNode.right_deco = decoFunc
+	end]]
 	return stat
 end
 

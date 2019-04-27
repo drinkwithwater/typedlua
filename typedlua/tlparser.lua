@@ -96,7 +96,6 @@ local G = lpeg.P { "TypedLua";
                 lpeg.Ct(lpeg.Cc()) / tlast.statLocal;]]
   DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
   DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
-  DecoFunc = tllexer.decosymb("--@") * lpeg.V("FunctionType") * lpeg.P("\n") * tllexer.DecoSkip;
 
   -- parser
   Chunk = lpeg.V("Block") / tlast.chunk;
@@ -227,8 +226,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   SetStat = lpeg.V("FuncStat") + lpeg.V("AssignStat") +
-	  (lpeg.Cp() * lpeg.V("DecoName") * lpeg.V("AssignStat")/tlast.statDecoAssign) +
-	  (lpeg.Cp() * lpeg.V("DecoFunc") * lpeg.V("FuncStat")/tlast.statDecoFunc);
+	  (lpeg.Cp() * lpeg.V("DecoName") * (lpeg.V("FuncStat") + lpeg.V("AssignStat"))/tlast.statDecoAssign);
 
   -- stat , normal local func & assign
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
@@ -238,8 +236,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   LocalStat = lpeg.V("LocalFunc") + lpeg.V("LocalAssign") +
-	  (lpeg.Cp() * lpeg.V("DecoName") * lpeg.V("LocalAssign")/tlast.statDecoAssign) +
-	  (lpeg.Cp() * lpeg.V("DecoFunc") * lpeg.V("LocalFunc")/tlast.statDecoFunc);
+	  (lpeg.Cp() * lpeg.V("DecoName") * (lpeg.V("LocalFunc") + lpeg.V("LocalAssign"))/tlast.statDecoAssign);
 
   LabelStat = lpeg.Cp() * tllexer.symb("::") * tllexer.token(tllexer.Name, "Name") * tllexer.symb("::") / tlast.statLabel;
   BreakStat = lpeg.Cp() * tllexer.kw("break") / tlast.statBreak;

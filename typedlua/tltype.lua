@@ -8,7 +8,7 @@ This module implements Typed Lua tltype.
 local tltype = {}
 local tltRelation = require "typedlua/tltRelation"
 
-tltype.integer = false
+tltype.integer = true
 
 -- literal types
 
@@ -114,10 +114,25 @@ function tltype.UnionNil (t, is_union_nil)
 end
 
 -- tuple types
+function tltype.VarTuple(...)
+	return { tag = "TTuple", sub_tag = "TVarTuple", ...  }
+end
 
 -- Tuple : ({number:type}, true?) -> (type)
 function tltype.Tuple (...)
   return { tag = "TTuple", ... }
+end
+
+function tltype.tuple_index(vTuple, vIndex)
+	if vTuple.sub_tag == "TVarTuple" then
+		if #vTuple <= vIndex then
+			return vTuple[vIndex]
+		else
+			return vTuple[#vTuple]
+		end
+	else
+		return vTuple[vIndex]
+	end
 end
 
 -- function types

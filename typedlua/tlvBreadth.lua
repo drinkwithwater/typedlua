@@ -49,7 +49,7 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
 	local nRightType = nRegion.auto_stack[vAutoLink.link_index]
-	if vLeftType.tag == "TTable" and nRightType.tag == "TTable" then
+	if vLeftType.tag == "TTable" and nRightType.tag == "TTable" and nRightType.sub_tag == "TAutoTable" then
 		for i, nField in ipairs(nRightType) do
 			if nField[2].tag == "TAutoLink" then
 				assert(nField[1].tag == "TLiteral")
@@ -73,9 +73,16 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 		end
 		nRegion.auto_stack[vAutoLink.link_index] = vLeftType
 		return true
-	elseif vLeftType.tag == "TFunction" and nRightType.tag == "TFunction" then
-		print("finish auto TODO")
-		return false
+	elseif vLeftType.tag == "TFunction" and nRightType.tag == "TFunction" and nRightType.sub_tag == "TAutoFunction" then
+		if nRightType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
+			nRegion.auto_stack[vAutoLink.link_index] = vLeftType
+			return true
+		else
+			visitor:log_error(visitor.stack[#visitor.stack], "finish auto fail because function is not idle")
+			return false
+		end
+	else
+		visitor:log_error(visitor.stack[#visitor.stack], "cast_auto type unexception", vLeftType.tag, nRightType.tag, nRightType.sub_tag)
 	end
 end
 
@@ -136,7 +143,7 @@ local visitor_stm = {
 			vNodeVisit(visitor, vForinNode[1])
 			for i, nNameNode in ipairs(vForinNode[1]) do
 				local nRightType = nForinTuple[i]
-				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
+				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.deco_type)
 			end
 			vNodeVisit(visitor, vForinNode[3])
 		end
@@ -162,13 +169,13 @@ local visitor_stm = {
 	Set={
 		after=function(visitor, node)
 			local nVarList = node[1]
-			local nTypeList = tltOper._reforge_tuple(visitor, node[2])
+			local nTupleType = tltOper._reforge_tuple(visitor, node[2])
 			for i, nVarNode in ipairs(nVarList) do
-				local nRightType = nTypeList[i]
+				local nRightType = tltype.tuple_index(nTupleType, i)
 				if nVarNode.tag == "Index" then
-					tltOper._index_set(visitor, nVarNode[1], nVarNode[1].type, nVarNode[2].type, nRightType, nVarNode.left_deco)
+					tltOper._index_set(visitor, nVarNode[1], nVarNode[1].type, nVarNode[2].type, nRightType, nVarNode.deco_type)
 				elseif nVarNode.tag == "Id" then
-					tltOper._set_assign(visitor, nVarNode, nVarNode.type, nRightType, nVarNode.left_deco)
+					tltOper._set_assign(visitor, nVarNode, nVarNode.type, nRightType, nVarNode.deco_type)
 					-- local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
 					-- TODO merge namenode??????????????????
 					-- oper_merge(visitor, nIdent, nWrapper)
@@ -183,27 +190,27 @@ local visitor_stm = {
 			local nNameNode = vLocalrecNode[1][1]
 			local nExprNode = vLocalrecNode[2][1]
 
-			tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.left_deco)
+			tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.deco_type)
 		end,
 	},
 	Local={
 		after=function(visitor, node)
 			local nNameList = node[1]
-			local nTypeList = tltOper._reforge_tuple(visitor, node[2])
+			local nTupleType = tltOper._reforge_tuple(visitor, node[2])
 			for i, nNameNode in ipairs(nNameList) do
-				local nRightType = nTypeList[i]
-				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.left_deco)
+				local nRightType = tltype.tuple_index(nTupleType, i)
+				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.deco_type)
 			end
 		end,
 	},
 	Return={
 		after=function(visitor, node)
 			-- TODO case for none return block
-			local nTypeList = tltOper._reforge_tuple(visitor, node[1])
+			local nTupleType = tltOper._reforge_tuple(visitor, node[1])
 			for i=#visitor.stack, 1, -1 do
 				local nPreNode = visitor.stack[i]
 				if nPreNode.tag == "Function" then
-					tltOper._return(visitor, nPreNode, nTypeList)
+					tltOper._return(visitor, nPreNode, nTupleType)
 					return
 				end
 			end
@@ -248,6 +255,34 @@ local visitor_exp = {
 			-- if #stack == 1 then visit function in an isolating stack
 			if #visitor.stack == 1 then
 				local nFunctionType = visitor:link_type(vFunctionNode.type)
+				-- deco input parameter
+				local nInputTuple = nFunctionType[1]
+				if nInputTuple then
+					local nParList = vFunctionNode[1]
+					for k, nIdentNode in ipairs(nParList) do
+						local nDecoType = tltype.tuple_index(nInputTuple, k)
+						if not nDecoType then
+							nDecoType = tltype.Any()
+							visitor:log_error("arguments number and deco inputtuple not match")
+						end
+						nIdentNode.deco_type = nDecoType
+					end
+				else
+					-- add any for default
+					local nTypeList = {}
+					local nParList = vFunctionNode[1]
+					for k, nIdentNode in ipairs(nParList) do
+						-- TODO fill default with duck type
+						nIdentNode.deco_type = tltype.Any()
+						nTypeList[k] = tltype.Any()
+						if nIdentNode.tag == "Dots" then
+							print("TODO:auto type for dots")
+						end
+					end
+					nInputTuple = tltype.Tuple(table.unpack(nTypeList))
+					nFunctionType[1] = nInputTuple
+				end
+				-- breadth visit
 				if nFunctionType.sub_tag == "TAutoFunction"
 					and nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
 					-- if auto function and idle, change state and visit
@@ -264,26 +299,12 @@ local visitor_exp = {
 			-- if #stack > 1 then visit function in parent's stack
 			-- create AutoFunction right now but visit when it's called
 			else
-				-- TODO thing visitor argments list in which step?
-				-- don't visit block
-				if vFunctionNode.right_deco then
-					vFunctionNode.type = vFunctionNode.right_deco
-					return
-				end
+				-- TODO thinking visitor argments list in which step?
 
 				print("TODO:auto function deco for lambda")
 				-- auto deco for parameter
-				local nTypeList = {}
-				local nParList = vFunctionNode[1]
-				for k, nIdentNode in ipairs(nParList) do
-					nIdentNode.left_deco = tltype.Any()
-					nTypeList[k] = tltype.Any()
-					if nIdentNode.tag == "Dots" then
-						print("TODO:auto type for dots")
-					end
-				end
 				local nOwnRegionRefer = vFunctionNode.region_refer
-				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer, tltype.Tuple(table.unpack(nTypeList)))
+				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer)
 				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_refer
 				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nAutoFunction)
 				vFunctionNode.type = nAutoLink
@@ -344,8 +365,8 @@ local visitor_exp = {
 			local ident = visitor.env.ident_list[node.ident_refer]
 			if node == ident.node then
 				-- ident set itself
-				if node.left_deco then
-					node.type = node.left_deco
+				if node.deco_type then
+					node.type = node.deco_type
 				end
 			else
 				-- ident get
@@ -403,8 +424,8 @@ local visitor_exp = {
 			local nIdent = visitor.env.ident_list[vDotsNode.ident_refer]
 			if nIdent.node == vDotsNode then
 				-- dot define
-				if vDotsNode.left_deco then
-					vDotsNode.type = vDotsNode.left_deco
+				if vDotsNode.deco_type then
+					vDotsNode.type = vDotsNode.deco_type
 				end
 			else
 				if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Table") then

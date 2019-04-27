@@ -41,6 +41,10 @@ function tltOper._reforge_tuple(visitor, vExpListNode)
 		return nTupleType
 	end
 
+	if nLastType.sub_tag == "TVarTuple" then
+		nTupleType.sub_tag = "TVarTuple"
+	end
+
 	-- if type1,type2,...,type3,tuple return {type1,type2,...,type3,table.unpack(tuple)}
 	for i=1, #nLastType do
 		nTupleType[nLength + i - 1] = nLastType[i]
@@ -84,6 +88,12 @@ end
 
 -- TODO think which one is better ... -- no return
 function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
+	if not vValueType then
+		vValueType = tltype.Nil()
+		visitor:log_warning(vPrefixNode, "set assign missing")
+	else
+		vValueType = tltype.general(vValueType)
+	end
 	vPrefixType = visitor:link_type(vPrefixType)
 	if vPrefixType.tag == "TTable" then
 		local nField = tltable.index_field(vPrefixType, vKeyType)
