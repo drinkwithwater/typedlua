@@ -5,7 +5,7 @@ local tltable = require "typedlua/tltable"
 local tlutils = require "typedlua/tlutils"
 local tltOper = {}
 
-local function check_type(visitor, vAnchorNode, vType, vMustType)
+local function check_type(visitor, vType, vMustType)
 	if not tltRelation.sub(vType, vMustType) then
 		visitor:log_error(tltype.tostring(vType), "can't belong to", tltype.tostring(vMustType))
 	end
@@ -53,7 +53,7 @@ function tltOper._reforge_tuple(visitor, vExpListNode)
 	return nTupleType
 end
 
-function tltOper._call(visitor, vCallNode, vCallerType, vArgTuple)
+function tltOper._call(visitor, vCallerType, vArgTuple)
 	local nFunctionType = visitor:link_type(vCallerType)
 	if nFunctionType.tag == "TFunction" then
 		print("TODO tltOper._call check args")
@@ -68,7 +68,7 @@ function tltOper._call(visitor, vCallNode, vCallerType, vArgTuple)
 	end
 end
 
-function tltOper._index_get(visitor, vIndexNode, vPrefixType, vKeyType)
+function tltOper._index_get(visitor, vPrefixType, vKeyType)
 	vPrefixType = visitor:link_type(vPrefixType)
 	local nField = nil
 	if vPrefixType.tag == "TTable" then
@@ -87,7 +87,7 @@ function tltOper._index_get(visitor, vIndexNode, vPrefixType, vKeyType)
 end
 
 -- TODO think which one is better ... -- no return
-function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueType, vLeftDeco)
+function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDeco)
 	if not vValueType then
 		vValueType = tltype.Nil()
 		visitor:log_warning("set assign missing")
@@ -124,7 +124,7 @@ function tltOper._index_set(visitor, vPrefixNode, vPrefixType, vKeyType, vValueT
 end
 
 -- set -- return assign
-function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDeco)
+function tltOper._set_assign(visitor, vLeftType, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
 		visitor:log_warning("set assign missing")
@@ -155,7 +155,7 @@ function tltOper._set_assign(visitor, vNameNode, vLeftType, vRightType, vLeftDec
 end
 
 -- local -- return assign
-function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
+function tltOper._init_assign(visitor, vRightType, vLeftDeco)
 	if not vRightType then
 		vRightType = tltype.Nil()
 		visitor:log_warning("init assign missing")
@@ -172,32 +172,32 @@ function tltOper._init_assign(visitor, vNameNode, vRightType, vLeftDeco)
 					tltype.tostring(vLeftDeco))
 			end
 		end
-		vNameNode.type=vLeftDeco
+		return vLeftDeco
 	else
-		vNameNode.type=vRightType
+		return vRightType
 	end
 end
 
 -- logic operator
 
-function tltOper._not(visitor, vNode, vType)
+function tltOper._not(visitor, vType)
 	visitor:log_warning("_not TODO")
 	return tltype.Boolean()
 end
 
-function tltOper._and(visitor, vNode, vLeftType, vRightType)
+function tltOper._and(visitor, vLeftType, vRightType)
 	visitor:log_warning("_and TODO")
 	return vRightType
 end
 
-function tltOper._or(visitor, vNode, vLeftType, vRightType)
+function tltOper._or(visitor, vLeftType, vRightType)
 	visitor:log_warning("_or TODO")
 	return vLeftType
 end
 
 -- # operator
 
-function tltOper.__len(visitor, vNode, vType)
+function tltOper.__len(visitor, vType)
 	-- TODO
 	-- visitor:check(vWrapper, dosth)
 	return tltype.Integer()
@@ -205,132 +205,132 @@ end
 
 -- mathematic operator
 
-function tltOper.__unm(visitor, vNode, vType)
-	check_type(visitor, vNode, vType, tltype.Number())
+function tltOper.__unm(visitor, vType)
+	check_type(visitor, vType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__add(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__add(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__sub(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__sub(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__mul(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__mul(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__div(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__div(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__idiv(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__idiv(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Integer()
 end
 
-function tltOper.__mod(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__mod(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__pow(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__pow(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
-function tltOper.__concat(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.String())
-	check_type(visitor, vNode, vRightType, tltype.String())
+function tltOper.__concat(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.String())
+	check_type(visitor, vRightType, tltype.String())
 	return tltype.String()
 end
 
 -- bitwise operator
 
-function tltOper.__band(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Integer())
-	check_type(visitor, vNode, vRightType, tltype.Integer())
+function tltOper.__band(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Integer())
+	check_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
-function tltOper.__bor(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Integer())
-	check_type(visitor, vNode, vRightType, tltype.Integer())
+function tltOper.__bor(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Integer())
+	check_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
-function tltOper.__bxor(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Integer())
-	check_type(visitor, vNode, vRightType, tltype.Integer())
+function tltOper.__bxor(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Integer())
+	check_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
-function tltOper.__bnot(visitor, vNode, vType)
-	check_type(visitor, vNode, vType, tltype.Integer())
+function tltOper.__bnot(visitor, vType)
+	check_type(visitor, vType, tltype.Integer())
 	return tltype.Integer()
 end
 
-function tltOper.__shl(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Integer())
-	check_type(visitor, vNode, vRightType, tltype.Integer())
+function tltOper.__shl(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Integer())
+	check_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
-function tltOper.__shr(visitor, vNode, vLeft, vRight)
-	check_type(visitor, vNode, vLeft, tltype.Integer())
-	check_type(visitor, vNode, vRight, tltype.Integer())
+function tltOper.__shr(visitor, vLeft, vRight)
+	check_type(visitor, vLeft, tltype.Integer())
+	check_type(visitor, vRight, tltype.Integer())
 	return tltype.Integer()
 end
 
 -- equivalence comparison operators
 
-function tltOper.__eq(visitor, vNode, vLeftType, vRightType)
+function tltOper.__eq(visitor, vLeftType, vRightType)
 	visitor:log_warning("__eq oper TODO")
 	return tltype.Boolean()
 end
 
-function tltOper.__lt(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__lt(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Boolean()
 end
 
-function tltOper.__le(visitor, vNode, vLeftType, vRightType)
-	check_type(visitor, vNode, vLeftType, tltype.Number())
-	check_type(visitor, vNode, vRightType, tltype.Number())
+function tltOper.__le(visitor, vLeftType, vRightType)
+	check_type(visitor, vLeftType, tltype.Number())
+	check_type(visitor, vRightType, tltype.Number())
 	return tltype.Boolean()
 end
 
 -- equivalence comparison operators not meta
 
-function tltOper._ne(visitor, vNode, vLeftType, vRightType)
+function tltOper._ne(visitor, vLeftType, vRightType)
 	visitor:log_warning("_ne  oper TODO")
 	return tltype.Boolean()
 end
 
-function tltOper._ge(visitor, vNode, vLeftType, vRightType)
-	return tltOper.__le(visitor, vNode, vRightType, vLeftType)
+function tltOper._ge(visitor, vLeftType, vRightType)
+	return tltOper.__le(visitor, vRightType, vLeftType)
 end
 
-function tltOper._gt(visitor, vNode, vLeftType, vRightType)
-	return tltOper.__lt(visitor, vNode, vRightType, vLeftType)
+function tltOper._gt(visitor, vLeftType, vRightType)
+	return tltOper.__lt(visitor, vRightType, vLeftType)
 end
 
-function tltOper._fornum(visitor, vNode, vType)
-	check_type(visitor, vNode, vType, tltype.Number())
+function tltOper._fornum(visitor, vType)
+	check_type(visitor, vType, tltype.Number())
 end
 
 tltOper.wrapper = setmetatable({},{

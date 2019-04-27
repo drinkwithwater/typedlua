@@ -44,7 +44,7 @@ end
 function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 	if vAutoLink.link_region_refer ~= nRegionRefer then
-		visitor:log_error("can't finish auto in from out region")
+		visitor:log_error("can't finish auto from out region")
 		return false
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
@@ -58,7 +58,7 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 					visitor:log_error("finish auto fail for field", tltype.tostring(nField[1]))
 					return false
 				end
-				if not visitor:cast_auto(visitor, nLeftField[2], nField[2]) then
+				if not visitor:cast_auto(nLeftField[2], nField[2]) then
 					visitor:log_error("recursive finish auto fail for field", tltype.tostring(nField[1]))
 					return false
 				end
@@ -139,11 +139,11 @@ local visitor_stm = {
 				nArgTypeList[i-1] = nNextTableInitTuple[i]
 			end
 			error("for in caller TODO")
-			local nForinTuple = tltOper._call(visitor, vForinNode[2], nFunctionType, nArgTypeList)
+			local nForinTuple = tltOper._call(visitor, nFunctionType, nArgTypeList)
 			vNodeVisit(visitor, vForinNode[1])
 			for i, nNameNode in ipairs(vForinNode[1]) do
 				local nRightType = nForinTuple[i]
-				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.deco_type)
+				nNameNode.type = tltOper._init_assign(visitor, nRightType, nNameNode.deco_type)
 			end
 			vNodeVisit(visitor, vForinNode[3])
 		end
@@ -156,7 +156,7 @@ local visitor_stm = {
 			end
 			-- oper subNode 1
 			local nNameNode = node[1]
-			tltOper._init_assign(visitor, nNameNode, tltype.Number())
+			nNameNode.type = tltOper._init_assign(visitor, tltype.Number())
 
 			-- oper subNode 2, 3,..., #node-1
 			for i = 2, #node - 1 do
@@ -173,9 +173,9 @@ local visitor_stm = {
 			for i, nVarNode in ipairs(nVarList) do
 				local nRightType = tltype.tuple_index(nTupleType, i)
 				if nVarNode.tag == "Index" then
-					tltOper._index_set(visitor, nVarNode[1], nVarNode[1].type, nVarNode[2].type, nRightType, nVarNode.deco_type)
+					tltOper._index_set(visitor, nVarNode[1].type, nVarNode[2].type, nRightType, nVarNode.deco_type)
 				elseif nVarNode.tag == "Id" then
-					tltOper._set_assign(visitor, nVarNode, nVarNode.type, nRightType, nVarNode.deco_type)
+					tltOper._set_assign(visitor, nVarNode.type, nRightType, nVarNode.deco_type)
 					-- local nIdent = visitor.env.ident_list[nVarNode.ident_refer]
 					-- TODO merge namenode??????????????????
 					-- oper_merge(visitor, nIdent, nWrapper)
@@ -190,7 +190,7 @@ local visitor_stm = {
 			local nNameNode = vLocalrecNode[1][1]
 			local nExprNode = vLocalrecNode[2][1]
 
-			tltOper._init_assign(visitor, nNameNode, nExprNode.type, nNameNode.deco_type)
+			nNameNode.type = tltOper._init_assign(visitor, nExprNode.type, nNameNode.deco_type)
 		end,
 	},
 	Local={
@@ -199,7 +199,7 @@ local visitor_stm = {
 			local nTupleType = tltOper._reforge_tuple(visitor, node[2])
 			for i, nNameNode in ipairs(nNameList) do
 				local nRightType = tltype.tuple_index(nTupleType, i)
-				tltOper._init_assign(visitor, nNameNode, nRightType, nNameNode.deco_type)
+				nNameNode.type = tltOper._init_assign(visitor, nRightType, nNameNode.deco_type)
 			end
 		end,
 	},
@@ -346,10 +346,10 @@ local visitor_exp = {
 			local nOP = vNode[1]
 			if #vNode== 3 then
 				local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
-				vNode.type = nOper(visitor, vNode, vNode[2].type, vNode[3].type)
+				vNode.type = nOper(visitor, vNode[2].type, vNode[3].type)
 			elseif #vNode == 2 then
 				local nOper = tltOper["__"..nOP] or tltOper["_"..nOP]
-				vNode.type = nOper(visitor, vNode, vNode[2].type)
+				vNode.type = nOper(visitor, vNode[2].type)
 			else
 				error("exception branch")
 			end
@@ -381,7 +381,7 @@ local visitor_exp = {
 				-- set index
 				-- pass
 			else
-				vIndexNode.type = tltOper._index_get(visitor, vIndexNode, vIndexNode[1].type, vIndexNode[2].type)
+				vIndexNode.type = tltOper._index_get(visitor, vIndexNode[1].type, vIndexNode[2].type)
 			end
 		end,
 	},
@@ -402,7 +402,7 @@ local visitor_exp = {
 					tlvBreadth.visit_region(visitor.env, nScope.node)
 				end
 				local nTuple = tltOper._reforge_tuple(visitor, vCallNode[2])
-				nReturnTuple = tltOper._call(visitor, vCallNode, vCallNode[1].type, nTuple)
+				nReturnTuple = tltOper._call(visitor, vCallNode[1].type, nTuple)
 			end
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then

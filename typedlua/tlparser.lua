@@ -56,8 +56,8 @@ local G = lpeg.P { "TypedLua";
 
   -- function type only use tuple
   TupleType = tllexer.decosymb("(") * (lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0)^-1 * tllexer.decosymb(")") / tltype.Tuple;
-  FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * lpeg.V("TupleType") / tltype.Function +
-				 lpeg.V("TupleType") * tllexer.decosymb("->") * tllexer.decokw("auto") / tltAuto.AutoFunction;
+  FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * lpeg.V("TupleType") / tltype.Function;
+  -- TODO + lpeg.V("TupleType") * tllexer.decosymb("->") * tllexer.decokw("auto") / tltAuto.AutoFunction;
 
   TableType = tllexer.decosymb("{") * lpeg.V("TableTypeBody") * tllexer.decosymb("}") / tltable.Table;
   TableTypeBody = lpeg.V("RecordType") +
@@ -69,10 +69,9 @@ local G = lpeg.P { "TypedLua";
   RecordField = tllexer.decosymb("[") * lpeg.V("LiteralType") * tllexer.decosymb("]") *
 				tllexer.decosymb("=") * lpeg.V("Type") / tltable.Field;
   HashType = tllexer.decosymb("[") * lpeg.V("KeyType") * tllexer.decosymb("]") *
-			 tllexer.decosymb("=") * lpeg.V("FieldType") / tltable.Field;
-  ArrayType = lpeg.V("FieldType") / tltable.ArrayField;
+			 tllexer.decosymb("=") * lpeg.V("Type") / tltable.Field;
+  ArrayType = lpeg.V("Type") / tltable.ArrayField;
   KeyType = lpeg.V("BaseType") + lpeg.V("AnyType");
-  FieldType = lpeg.V("Type") * lpeg.Cc(tltype.Nil()) / tltype.Union;
   VariableType = tllexer.decotoken(tllexer.Name, "Type") / tltype.Variable;
 
   -- interface ?? TODO
