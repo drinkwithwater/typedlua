@@ -9,19 +9,21 @@ tllexer.comments = {}
 local lpeg = require "lpeg"
 lpeg.locale(lpeg)
 
-local function getffp (s, i, t)
-  return t.ffp or i, t
+
+local function getffp (s, vPos, vContext)
+  return vContext.ffp or vPos, vContext
 end
 
-local function setffp (s, i, t, n)
-  if not t.ffp or i > t.ffp then
-    t.ffp = i
-    t.list = {} ; t.list[n] = n
-    t.expected = "'" .. n .. "'"
-  elseif i == t.ffp then
-    if not t.list[n] then
-      t.list[n] = n
-      t.expected = "'" .. n .. "', " .. t.expected
+local function setffp (s, vPos, vContext, n)
+  if not vContext.ffp or vPos > vContext.ffp then
+    vContext.ffp = vPos
+    vContext.list = {} ;
+	vContext.list[n] = n
+    vContext.expected = "'" .. n .. "'"
+  elseif vPos == vContext.ffp then
+    if not vContext.list[n] then
+      vContext.list[n] = n
+      vContext.expected = "'" .. n .. "', " .. vContext.expected
     end
   end
   return false
@@ -144,14 +146,14 @@ local OneWord = tllexer.Name + tllexer.Number + tllexer.String + tllexer.Reserve
 local function lineno (s, i)
   if i == 1 then return 1, 1 end
   local rest, num = s:sub(1,i):gsub("[^\n]*\n", "")
-  local r = #rest
-  return 1 + num, r ~= 0 and r or 1
+  local column = #rest
+  return num + 1, column ~= 0 and column or 1
 end
 
-function tllexer.syntaxerror (subject, pos, filename, msg)
-  local l, c = lineno(subject, pos)
-  local error_msg = "%s:%d:%d: syntax error, %s"
-  return string.format(error_msg, filename, l, c, msg)
+function tllexer.syntaxerror (vContext, vPos, vMsg)
+  local nLine, nColumn = lineno(vContext.subject, vPos)
+  return string.format("%s:%d:%d: syntax error, %s",
+  vContext.filename, nLine + vContext.base_line, nColumn + vContext.base_column, vMsg)
 end
 
 local function geterrorinfo ()
@@ -164,16 +166,30 @@ end
 
 local function errormsg ()
   return geterrorinfo() /
-  function (t)
-    local p = t.ffp or 1
+  function (vContext)
+    local p = vContext.ffp or 1
     local msg = "unexpected '%s', expecting %s"
-    msg = string.format(msg, t.unexpected, t.expected)
-    return nil, tllexer.syntaxerror(t.subject, p, t.filename, msg)
+    msg = string.format(msg, vContext.unexpected, vContext.expected)
+    return nil, tllexer.syntaxerror(vContext, p, msg)
   end
 end
 
 function tllexer.report_error ()
   return errormsg()
+end
+
+function tllexer.create_context(vSubject, vFileName, vBaseLine, vBaseColumn)
+	vBaseLine = vBaseLine or 0
+	vBaseColumn = vBaseColumn or 0
+	return {
+		subject = vSubject,
+		filename = vFileName,
+		unexcepted = nil,
+		expected = nil,
+		ffp = nil,		 -- ffp == forward first position ???
+		base_line = vBaseLine,
+		base_column = vBaseColumn,
+	}
 end
 
 return tllexer

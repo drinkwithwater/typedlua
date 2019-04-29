@@ -27,8 +27,7 @@ end
 local tlparser = {}
 
 local G = lpeg.P { "TypedLua";
-  TypedLua = tllexer.Shebang^-1 * tllexer.Skip * lpeg.V("Chunk") * -1 +
-             tllexer.report_error();
+  TypedLua = tllexer.Shebang^-1 * tllexer.Skip * lpeg.V("Chunk") * -1 + tllexer.report_error();
   -- type language
   Type = lpeg.V("NilableType");
   NilableType = lpeg.V("UnionType") * (tllexer.decosymb("?") * lpeg.Cc(true))^-1 /
@@ -263,7 +262,7 @@ local function fixup_lin_col(subject, node, counter)
   counter = counter or {
 	  curLine = 0,
 	  startPos = 0,
-	  finishPos = 1,
+	  finishPos = 0,
   }
   if node and node.pos then
 	  while counter.finishPos < node.pos do
@@ -282,10 +281,10 @@ local function fixup_lin_col(subject, node, counter)
 end
 
 function tlparser.parse (subject, filename, strict, integer)
-  local errorinfo = { subject = subject, filename = filename }
+  local nContext = tllexer.create_context(subject, filename)
   lpeg.setmaxstack(1000)
   if integer and _VERSION ~= "Lua 5.3" then integer = false end
-  local ast, error_msg = lpeg.match(G, subject, nil, errorinfo, strict, integer)
+  local ast, error_msg = lpeg.match(G, subject, nil, nContext, strict, integer)
   if not ast then return ast, error_msg end
 
   fixup_lin_col(subject, ast)

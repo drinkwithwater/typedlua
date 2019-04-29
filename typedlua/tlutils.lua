@@ -1,8 +1,9 @@
 
 local tlnode = require "typedlua.tlnode"
-local tlvisitor = require "typedlua.tlvisitor"
 
 local tlutils = {}
+
+tlutils.seri = require "typedlua/seri"
 
 -- dump ast node
 local function dumpNode(obj, bufferList, preLine, lambda)
@@ -121,6 +122,20 @@ function tlutils.fixed_string(str)
     end
   end
   return new_str
+end
+
+function tlutils.table_concat(...)
+	local nDict = {}
+	for i=1, select("#", ...) do
+		local t = select(i, ...)
+		for k,v in pairs(t) do
+			if nDict[k] then
+				error("concat duplicate")
+			end
+			nDict[k] = v
+		end
+	end
+	return nDict
 end
 
 return tlutils
