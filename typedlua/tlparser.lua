@@ -48,9 +48,7 @@ local G = lpeg.P { "TypedLua";
           (lpeg.Cp() * tllexer.token(tllexer.Name, "Name") / tlast.exprString)) *
           tllexer.symb("=") * lpeg.V("Expr") / tlast.fieldPair +
           lpeg.V("Expr");
-  TField = (tllexer.kw("const") * lpeg.V("Field") / tlast.setConst) +
-           lpeg.V("Field");
-  FieldList = (lpeg.V("TField") * (lpeg.V("FieldSep") * lpeg.V("TField"))^0 *
+  FieldList = (lpeg.V("Field") * (lpeg.V("FieldSep") * lpeg.V("Field"))^0 *
               lpeg.V("FieldSep")^-1)^-1;
   Constructor = lpeg.Cp() * tllexer.symb("{") * lpeg.V("FieldList") * tllexer.symb("}") / tlast.exprTable;
   NameList = lpeg.Cp() * lpeg.V("Id") * (tllexer.symb(",") * lpeg.V("Id"))^0 /
@@ -158,10 +156,9 @@ local G = lpeg.P { "TypedLua";
 
 
   -- stat , normal set func & assign
-  FuncStat = lpeg.Cp() * (tllexer.kw("const") * lpeg.Cc(true) + lpeg.Cc(false)) *
-             tllexer.kw("function") * lpeg.V("FuncName") * lpeg.V("FuncBody") /
+  FuncStat = lpeg.Cp() * tllexer.kw("function") * lpeg.V("FuncName") * lpeg.V("FuncBody") /
              tlast.statFuncSet;
-  AssignStat = lpeg.Cmt(lpeg.V("LVar")*(tllexer.symb(",") * lpeg.V("LVar"))^0 * tllexer.symb("=") * lpeg.V("ExpList"), function(s, i, ...) return tlast.statSet(...) end);
+  AssignStat = lpeg.Cmt(lpeg.V("SuffixedExp")*(tllexer.symb(",") * lpeg.V("SuffixedExp"))^0 * tllexer.symb("=") * lpeg.V("ExpList"), function(s, i, ...) return tlast.statSet(...) end);
 
   -- stat with deco
   SetStat = lpeg.V("FuncStat") + lpeg.V("AssignStat") +
@@ -183,9 +180,6 @@ local G = lpeg.P { "TypedLua";
   RetStat = lpeg.Cp() * tllexer.kw("return") *
             (lpeg.V("Expr") * (tllexer.symb(",") * lpeg.V("Expr"))^0)^-1 *
             tllexer.symb(";")^-1 / tlast.statReturn;
-
-  LVar = (tllexer.kw("const") * lpeg.V("SuffixedExp") / tlast.setConst) +
-         lpeg.V("SuffixedExp");
 
   ApplyStat = lpeg.Cmt(lpeg.V("SuffixedExp") * (lpeg.Cc(tlast.statApply)),
              function (s, i, s1, f, ...) return f(s1, ...) end);

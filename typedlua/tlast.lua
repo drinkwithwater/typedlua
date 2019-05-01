@@ -192,8 +192,7 @@ function tlast.statBreak (pos)
 end
 
 -- statFuncSet : (number, lhs, expr) -> (stat)
-function tlast.statFuncSet (pos, is_const, lhs, expr)
-  lhs.const = is_const
+function tlast.statFuncSet (pos, lhs, expr)
   if lhs.is_method then
     table.insert(expr[1], 1, { tag = "Id", [1] = "self" })
   end
@@ -420,12 +419,6 @@ end
 -- invoke : (number, expr, expr, expr*) -> (apply)
 function tlast.invoke (pos, e1, e2, ...)
   return { tag = "Invoke", pos = pos, [1] = nil, [2] = e1, [3] = tlast.explist(pos, ...) }
-end
-
--- setConst : (expr|field|id) -> (expr|field|id)
-function tlast.setConst (t)
-  t.const = true
-  return t
 end
 
 return tlast
