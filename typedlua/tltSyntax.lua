@@ -105,7 +105,7 @@ local mBaseSyntax = {
 }
 
 local mTestPattern = lpeg.P { "Sth";
-	Test = lpeg.Cmt(lpeg.Cp()*lpeg.space, function() return false end);
+	Test = tllexer.token("fdsfds", "fds") ^0 + tllexer.throw_context();
 	Sth = lpeg.V("Test");
 }
 
@@ -113,20 +113,35 @@ local mTestPattern = lpeg.P { "Sth";
 -- create deco --
 -----------------
 local mDecoPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeDeco";
-  TypeDeco = (tllexer.Skip * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 ) * -1 / function(...) return {...} end + tllexer.report_error();
+  TypeDeco = (tllexer.Skip * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 ) * -1 / function(...) return {...} end + tllexer.throw_context();
 }))
 
 ------------------
 -- create chunk --
 ------------------
 local mChunkPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeChunk";
-  TypeChunk = tllexer.Skip * lpeg.V("TypeStatList") * -1 + tllexer.report_error();
+  TypeChunk = tllexer.Skip * lpeg.V("TypeStatList") * -1 + tllexer.throw_context();
   -- stat
   TypeStat = lpeg.V("TypedId") + lpeg.V("Interface") + lpeg.V("Userdata");
   TypeStatList = lpeg.V("TypeStat")^1 / function (...) return {...} end;
 }))
 
 local tltSyntax = {}
+
+function tltSyntax.capture_deco(vAllSubject, vPos, vContext, vDecoSubject)
+	local nDecoList, nErrorContext = tltSyntax.parse_deco(vDecoSubject, vContext.filename)
+	if nDecoList then
+		return true, nDecoList
+	else
+		vContext.ffp = vPos - #vDecoSubject - 3 + nErrorContext.ffp
+		vContext.sub_context = nErrorContext
+		return false
+	end
+end
+
+function tltSyntax.capture_chunk(vAllSubject, vPos, vContext, vSubject)
+	print("TODO")
+end
 
 function tltSyntax.parse_deco(vSubject, vFileName)
   local nContext = tllexer.create_context(vSubject, vFileName)

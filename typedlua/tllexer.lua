@@ -10,12 +10,16 @@ local lpeg = require "lpeg"
 lpeg.locale(lpeg)
 
 
-local function getffp (s, vPos, vContext)
-  return vContext.ffp or vPos, vContext
+local function getffp(vSubject, vPos, vContext)
+	if vContext.ffp == 0 then
+		return vPos, vContext
+	else
+		return vContext.ffp, vContext
+	end
 end
 
-local function setffp (s, vPos, vContext, n)
-  if not vContext.ffp or vPos > vContext.ffp then
+local function setffp (vSubject, vPos, vContext, n)
+  if vPos > vContext.ffp then
     vContext.ffp = vPos
     vContext.list = {} ;
 	vContext.list[n] = n
@@ -95,16 +99,8 @@ local Identifier = idStart * idRest^0
 
 tllexer.Name = -tllexer.Reserved * lpeg.C(Identifier) * -idRest
 
--- deco skip not allow \n
-tllexer.DecoSkip = (lpeg.space - lpeg.P("\n"))^0
--- deco token
-function tllexer.decotoken(pat, name)
-  return pat * tllexer.DecoSkip + updateffp(name) * lpeg.P(false)
-end
--- deco symb
-function tllexer.decosymb(str)
-  return tllexer.decotoken(lpeg.P(str), str)
-end
+tllexer.TypeChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
+tllexer.TypeDecoString = lpeg.P("--@")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
 
 function tllexer.token (pat, name)
   return pat * tllexer.Skip + updateffp(name) * lpeg.P(false)
@@ -143,52 +139,52 @@ tllexer.String = LongString + (ShortString / fix_str)
 -- for error reporting
 local OneWord = tllexer.Name + tllexer.Number + tllexer.String + tllexer.Reserved + lpeg.P("...") + lpeg.P(1)
 
-local function lineno (s, i)
-  if i == 1 then return 1, 1 end
-  local rest, num = s:sub(1,i):gsub("[^\n]*\n", "")
-  local column = #rest
-  return num + 1, column ~= 0 and column or 1
-end
-
-function tllexer.syntaxerror (vContext, vPos, vMsg)
-  local nLine, nColumn = lineno(vContext.subject, vPos)
-  return string.format("%s:%d:%d: syntax error, %s",
-  vContext.filename, nLine + vContext.base_line, nColumn + vContext.base_column, vMsg)
-end
-
-local function geterrorinfo ()
+function tllexer.report_error ()
   return lpeg.Cmt(lpeg.Carg(1), getffp) * (lpeg.C(OneWord) + lpeg.Cc("EOF")) /
   function (t, u)
     t.unexpected = u
-    return t
+    return nil, tllexer.context_errormsg(t)
   end
 end
 
-local function errormsg ()
-  return geterrorinfo() /
-  function (vContext)
-    local p = vContext.ffp or 1
-    local msg = "unexpected '%s', expecting %s"
-    msg = string.format(msg, vContext.unexpected, vContext.expected)
-    return nil, tllexer.syntaxerror(vContext, p, msg)
+function tllexer.throw_context()
+  return lpeg.Cmt(lpeg.Carg(1), getffp) * (lpeg.C(OneWord) + lpeg.Cc("EOF")) /
+  function (vContext, u)
+    vContext.unexpected = u
+	vContext.ffp = vContext.ffp or 1
+    return nil, vContext
   end
 end
 
-function tllexer.report_error ()
-  return errormsg()
+function tllexer.context_lineno(vContext)
+	local nSubject = vContext.subject
+	local nPos = vContext.ffp
+	if nPos <= 1 then return 1, 1 end
+	-- replace all char except "\n"
+	local nRest, nLine = nSubject:sub(1,nPos):gsub("[^\n]*\n", "")
+	local nColumn = #nRest ~= 0 and #nRest or 1
+	return nLine + 1, nColumn
 end
 
-function tllexer.create_context(vSubject, vFileName, vBaseLine, vBaseColumn)
-	vBaseLine = vBaseLine or 0
-	vBaseColumn = vBaseColumn or 0
+function tllexer.context_errormsg(vRootContext)
+	-- use sub_context's unexpected & expecting, use root context's ffp
+	local nErrorContext = vRootContext
+	while nErrorContext.sub_context do
+		nErrorContext = nErrorContext.sub_context
+	end
+	local nLine, nColumn = tllexer.context_lineno(vRootContext)
+	return string.format("%s:%d:%d: syntax error, unexpected '%s', expecting %s",
+	vRootContext.filename, nLine, nColumn, nErrorContext.unexpected, nErrorContext.expected)
+end
+
+function tllexer.create_context(vSubject, vFileName)
 	return {
 		subject = vSubject,
 		filename = vFileName,
-		unexcepted = nil,
+		ffp = 0,		 -- ffp == forward first position ???
+		unexpected = nil,
 		expected = nil,
-		ffp = nil,		 -- ffp == forward first position ???
-		base_line = vBaseLine,
-		base_column = vBaseColumn,
+		sub_context = nil,
 	}
 end
 

@@ -2,6 +2,7 @@
 
 local tltSyntax = require "typedlua.tltSyntax"
 local seri = require "typedlua.seri"
+local tllexer = require "typedlua.tllexer"
 
 local function getcontents (filename)
   local file = assert(io.open(filename, "r"))
@@ -14,9 +15,10 @@ local filename = arg[1]
 local subject = getcontents(filename)
 
 print(filename)
-local ast, error_msg = tltSyntax.parse_deco(subject, filename)
+local ast, context = tltSyntax.parse_deco(subject, filename)
 
 if not ast then
+	local error_msg = tllexer.context_errormsg(context)
 	print(error_msg)
 else
 	print(seri(ast))

@@ -12,6 +12,7 @@ local tllexer = require "typedlua.tllexer"
 local tltype = require "typedlua.tltype"
 local tltAuto = require "typedlua.tltAuto"
 local tltable = require "typedlua.tltable"
+local tltSyntax = require "typedlua.tltSyntax"
 
 local function chainl1 (pat, sep)
   return lpeg.Cf(pat * lpeg.Cg(sep * pat)^0, tlast.exprBinaryOp)
@@ -28,72 +29,12 @@ local tlparser = {}
 
 local G = lpeg.P { "TypedLua";
   TypedLua = tllexer.Shebang^-1 * tllexer.Skip * lpeg.V("Chunk") * -1 + tllexer.report_error();
-  -- type language
-  Type = lpeg.V("NilableType");
-  NilableType = lpeg.V("UnionType") * (tllexer.decosymb("?") * lpeg.Cc(true))^-1 /
-                tltype.UnionNil;
-  UnionType = lpeg.V("PrimaryType") * (lpeg.Cg(tllexer.decosymb("|") * lpeg.V("PrimaryType"))^0) /
-              tltype.Union;
-  PrimaryType = lpeg.V("LiteralType") +
-                lpeg.V("BaseType") +
-                lpeg.V("NilType") +
-                lpeg.V("AnyType") +
-                lpeg.V("FunctionType") +
-                lpeg.V("TableType") +
-                lpeg.V("VariableType");
-  LiteralType = ((tllexer.decotoken("false", "Type") * lpeg.Cc(false)) +
-                (tllexer.decotoken("true", "Type") * lpeg.Cc(true)) +
-                tllexer.decotoken(tllexer.Number, "Type") +
-                tllexer.decotoken(tllexer.String, "Type")) /
-                tltype.Literal;
-  BaseType = tllexer.decotoken("boolean", "Type") / tltype.Boolean +
-             tllexer.decotoken("number", "Type") / tltype.Number +
-             tllexer.decotoken("string", "Type") / tltype.String +
-             tllexer.decotoken("integer", "Type") * lpeg.Carg(3) / tltype.Integer;
-  NilType = tllexer.decotoken("nil", "Type") / tltype.Nil;
-  AnyType = tllexer.decotoken("any", "Type") / tltype.Any;
-
-  -- function type only use tuple
-  TupleType = tllexer.decosymb("(") * (lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0)^-1 * tllexer.decosymb(")") / tltype.Tuple;
-  FunctionType = lpeg.V("TupleType") * tllexer.decosymb("->") * lpeg.V("TupleType") / tltype.Function;
-  -- TODO + lpeg.V("TupleType") * tllexer.decosymb("->") * tllexer.decokw("auto") / tltAuto.AutoFunction;
-
-  TableType = tllexer.decosymb("{") * lpeg.V("TableTypeBody") * tllexer.decosymb("}") / tltable.Table;
-  TableTypeBody = lpeg.V("RecordType") +
-                  lpeg.V("HashType") +
-                  lpeg.V("ArrayType") +
-                  lpeg.Cc(nil);
-  RecordType = lpeg.V("RecordField") * (tllexer.decosymb(",") * lpeg.V("RecordField"))^0 *
-               (tllexer.decosymb(",") * (lpeg.V("HashType") + lpeg.V("ArrayType")))^-1;
-  RecordField = tllexer.decosymb("[") * lpeg.V("LiteralType") * tllexer.decosymb("]") *
-				tllexer.decosymb("=") * lpeg.V("Type") / tltable.Field;
-  HashType = tllexer.decosymb("[") * lpeg.V("KeyType") * tllexer.decosymb("]") *
-			 tllexer.decosymb("=") * lpeg.V("Type") / tltable.Field;
-  ArrayType = lpeg.V("Type") / tltable.ArrayField;
-  KeyType = lpeg.V("BaseType") + lpeg.V("AnyType");
-  VariableType = tllexer.decotoken(tllexer.Name, "Type") / tltype.Variable;
-
-  -- interface ?? TODO
-  TypeDecId = (tllexer.kw("const") * lpeg.V("Id") / tlast.setConst) +
-              lpeg.V("Id");
-  IdList = lpeg.Cp() * lpeg.V("TypeDecId") * (tllexer.symb(",") * lpeg.V("TypeDecId"))^0 /
-           tlast.namelist;
-  IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltable.fieldlist;
-  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.Table;
-  TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
-  Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
-              tlast.statInterface +
-              lpeg.Cp() * tllexer.kw("typealias") *
-              tllexer.token(tllexer.Name, "Name") * tllexer.symb("=") * lpeg.V("Type") /
-              tlast.statInterface;
-  LocalInterface = tllexer.kw("local") * lpeg.V("Interface") / tlast.statLocalTypeDec;
-  TypeDecStat = lpeg.V("Interface") + lpeg.V("LocalInterface");
 
   -- deco
   --[[GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
                 lpeg.Ct(lpeg.Cc()) / tlast.statLocal;]]
-  DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
-  DecoName = tllexer.decosymb("--@") * lpeg.V("Type") * (tllexer.decosymb(",") * lpeg.V("Type"))^0 * lpeg.P("\n") * tllexer.DecoSkip / tlast.decoList;
+  -- DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
+  TypeDeco = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoString, tltSyntax.capture_deco) * tllexer.Skip;
 
   -- parser
   Chunk = lpeg.V("Block") / tlast.chunk;
@@ -224,7 +165,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   SetStat = lpeg.V("FuncStat") + lpeg.V("AssignStat") +
-	  (lpeg.Cp() * lpeg.V("DecoName") * (lpeg.V("FuncStat") + lpeg.V("AssignStat"))/tlast.statDecoAssign);
+	  (lpeg.Cp() * lpeg.V("TypeDeco") * (lpeg.V("FuncStat") + lpeg.V("AssignStat"))/tlast.statDecoAssign);
 
   -- stat , normal local func & assign
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
@@ -234,7 +175,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   LocalStat = lpeg.V("LocalFunc") + lpeg.V("LocalAssign") +
-	  (lpeg.Cp() * lpeg.V("DecoName") * (lpeg.V("LocalFunc") + lpeg.V("LocalAssign"))/tlast.statDecoAssign);
+	  (lpeg.Cp() * lpeg.V("TypeDeco") * (lpeg.V("LocalFunc") + lpeg.V("LocalAssign"))/tlast.statDecoAssign);
 
   LabelStat = lpeg.Cp() * tllexer.symb("::") * tllexer.token(tllexer.Name, "Name") * tllexer.symb("::") / tlast.statLabel;
   BreakStat = lpeg.Cp() * tllexer.kw("break") / tlast.statBreak;
@@ -249,7 +190,7 @@ local G = lpeg.P { "TypedLua";
   ApplyStat = lpeg.Cmt(lpeg.V("SuffixedExp") * (lpeg.Cc(tlast.statApply)),
              function (s, i, s1, f, ...) return f(s1, ...) end);
 
-  Stat = lpeg.V("DecoDefineStat") + lpeg.V("TypeDecStat") +
+  Stat = -- TODO lpeg.V("DecoDefineStat") + lpeg.V("TypeDecStat") +
 		 lpeg.V("LocalStat") + lpeg.V("SetStat") +
 
 		 lpeg.V("IfStat") + lpeg.V("WhileStat") + lpeg.V("DoStat") + lpeg.V("ForStat") +
