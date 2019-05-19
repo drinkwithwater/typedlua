@@ -57,14 +57,18 @@ local function singleContainUnion(vType, vUnion)
 	return CONTAIN_NIL
 end
 
-local TypeContainDict = {
-	TAny=setmetatable({},{
+local function setDefault(vTable, vDefaultFunction)
+	return setmetatable(vTable, {
 		__index=function(vT, vSubTypeTag)
-			rawset(vT, vSubTypeTag, containFull)
-			return containFull
+			rawset(vT, vSubTypeTag, vDefaultFunction)
+			return vDefaultFunction
 		end
-	}),
-	TLiteral={
+	})
+end
+
+local TypeContainDict = {
+	TAny=setDefault({},containFull),
+	TLiteral=setDefault({
 		TLiteral=function(vLiteral, vSubLiteral)
 			if (vLiteral[1] == vSubLiteral[1]) then
 				return CONTAIN_FULL
@@ -74,16 +78,8 @@ local TypeContainDict = {
 		end,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TBase			= containNil,
-		TGlobalVariable = containNil,
-		TTable			= containNil,
-		TNil			= containNil,
-		TFunction		= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TBase={
+	}, containNil),
+	TBase=setDefault({
 		TLiteral=function(vBase, vSubLiteral)
 			local nLeftDetail = vBase[1]
 			local nRightDetail = tltRelation.to_base_detail(vSubLiteral[1])
@@ -112,28 +108,13 @@ local TypeContainDict = {
 		end,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TGlobalVariable	= containNil,
-		TTable			= containNil,
-		TNil			= containNil,
-		TFunction		= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TGlobalVariable={
+	}, containNil),
+	TGlobalVariable=setDefault({
 		TGlobalVariable	= eq1,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TLiteral		= containNil,
-		TBase			= containNil,
-		TTable			= containNil,
-		TNil			= containNil,
-		TFunction		= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TTable={
+	}, containNil),
+	TTable=setDefault({
 		TTable=function(vLeftTable, vRightTable)
 			if vLeftTable.sub_tag == "TAutoTable" then
 				if vRightTable.sub_tag == "TAutoTable" then
@@ -233,16 +214,8 @@ local TypeContainDict = {
 		end,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TLiteral		= containNil,
-		TBase			= containNil,
-		TGlobalVariable	= containNil,
-		TNil			= containNil,
-		TFunction		= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TUnion=setmetatable({
+	}, containNil),
+	TUnion=setDefault({
 		TUnion=function(vUnion, vSubUnion)
 			local nContainPart = false
 			for k, nSubUnionItem in ipairs(vSubUnion) do
@@ -261,35 +234,21 @@ local TypeContainDict = {
 		end,
 		TAny=singleContainAny,
 		TAutoLink		= containNil,
-		},{
-		__index=function(t, vSubTypeTag)
-			local nContain = function(vUnion, vSubType)
-				for k, nUnionItem in ipairs(vUnion) do
-					local nContainResult = tltRelation.contain(nUnionItem, vSubType)
-					if nContainResult then
-						return nContainResult
-					end
+	},function(vUnion, vSubType)
+			for k, nUnionItem in ipairs(vUnion) do
+				local nContainResult = tltRelation.contain(nUnionItem, vSubType)
+				if nContainResult then
+					return nContainResult
 				end
-				return CONTAIN_NIL
 			end
-			rawset(t, vSubTypeTag, nContain)
-			return nContain
-		end,
-	}),
-	TNil={
+			return CONTAIN_NIL
+	end),
+	TNil=setDefault({
 		TNil			= containFull,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TLiteral		= containNil,
-		TBase			= containNil,
-		TGlobalVariable	= containNil,
-		TTable			= containNil,
-		TFunction		= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TFunction={
+	}, containNil),
+	TFunction=setDefault({
 		TFunction=function(vLeftFuncType, vRightFuncType)
 			print("function relation TODO")
 			if vLeftFuncType == vRightFuncType then
@@ -300,21 +259,11 @@ local TypeContainDict = {
 		end,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-
-		TLiteral		= containNil,
-		TBase			= containNil,
-		TGlobalVariable	= containNil,
-		TTable			= containNil,
-		TNil			= containNil,
-
-		TAutoLink		= containNil,
-	},
-	TAutoLink=setmetatable({},{
-		__index=function(t,k,v)
-			print("TODO AutoLink relation ...........")
-			return containFull
-		end
-	})
+	}, containNil),
+	TAutoLink=setDefault({}, function()
+		print("TODO AutoLink relation ...........")
+		return CONTAIN_FULL
+	end),
 }
 
 for nType, nRelation in pairs(TypeContainDict) do

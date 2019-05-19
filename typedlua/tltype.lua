@@ -14,7 +14,10 @@ tltype.integer = true
 
 --@ (boolean|number|string) -> auto
 function tltype.Literal (vValue)
-	return { tag = "TLiteral", [1] = vValue }
+	return {
+		tag = "TLiteral",
+		[1] = vValue
+	}
 end
 
 -- base types
@@ -115,6 +118,7 @@ end
 
 -- tuple types
 function tltype.VarTuple(...)
+	assert(select("#", ...) >= 1, "VarTuple's length can't be 0")
 	return { tag = "TTuple", sub_tag = "TVarTuple", ...  }
 end
 
@@ -124,22 +128,73 @@ function tltype.Tuple (...)
 end
 
 function tltype.tuple_index(vTuple, vIndex)
-	if vTuple.sub_tag == "TVarTuple" then
-		if #vTuple <= vIndex then
-			return vTuple[vIndex]
-		else
-			return vTuple[#vTuple]
-		end
-	else
+	assert(vTuple.tag == "TTuple")
+	if vIndex <= #vTuple then
 		return vTuple[vIndex]
+	else
+		if vTuple.sub_tag == "TVarTuple" then
+			return vTuple[#vTuple]
+		else
+			return tltype.Nil()
+		end
 	end
 end
 
+function tltype.tuple_sub(vTuple, vIndex)
+	assert(vTuple.tag == "TTuple")
+	if vTuple.sub_tag == "TVarTuple" then
+		if vIndex <= #vTuple then
+			return tltype.VarTuple(select(vIndex, table.unpack(vTuple)))
+		else
+			return tltype.VarTuple(vTuple[#vTuple])
+		end
+	else
+		return tltype.Tuple(select(vIndex, table.unpack(vTuple)))
+	end
+end
+
+function tltype.tuple_reforge(vInputTypeList)
+	local nTupleType = tltype.Tuple()
+	local nLength = #vInputTypeList
+	-- #vInputTypeList = 0 return ()
+	if nLength <= 0 then
+		return nTupleType
+	end
+	local nLastType = vInputTypeList[nLength]
+	-- 1...n-1 merge and return
+	for i = 1, nLength - 1 do
+		nTupleType[i] = tltype.first(vInputTypeList[i])
+	end
+
+	if nLastType.tag == "TTuple" then
+		-- if type1,type2,...,type3,tuple return {type1,type2,...,type3,table.unpack(tuple)}
+		for i=1, #nLastType do
+			nTupleType[nLength + i - 1] = nLastType[i]
+		end
+
+		if nLastType.sub_tag == "TVarTuple" then
+			nTupleType.sub_tag = "TVarTuple"
+		end
+	else
+		-- if type1,type2,...,type3,type4 return {type1,type2,...,type3,type4}
+		nTupleType[nLength] = nLastType
+	end
+
+	return nTupleType
+end
+
 -- function types
+function tltype.Function()
+	return {tag = "TFunction", sub_tag = "TAnyFunction"}
+end
 
 -- Function : (type, type) -> (type)
-function tltype.Function (t1, t2)
-  return { tag = "TFunction", [1] = t1, [2] = t2 }
+function tltype.StaticFunction (vInputTuple, vOutputTuple)
+  return { tag = "TFunction", sub_tag = "TStaticFunction", [1] = vInputTuple, [2] = vOutputTuple }
+end
+
+function tltype.NativeFunction(vNativeFunction)
+	return {tag = "TFunction", sub_tag = "TNativeFunction", caller = vNativeFunction}
 end
 
 -- type variables
@@ -175,53 +230,15 @@ function tltype.setGlobalVariable(t, env, pos, typeerror, namespace)
   t[5] = namespace]]
 end
 
--- Primitive functions
-
-function tltype.Prim (name)
-  return { tag = "TPrim", [1] = name, [2] = tltype.primtypes[name] }
-end
-
-function tltype.isPrim (t)
-  return t.tag == "TPrim"
-end
-
-function tltype.typeerror (env, tag, msg, pos)
-  local function lineno (s, i)
-    if i == 1 then return 1, 1 end
-    local rest, num = s:sub(1,i):gsub("[^\n]*\n", "")
-    local r = #rest
-    return 1 + num, r ~= 0 and r or 1
-  end
-
-  local l, c = lineno(env.subject, pos)
-  local error_msg = { tag = tag, filename = env.filename, msg = msg, l = l, c = c }
-  for i, v in ipairs(env.messages) do
-    if l < v.l or (l == v.l and c < v.c) then
-      table.insert(env.messages, i, error_msg)
-      return
-    end
-  end
-  table.insert(env.messages, error_msg)
-end
-
-function tltype.error(env, node, msg)
-  local error_msg = { tag = "error", filename = env.filename, msg = msg, l = node.l, c = node.c }
-  for i, v in ipairs(env.messages) do
-    if l < v.l or (l == v.l and c < v.c) then
-      table.insert(env.messages, i, error_msg)
-      return
-    end
-  end
-  table.insert(env.messages, error_msg)
-end
-
 function tltype.first(vType)
 	if vType.tag == "TTuple" then
-		return vType[1]
+		return vType[1] or tltype.Nil()
 	else
 		return vType
 	end
 end
+
+-- other functions
 
 tltype.to_base_detail = tltRelation.to_base_detail
 

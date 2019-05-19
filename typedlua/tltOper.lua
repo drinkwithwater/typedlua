@@ -5,9 +5,12 @@ local tltable = require "typedlua/tltable"
 local tlutils = require "typedlua/tlutils"
 local tltOper = {}
 
-local function check_type(visitor, vType, vMustType)
-	if not tltRelation.sub(vType, vMustType) then
+function tltOper.assert_type(visitor, vType, vMustType)
+	if not tltRelation.contain(vMustType, vType) then
 		visitor:log_error(tltype.tostring(vType), "can't belong to", tltype.tostring(vMustType))
+		return false
+	else
+		return true
 	end
 end
 
@@ -23,34 +26,11 @@ function tltOper._return(visitor, vFunctionNode, vTupleType)
 end
 
 function tltOper._reforge_tuple(visitor, vExpListNode)
-	local nTupleType = tltype.Tuple()
-	local nLength = #vExpListNode
-	-- #vExpListNode == 0 return {}
-	if nLength <= 0 then
-		return nTupleType
+	local nInputTypeList = {}
+	for i, nNode in ipairs(vExpListNode) do
+		nInputTypeList[i] = assert(nNode.type)
 	end
-	local nLastType = vExpListNode[nLength].type
-	-- #vExpListNode >=1 merge and return
-	for i = 1, nLength - 1 do
-		nTupleType[i] = tltype.first(vExpListNode[i].type)
-	end
-
-	-- if type1,type2,...,type3,type4 return {type1,type2,...,type3,type4}
-	if nLastType.tag ~= "TTuple" then
-		nTupleType[nLength] = nLastType
-		return nTupleType
-	end
-
-	if nLastType.sub_tag == "TVarTuple" then
-		nTupleType.sub_tag = "TVarTuple"
-	end
-
-	-- if type1,type2,...,type3,tuple return {type1,type2,...,type3,table.unpack(tuple)}
-	for i=1, #nLastType do
-		nTupleType[nLength + i - 1] = nLastType[i]
-	end
-
-	return nTupleType
+	return tltype.tuple_reforge(nInputTypeList)
 end
 
 function tltOper._call(visitor, vCallerType, vArgTuple)
@@ -58,9 +38,13 @@ function tltOper._call(visitor, vCallerType, vArgTuple)
 	if nFunctionType.tag == "TFunction" then
 		print("TODO tltOper._call check args")
 		if nFunctionType.sub_tag == "TAutoFunction" then
-			return visitor:oper_call(vCallerType, vArgTuple)
-		else
+			return visitor:oper_auto_call(vCallerType, vArgTuple)
+		elseif nFunctionType.sub_tag == "TNativeFunction" then
+			return nFunctionType.caller(visitor, vArgTuple)
+		elseif nFunctionType.sub_tag == "TStaticFunction" then
 			return nFunctionType[2]
+		else
+			visitor:log_error("function sub_tag exception", nFunctionType.sub_tag)
 		end
 	else
 		visitor:log_error(tltype.tostring(nFunctionType), "is not function type")
@@ -206,92 +190,92 @@ end
 -- mathematic operator
 
 function tltOper.__unm(visitor, vType)
-	check_type(visitor, vType, tltype.Number())
+	tltOper.assert_type(visitor, vType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__add(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__sub(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__mul(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__div(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__idiv(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Integer()
 end
 
 function tltOper.__mod(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__pow(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Number()
 end
 
 function tltOper.__concat(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.String())
-	check_type(visitor, vRightType, tltype.String())
+	tltOper.assert_type(visitor, vLeftType, tltype.String())
+	tltOper.assert_type(visitor, vRightType, tltype.String())
 	return tltype.String()
 end
 
 -- bitwise operator
 
 function tltOper.__band(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Integer())
-	check_type(visitor, vRightType, tltype.Integer())
+	tltOper.assert_type(visitor, vLeftType, tltype.Integer())
+	tltOper.assert_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
 function tltOper.__bor(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Integer())
-	check_type(visitor, vRightType, tltype.Integer())
+	tltOper.assert_type(visitor, vLeftType, tltype.Integer())
+	tltOper.assert_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
 function tltOper.__bxor(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Integer())
-	check_type(visitor, vRightType, tltype.Integer())
+	tltOper.assert_type(visitor, vLeftType, tltype.Integer())
+	tltOper.assert_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
 function tltOper.__bnot(visitor, vType)
-	check_type(visitor, vType, tltype.Integer())
+	tltOper.assert_type(visitor, vType, tltype.Integer())
 	return tltype.Integer()
 end
 
 function tltOper.__shl(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Integer())
-	check_type(visitor, vRightType, tltype.Integer())
+	tltOper.assert_type(visitor, vLeftType, tltype.Integer())
+	tltOper.assert_type(visitor, vRightType, tltype.Integer())
 	return tltype.Integer()
 end
 
 function tltOper.__shr(visitor, vLeft, vRight)
-	check_type(visitor, vLeft, tltype.Integer())
-	check_type(visitor, vRight, tltype.Integer())
+	tltOper.assert_type(visitor, vLeft, tltype.Integer())
+	tltOper.assert_type(visitor, vRight, tltype.Integer())
 	return tltype.Integer()
 end
 
@@ -303,14 +287,14 @@ function tltOper.__eq(visitor, vLeftType, vRightType)
 end
 
 function tltOper.__lt(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Boolean()
 end
 
 function tltOper.__le(visitor, vLeftType, vRightType)
-	check_type(visitor, vLeftType, tltype.Number())
-	check_type(visitor, vRightType, tltype.Number())
+	tltOper.assert_type(visitor, vLeftType, tltype.Number())
+	tltOper.assert_type(visitor, vRightType, tltype.Number())
 	return tltype.Boolean()
 end
 
@@ -330,7 +314,7 @@ function tltOper._gt(visitor, vLeftType, vRightType)
 end
 
 function tltOper._fornum(visitor, vType)
-	check_type(visitor, vType, tltype.Number())
+	tltOper.assert_type(visitor, vType, tltype.Number())
 end
 
 tltOper.wrapper = setmetatable({},{

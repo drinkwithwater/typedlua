@@ -36,9 +36,21 @@ local String = tltype.String()
 local visitor_meta = {}
 
 -- TODO use duck type....
-function visitor_meta.oper_call(visitor, vCallerType, vArgTuple)
-	local nFunctionType = visitor:link_type(vCallerType)
-	return tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+function visitor_meta.oper_auto_call(visitor, vType, vArgTuple)
+	local nFunctionType = visitor:link_type(vType)
+	assert(nFunctionType.sub_tag == "TAutoFunction")
+	if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_START then
+		visitor:log_error("function auto solving loop...")
+		return tltype.Tuple(tltype.Any())
+	else
+		-- maybe function is not visited, because node was breadth-first visited.
+		-- so visit without breadth
+		if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
+			local nScope = visitor.env.scope_list[nFunctionType.own_region_refer]
+			tlvBreadth.visit_region(visitor.env, nScope.node)
+		end
+		return tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+	end
 end
 
 function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
@@ -260,27 +272,47 @@ local visitor_exp = {
 				if nInputTuple then
 					local nParList = vFunctionNode[1]
 					for k, nIdentNode in ipairs(nParList) do
-						local nDecoType = tltype.tuple_index(nInputTuple, k)
-						if not nDecoType then
-							nDecoType = tltype.Any()
-							visitor:log_error("arguments number and deco inputtuple not match")
+						if nIdentNode.tag == "Dots" then
+							local nDecoTuple = tltype.tuple_sub(nInputTuple, k)
+							if nDecoTuple.sub_tag ~= "TVarTuple" then
+								if #nDecoTuple <= 0 then
+									visitor:log_error("dots empty ...")
+								else
+									visitor:log_warning("dots but not vartuple ...")
+								end
+							end
+							nIdentNode.deco_type = nDecoTuple
+						elseif nIdentNode.tag == "Id" then
+							local nDecoType = tltype.tuple_index(nInputTuple, k)
+							if not nDecoType then
+								nDecoType = tltype.Any()
+								visitor:log_error("arguments length and deco inputtuple not match")
+							end
+							nIdentNode.deco_type = nDecoType
+						else
+							visitor:log_error("unexcept branch when function deco parlist")
 						end
-						nIdentNode.deco_type = nDecoType
 					end
 				else
 					-- add any for default
 					local nTypeList = {}
 					local nParList = vFunctionNode[1]
+					local nHasDots = false
 					for k, nIdentNode in ipairs(nParList) do
 						-- TODO fill default with duck type
 						nIdentNode.deco_type = tltype.Any()
 						nTypeList[k] = tltype.Any()
 						if nIdentNode.tag == "Dots" then
-							print("TODO:auto type for dots")
+							assert(k == #nParList)
+							nIdentNode.deco_type = tltype.VarTuple(tltype.Any())
+							nHasDots = true
 						end
 					end
-					nInputTuple = tltype.Tuple(table.unpack(nTypeList))
-					nFunctionType[1] = nInputTuple
+					if nHasDots then
+						nFunctionType[1]= tltype.VarTuple(table.unpack(nTypeList))
+					else
+						nFunctionType[1]= tltype.Tuple(table.unpack(nTypeList))
+					end
 				end
 				-- breadth visit
 				if nFunctionType.sub_tag == "TAutoFunction"
@@ -297,11 +329,8 @@ local visitor_exp = {
 					self_visit(visitor, vFunctionNode)
 				end
 			-- if #stack > 1 then visit function in parent's stack
-			-- create AutoFunction right now but visit when it's called
+			-- create AutoFunction right now but visit when it's called or by breadth
 			else
-				-- TODO thinking visitor argments list in which step?
-
-				print("TODO:auto function deco for lambda")
 				-- auto deco for parameter
 				local nOwnRegionRefer = vFunctionNode.region_refer
 				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer)
@@ -316,28 +345,58 @@ local visitor_exp = {
 		end,
 	},
 	Table={
-		after=function(visitor, node)
-			local nList = {}
-			for i, nSubNode in ipairs(node) do
+		after=function(visitor, vTableNode)
+			local nFieldList = {}
+			local nArrayTypeList = {}
+			local nArrayField = false
+			for i, nSubNode in ipairs(vTableNode) do
 				if nSubNode.tag == "Pair" then
-					nList[#nList + 1] = tltable.Field(nSubNode[1].type, tltype.general(nSubNode[2].type))
+					nFieldList[#nFieldList + 1] = tltable.Field(nSubNode[1].type, tltype.general(nSubNode[2].type))
 				elseif nSubNode.tag == "Dots" then
-					print("TODO:Dots in table constructor...")
+					if i < #vTableNode then
+						nArrayTypeList[#nArrayTypeList + 1] = tltype.first(nSubNode.type)
+						visitor:log_warning("Dots isn't last element in table constructor")
+					else
+						local nDotsTuple = nSubNode.type
+						if nDotsTuple.sub_tag == "TVarTuple" then
+							for j=1, #nDotsTuple - 1 do
+								nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nDotsTuple[j])
+							end
+							nArrayField = tltable.Field(tltype.Integer(), nDotsTuple[#nDotsTuple])
+						else
+							for i, nType in ipairs(nDotsTuple) do
+								nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nType)
+							end
+						end
+					end
 				else
-					nList[#nList + 1] = tltable.Field(tltype.Literal(i), tltype.general(nSubNode.type))
+					nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nSubNode.type)
 				end
+			end
+
+			if not nArrayField then
+				for i, nType in ipairs(nArrayTypeList) do
+					nFieldList[#nFieldList + 1] = tltable.Field(tltype.Literal(i), nType)
+				end
+			else
+				for i, nType in pairs(nArrayTypeList) do
+					if not tltRelation.contain(nArrayField[2], nType) then
+						visitor:log_error("table contain array field but type conflict")
+					end
+					if nType.tag == "TNil" then
+						visitor:log_error("table contain array field but mixed nil value")
+					end
+				end
+				nFieldList[#nFieldList + 1] = nArrayField
 			end
 
 			local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 
 			-- if not deco type, ident is unique table
-			local nAutoTable = tltAuto.AutoTable(table.unpack(nList))
+			local nAutoTable = tltAuto.AutoTable(table.unpack(nFieldList))
 			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
 
-			add_type(visitor, node, nAutoLink)
-
-			-- local nAuto = tlenv.create_auto(visitor.env, nRegionRefer, node, nAutoTable)
-
+			add_type(visitor, vTableNode, nAutoLink)
 
 		end,
 	},
@@ -389,21 +448,8 @@ local visitor_exp = {
 	Call={
 		after=function(visitor, vCallNode)
 			-- auto parsing, parsing function when it's called
-			local nFunctionType = visitor:link_type(vCallNode[1].type)
-			local nReturnTuple = nil
-			if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_START then
-				visitor:log_error("function auto solving loop...")
-				nReturnTuple = tltype.Tuple(tltype.Any())
-			else
-				-- maybe function is not visited, because node was breadth-first visited.
-				-- so visit without breadth
-				if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
-					local nScope = visitor.env.scope_list[nFunctionType.own_region_refer]
-					tlvBreadth.visit_region(visitor.env, nScope.node)
-				end
-				local nTuple = tltOper._reforge_tuple(visitor, vCallNode[2])
-				nReturnTuple = tltOper._call(visitor, vCallNode[1].type, nTuple)
-			end
+			local nTuple = tltOper._reforge_tuple(visitor, vCallNode[2])
+			local nReturnTuple = tltOper._call(visitor, vCallNode[1].type, nTuple)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
 				-- maybe tuple
@@ -427,6 +473,7 @@ local visitor_exp = {
 				if vDotsNode.deco_type then
 					vDotsNode.type = vDotsNode.deco_type
 				end
+				assert(vDotsNode.type.tag == "TTuple")
 			else
 				if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Table") then
 					vDotsNode.type = nIdent.node.type

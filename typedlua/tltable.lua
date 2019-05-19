@@ -5,9 +5,13 @@ local tltRelation = require "typedlua.tltRelation"
 local tltable = {}
 
 
-function tltable.Table(...)
+function tltable.Table()
+	return {tag = "TTable", record_dict = {}, hash_list = {}}
+end
+
+function tltable.StaticTable(...)
 	-- TODO check part contain type in keyset
-  local nTableType = { tag = "TTable", record_dict={}, hash_list={}, ... }
+  local nTableType = { tag = "TTable", sub_tag="TStaticTable", record_dict={}, hash_list={}, ... }
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
   for i, nField in ipairs(nTableType) do

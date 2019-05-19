@@ -55,8 +55,8 @@ local mBaseSyntax = {
   -- function type --
   -------------------
   -- function type only use tuple
-  TupleType = tllexer.symb("(") * (lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0)^-1 * tllexer.symb(")") / tltype.Tuple;
-  FunctionType = lpeg.V("TupleType") * tllexer.symb("->") * lpeg.V("TupleType") / tltype.Function +
+  TupleType = tllexer.symb("(") * (lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0)^-1 * tllexer.symb(")") / tltype.Tuple + tllexer.symb("(") * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 * tllexer.symb("*") * tllexer.symb(")") / tltype.VarTuple;
+  FunctionType = lpeg.V("TupleType") * tllexer.symb("->") * lpeg.V("TupleType") / tltype.StaticFunction +
 				 lpeg.V("TupleType") * tllexer.symb("->") * tllexer.kw("auto") / tltAuto.AutoFunction;
 
   ----------------
@@ -71,7 +71,7 @@ local mBaseSyntax = {
 			 tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
   ArrayType = lpeg.V("Type") / tltable.ArrayField;
   TableTypeBody = lpeg.V("RecordType") + lpeg.V("HashType") + lpeg.V("ArrayType") + lpeg.Cc(nil);
-  TableType = tllexer.symb("{") * lpeg.V("TableTypeBody") * tllexer.symb("}") / tltable.Table;
+  TableType = tllexer.symb("{") * lpeg.V("TableTypeBody") * tllexer.symb("}") / tltable.StaticTable;
 
 
   -- VariableType = tllexer.token(tllexer.Name, "Type") / tltype.Variable;
@@ -82,7 +82,7 @@ local mBaseSyntax = {
   Id = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") / tlast.ident;
   IdList = lpeg.Cp() * lpeg.V("Id") * (tllexer.symb(",") * lpeg.V("Id"))^0 / tlast.namelist;
   IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltable.fieldlist;
-  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.Table;
+  IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.StaticTable;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
   Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
               tlast.statInterface +
