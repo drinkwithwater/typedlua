@@ -128,7 +128,7 @@ local mChunkPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeChunk";
 
 local tltSyntax = {}
 
-function tltSyntax.capture_deco(vAllSubject, vPos, vContext, vDecoSubject)
+function tltSyntax.capture_deco(vAllSubject, vPos, vContext, vDecoSubject, vIsPrefix)
 	local nDecoList, nErrorContext = tltSyntax.parse_deco(vDecoSubject, vContext.filename)
 	if nDecoList then
 		return true, nDecoList

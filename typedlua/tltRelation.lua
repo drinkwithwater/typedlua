@@ -67,7 +67,7 @@ local function setDefault(vTable, vDefaultFunction)
 end
 
 local TypeContainDict = {
-	TAny=setDefault({},containFull),
+	TAny=setDefault({}, containFull),
 	TLiteral=setDefault({
 		TLiteral=function(vLiteral, vSubLiteral)
 			if (vLiteral[1] == vSubLiteral[1]) then
@@ -109,25 +109,20 @@ local TypeContainDict = {
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
+	--[[
+	--global variable TODO
 	TGlobalVariable=setDefault({
 		TGlobalVariable	= eq1,
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
-	}, containNil),
+	}, containNil),]]
 	TTable=setDefault({
 		TTable=function(vLeftTable, vRightTable)
-			if vLeftTable.sub_tag == "TAutoTable" then
-				if vRightTable.sub_tag == "TAutoTable" then
-					if vLeftTable == vRightTable then
-						print("TODO autotable relation:equal if ref same obj???")
-						return CONTAIN_FULL
-					else
-						return CONTAIN_NIL
-					end
-				else
-					return CONTAIN_NIL
-				end
-			elseif vLeftTable.sub_tag ~= "TAutoTable" then
+			if vLeftTable.sub_tag == "TAnyTable" then
+				return CONTAIN_FULL
+			elseif vRightTable.sub_tag == "TAnyTable" then
+				return CONTAIN_PART
+			elseif vLeftTable.sub_tag == "TStaticTable" and vRightTable.sub_tag == "TStaticTable" then
 				local nLeftNotnilFieldDict = {}
 				for k, nField in ipairs(vLeftTable) do
 					if nField.sub_tag == "TNotnilField" then

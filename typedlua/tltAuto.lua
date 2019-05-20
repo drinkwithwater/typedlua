@@ -50,7 +50,7 @@ function tltAuto.AutoTable(...)
 		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
 		  nRecordDict[nFieldKey[1]] = i
 	  else
-		  error("error!!!!!!!!!!!!, auto table cannot has hash field...")
+		  nHashList[#nHashList + 1] = i
 	  end
   end
   return nTableType

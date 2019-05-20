@@ -351,7 +351,7 @@ local visitor_exp = {
 			local nArrayField = false
 			for i, nSubNode in ipairs(vTableNode) do
 				if nSubNode.tag == "Pair" then
-					nFieldList[#nFieldList + 1] = tltable.Field(nSubNode[1].type, tltype.general(nSubNode[2].type))
+					nFieldList[#nFieldList + 1] = tltable.Field(nSubNode[1].type, nSubNode[2].type)
 				elseif nSubNode.tag == "Dots" then
 					if i < #vTableNode then
 						nArrayTypeList[#nArrayTypeList + 1] = tltype.first(nSubNode.type)
@@ -360,17 +360,17 @@ local visitor_exp = {
 						local nDotsTuple = nSubNode.type
 						if nDotsTuple.sub_tag == "TVarTuple" then
 							for j=1, #nDotsTuple - 1 do
-								nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nDotsTuple[j])
+								nArrayTypeList[#nArrayTypeList + 1] = nDotsTuple[j]
 							end
 							nArrayField = tltable.Field(tltype.Integer(), nDotsTuple[#nDotsTuple])
 						else
 							for i, nType in ipairs(nDotsTuple) do
-								nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nType)
+								nArrayTypeList[#nArrayTypeList + 1] = nType
 							end
 						end
 					end
 				else
-					nArrayTypeList[#nArrayTypeList + 1] = tltype.general(nSubNode.type)
+					nArrayTypeList[#nArrayTypeList + 1] = nSubNode.type
 				end
 			end
 

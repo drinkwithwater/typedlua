@@ -5,8 +5,8 @@ local tltRelation = require "typedlua.tltRelation"
 local tltable = {}
 
 
-function tltable.Table()
-	return {tag = "TTable", record_dict = {}, hash_list = {}}
+function tltable.AnyTable()
+	return {tag = "TTable", sub_tag = "TAnyTable", record_dict = {}, hash_list = {}}
 end
 
 function tltable.StaticTable(...)

@@ -184,7 +184,7 @@ function tltype.tuple_reforge(vInputTypeList)
 end
 
 -- function types
-function tltype.Function()
+function tltype.AnyFunction()
 	return {tag = "TFunction", sub_tag = "TAnyFunction"}
 end
 

@@ -34,7 +34,8 @@ local G = lpeg.P { "TypedLua";
   --[[GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
                 lpeg.Ct(lpeg.Cc()) / tlast.statLocal;]]
   -- DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
-  TypeDeco = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoString, tltSyntax.capture_deco) * tllexer.Skip;
+  TypeDecoPrefix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoPrefixString*lpeg.Cc(true), tltSyntax.capture_deco) * tllexer.Skip;
+  TypeDecoSuffix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoSuffixString*lpeg.Cc(false), tltSyntax.capture_deco) * tllexer.Skip;
 
   -- parser
   Chunk = lpeg.V("Block") / tlast.chunk;
@@ -162,7 +163,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   SetStat = lpeg.V("FuncStat") + lpeg.V("AssignStat") +
-	  (lpeg.Cp() * lpeg.V("TypeDeco") * (lpeg.V("FuncStat") + lpeg.V("AssignStat"))/tlast.statDecoAssign);
+	  (lpeg.Cp() * lpeg.V("TypeDecoPrefix") * (lpeg.V("FuncStat") + lpeg.V("AssignStat"))/tlast.statDecoAssign);
 
   -- stat , normal local func & assign
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
@@ -172,7 +173,7 @@ local G = lpeg.P { "TypedLua";
 
   -- stat with deco
   LocalStat = lpeg.V("LocalFunc") + lpeg.V("LocalAssign") +
-	  (lpeg.Cp() * lpeg.V("TypeDeco") * (lpeg.V("LocalFunc") + lpeg.V("LocalAssign"))/tlast.statDecoAssign);
+	  (lpeg.Cp() * lpeg.V("TypeDecoPrefix") * (lpeg.V("LocalFunc") + lpeg.V("LocalAssign"))/tlast.statDecoAssign);
 
   LabelStat = lpeg.Cp() * tllexer.symb("::") * tllexer.token(tllexer.Name, "Name") * tllexer.symb("::") / tlast.statLabel;
   BreakStat = lpeg.Cp() * tllexer.kw("break") / tlast.statBreak;

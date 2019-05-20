@@ -84,8 +84,7 @@ function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDec
 		if not nField then
 			if vPrefixType.sub_tag == "TAutoTable" then
 				tltable.insert(vPrefixType, tltable.NilableField(
-					vKeyType,
-					tltype.general(vValueType)
+					vKeyType, vValueType
 				))
 			else
 				visitor:log_error("non-auto table set in empty field", tltype.tostring(nField[2]))

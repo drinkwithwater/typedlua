@@ -100,7 +100,8 @@ local Identifier = idStart * idRest^0
 tllexer.Name = -tllexer.Reserved * lpeg.C(Identifier) * -idRest
 
 tllexer.TypeChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
-tllexer.TypeDecoString = lpeg.P("--@")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
+tllexer.TypeDecoPrefixString = lpeg.P("--@")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
+tllexer.TypeDecoSuffixString = lpeg.P("--<")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
 
 function tllexer.token (pat, name)
   return pat * tllexer.Skip + updateffp(name) * lpeg.P(false)
