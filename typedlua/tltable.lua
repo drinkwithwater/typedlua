@@ -53,6 +53,25 @@ function tltable.index_field(vTableType, vKeyType)
 	return nil
 end
 
+function tltable.next_return(vTableType)
+	print("next TODO... merge in union")
+	for i, nField in ipairs(vTableType) do
+		return tltype.Tuple(nField[1], nField[2])
+	end
+end
+
+function tltable.inext_return(vTableType)
+	print("inext TODO... merge in union")
+	for i, nField in ipairs(vTableType) do
+		local nKeyType = nField[1]
+		if nKeyType.tag == "TBase" and nKeyType[1] == "integer" then
+			return tltype.Tuple(nField[1], nField[2])
+		elseif nKeyType.tag == "TLiteral" and type(nKeyType[1]=="number") then
+			return tltype.Tuple(nField[1], nField[2])
+		end
+	end
+end
+
 function tltable.Field(vKeyType, vValueType)
 	if vKeyType.tag == "TLiteral" then
 		return {tag = "TField", sub_tag = "TNotnilField", [1] = vKeyType, [2] = vValueType}
@@ -76,5 +95,6 @@ function tltable.fieldlist(idlist, t)
   end
   return table.unpack(l)
 end
+
 
 return tltable

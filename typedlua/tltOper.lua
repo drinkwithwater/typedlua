@@ -33,16 +33,33 @@ function tltOper._reforge_tuple(visitor, vExpListNode)
 	return tltype.tuple_reforge(nInputTypeList)
 end
 
+function tltOper._relink_tuple(visitor, vArgTuple)
+	local nNewTuple
+	if vArgTuple.sub_tag == "TVarTuple" then
+		nNewTuple = tltype.VarTuple(table.unpack(vArgTuple))
+	else
+		nNewTuple = tltype.Tuple(table.unpack(vArgTuple))
+	end
+
+	for i, nType in ipairs(nNewTuple) do
+		nNewTuple[i] = visitor:link_type(nType)
+	end
+	return nNewTuple
+end
+
 function tltOper._call(visitor, vCallerType, vArgTuple)
 	local nFunctionType = visitor:link_type(vCallerType)
 	if nFunctionType.tag == "TFunction" then
-		print("TODO tltOper._call check args")
+		local nInputTuple = tltOper._relink_tuple(visitor, vArgTuple)
+		print("TODO tltOper._call check and cast args")
 		if nFunctionType.sub_tag == "TAutoFunction" then
-			return visitor:oper_auto_call(vCallerType, vArgTuple)
+			return visitor:oper_auto_call(vCallerType, nInputTuple)
 		elseif nFunctionType.sub_tag == "TNativeFunction" then
-			return nFunctionType.caller(visitor, vArgTuple)
+			return nFunctionType.caller(visitor, nInputTuple)
 		elseif nFunctionType.sub_tag == "TStaticFunction" then
 			return nFunctionType[2]
+		elseif nFunctionType.sub_tag == "TAnyFunction" then
+			return tltype.VarTuple(tltype.Any())
 		else
 			visitor:log_error("function sub_tag exception", nFunctionType.sub_tag)
 		end
