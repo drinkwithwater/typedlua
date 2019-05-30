@@ -145,17 +145,13 @@ local visitor_stm = {
 			vNodeVisit(visitor, vForinNode[2])
 			local nNextTableInitTuple = tltOper._reforge_tuple(visitor, vForinNode[2])
 			-- next, {}, nil
-			local nFunctionType = nNextTableInitTuple[1]
-			local nArgTypeList = tltype.Tuple()
-			for i = 2, #nNextTableInitTuple do
-				nArgTypeList[i-1] = nNextTableInitTuple[i]
-			end
-			error("for in caller TODO")
-			local nForinTuple = tltOper._call(visitor, nFunctionType, nArgTypeList)
+			local nFunctionType = tltype.tuple_index(nNextTableInitTuple, 1)
+			local nArgTuple = tltype.tuple_sub(nNextTableInitTuple, 2)
+			local nForinTuple = tltOper._call(visitor, nFunctionType, nArgTuple)
 			vNodeVisit(visitor, vForinNode[1])
 			for i, nNameNode in ipairs(vForinNode[1]) do
-				local nRightType = nForinTuple[i]
-				nNameNode.type = tltOper._init_assign(visitor, nRightType, nNameNode.deco_type)
+				local nRightType = tltype.tuple_index(nForinTuple, i)
+				nNameNode.type = tltOper._init_assign(visitor, nRightType) --, nNameNode.deco_type)
 			end
 			vNodeVisit(visitor, vForinNode[3])
 		end
@@ -452,9 +448,13 @@ local visitor_exp = {
 			local nReturnTuple = tltOper._call(visitor, vCallNode[1].type, nTuple)
 			local nParentNode = visitor.stack[#visitor.stack - 1]
 			if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Pair") then
-				-- maybe tuple
+				-- will reforge tuple
+				vCallNode.type = nReturnTuple
+			elseif nParentNode and (nParentNode.tag == "Block" or nParentNode.tag == "Chunk") then
+				-- just ignore tuple
 				vCallNode.type = nReturnTuple
 			else
+				-- will not be tuple
 				vCallNode.type = tltype.first(nReturnTuple)
 			end
 		end

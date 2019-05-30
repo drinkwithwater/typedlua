@@ -63,6 +63,9 @@ function tltOper._call(visitor, vCallerType, vArgTuple)
 		else
 			visitor:log_error("function sub_tag exception", nFunctionType.sub_tag)
 		end
+	elseif nFunctionType.tag == "TAny" then
+		visitor:log_warning("call any")
+		return tltype.VarTuple(tltype.Any())
 	else
 		visitor:log_error(tltype.tostring(nFunctionType), "is not function type")
 		return tltype.Tuple(tltype.Nil())
@@ -74,6 +77,9 @@ function tltOper._index_get(visitor, vPrefixType, vKeyType)
 	local nField = nil
 	if vPrefixType.tag == "TTable" then
 		nField = tltable.index_field(vPrefixType, vKeyType)
+	elseif vPrefixType.tag == "TAny" then
+		visitor:log_warning("index any")
+		nField = tltable.Field(tltype.Any(), tltype.Any())
 	else
 		-- TODO check node is Table
 		visitor:log_error("index for non-table type not implement...")
@@ -98,7 +104,7 @@ function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDec
 	vPrefixType = visitor:link_type(vPrefixType)
 	if vPrefixType.tag == "TTable" then
 		local nField = tltable.index_field(vPrefixType, vKeyType)
-		if not nField then
+		if (not nField) and (not vLeftDeco) then
 			if vPrefixType.sub_tag == "TAutoTable" then
 				tltable.insert(vPrefixType, tltable.NilableField(
 					vKeyType, vValueType
@@ -106,19 +112,40 @@ function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDec
 			else
 				visitor:log_error("non-auto table set in empty field", tltype.tostring(nField[2]))
 			end
+		elseif nField and nField.tag == "TAutoLink" then
+			assert(vPrefixType.sub_tag == "TAutoTable")
+			visitor:log_error("autolink field can't be set")
 		else
-			if vValueType.tag == "TAutoLink" then
-				visitor:cast_auto(nField[2], vValueType)
+			local nCastType = nil
+			if nField then
+				nCastType = nField[2]
+				if vLeftDeco then
+					if not tltRelation.contain(nField[2], vLeftDeco) then
+						visitor:log_error(
+							tltype.tostring(nField[2]), "field not contain deco",
+							tltype.tostring(vLeftDeco))
+					end
+				end
+			elseif vLeftDeco and (not nField) then
+				nCastType = vLeftDeco
+				tltable.insert(vPrefixType, tltable.NilableField(vKeyType, vLeftDeco))
 			else
-				if not tltRelation.contain(nField[2], vValueType) then
+				error("error branch when index_set")
+			end
+			if nCastType and vValueType.tag == "TAutoLink" then
+				visitor:cast_auto(nCastType, vValueType)
+			else
+				if not tltRelation.contain(nCastType, vValueType) then
 					visitor:log_error(
 						tltype.tostring(vValueType), "index set",
 						tltype.tostring(nField[2]), "failed")
 				end
 			end
 		end
+	elseif vPrefixType.tag == "TAny" then
+		visitor:log_warning("set index for any")
 	else
-		-- TODO check node is Table
+		-- TODO deal case for non-table
 		visitor:log_error("index for non-table type not implement...", vPrefixType.tag)
 	end
 end
@@ -132,6 +159,7 @@ function tltOper._set_assign(visitor, vLeftType, vRightType, vLeftDeco)
 		vRightType = tltype.general(vRightType)
 	end
 	if vRightType.tag == "TAutoLink" then
+		print("set assign thinking cast detail...")
 		if vLeftDeco then
 			visitor:cast_auto(vLeftDeco, vRightType)
 		else

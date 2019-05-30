@@ -2,6 +2,7 @@
 local tltype = require "typedlua/tltype"
 local tltable = require "typedlua/tltable"
 local tltAuto = require "typedlua/tltAuto"
+local tlt_G= require "typedlua/tltGlobal/g"
 
 local mGlobalTable = tltAuto.AutoTable()
 
@@ -33,9 +34,8 @@ local functionKeys = {
 	"collectgarbage",
 }
 
-for k, nStr in pairs(functionKeys) do
+for nStr, nValue in pairs(tlt_G) do
 	local nKey = tltype.Literal(nStr)
-	local nValue = tltype.Function(tltype.Tuple(Any), tltype.Tuple(Any))
 	local nField = tltable.Field(nKey, nValue)
 	tltable.insert(mGlobalTable, nField)
 end
@@ -56,7 +56,7 @@ local tableKeys = {
 
 for k, nStr in pairs(tableKeys) do
 	local nKey = tltype.Literal(nStr)
-	local nValue = tltable.Table(tltable.Field(Any, Any))
+	local nValue = tltable.StaticTable(tltable.Field(Any, Any))
 	local nField = tltable.Field(nKey, nValue)
 	tltable.insert(mGlobalTable, nField)
 end
