@@ -32,7 +32,7 @@ end
 function tltable.insert(vTableType, vFieldType)
 	local nNewIndex = #vTableType + 1
 	local nFieldKey = vFieldType[1]
-	  if nFieldKey.tag == "TLiteral" then
+	if nFieldKey.tag == "TLiteral" then
 		assert(not vTableType.record_dict[nFieldKey[1]], "TLiteral key use twice")
 		vTableType.record_dict[nFieldKey[1]] = nNewIndex
 	else
@@ -43,6 +43,9 @@ end
 
 --@(any, any)->(any)
 function tltable.index_field(vTableType, vKeyType)
+	if vTableType.sub_tag == "TAnyTable" then
+		return tltable.Field(tltype.Any(), tltype.Any())
+	end
 	if vKeyType.tag == "TLiteral" then
 		local j = vTableType.record_dict[vKeyType[1]]
 		if j then
@@ -89,7 +92,7 @@ end
 
 --@(any)->(any)
 function tltable.ArrayField(vValueType)
-	return tltable.Field(tltype.Integer(i), vValueType)
+	return tltable.Field(tltype.Integer(), vValueType)
 end
 
 --@(any, any)->(any)

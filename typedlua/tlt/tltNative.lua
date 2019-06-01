@@ -22,7 +22,9 @@ local AnyNext = tltype.StaticFunction(Tuple(Any, Any), Tuple(Any, Any))
 
 print("native function TODO.....")
 
-local tlt_inext = tltype.NativeFunction(function(visitor, vTuple)
+local tltNative = {}
+
+tltNative.inext = tltype.NativeFunction(function(visitor, vTuple)
 	local nTableType = tltype.tuple_index(vTuple, 1)
 	local nIndexType = tltype.tuple_index(vTuple, 2)
 	print("TODO check next's arg")
@@ -36,8 +38,7 @@ local tlt_inext = tltype.NativeFunction(function(visitor, vTuple)
 	end
 end)
 
-local tlt_G
-tlt_G = {
+tltNative._G = {
 	xpcall = tltype.NativeFunction(function(visitor, vTuple)
 		-- call input
 		local nCallerType = tltype.tuple_index(vTuple, 1)
@@ -74,19 +75,31 @@ tlt_G = {
 		end
 	end),
 	pairs = tltype.NativeFunction(function(visitor, vTuple)
-		local nTableType = tltype.tuple_index(vTuple, 1)
-		tltOper.assert_type(visitor, vTuple, AnyTable)
+		if #vTuple > 1 then
+			visitor:log_warning("pairs need only one arg")
+		elseif #vTuple == 0 then
+			visitor:log_error("pairs need one arg")
+			return tltype.VarTuple(Any)
+		end
+		local nTableType = tltype.first(vTuple)
+		tltOper.assert_type(visitor, nTableType, AnyTable)
 		-- TODO 1 union all field
 		-- TODO 2 get table's meta pairs
-		return tltype.Tuple(tlt_G.next, nTableType, Nil)
+		return tltype.Tuple(tltNative._G.next, nTableType, Nil)
 	end),
 	ipairs = tltype.NativeFunction(function(visitor, vTuple)
-		local nTableType = tltype.tuple_index(vTuple, 1)
-		tltOper.assert_type(visitor, vTuple, AnyTable)
+		if #vTuple > 1 then
+			visitor:log_warning("pairs need only one arg")
+		elseif #vTuple == 0 then
+			visitor:log_error("pairs need one arg")
+			return tltype.VarTuple(Any)
+		end
+		local nTableType = tltype.first(vTuple)
+		tltOper.assert_type(visitor, nTableType, AnyTable)
 		-- TODO 1 union all integer field
 		-- TODO 2 get table's meta ipairs
-		print("TODO for ipairs({...})")
-		return tltype.Tuple(tlt_inext, nTableType, tltype.Literal(0))
+		print("TODO for ipairs")
+		return tltype.Tuple(tltNative.inext, nTableType, tltype.Literal(0))
 	end),
 
 	setmetatable = Function(Tuple(AnyTable, AnyTable), Tuple(Any)), -- TODO, interface
@@ -115,4 +128,4 @@ tlt_G = {
 	collectgarbage = Function(Tuple(Any)), -- TODO
 }
 
-return tlt_G
+return tltNative

@@ -2,7 +2,7 @@
 local tltype = require "typedlua/tltype"
 local tltable = require "typedlua/tltable"
 local tltAuto = require "typedlua/tltAuto"
-local tlt_G= require "typedlua/tltGlobal/g"
+local tltNative = require "typedlua/tlt/tltNative"
 
 local mGlobalTable = tltAuto.AutoTable()
 
@@ -34,7 +34,7 @@ local functionKeys = {
 	"collectgarbage",
 }
 
-for nStr, nValue in pairs(tlt_G) do
+for nStr, nValue in pairs(tltNative._G) do
 	local nKey = tltype.Literal(nStr)
 	local nField = tltable.Field(nKey, nValue)
 	tltable.insert(mGlobalTable, nField)

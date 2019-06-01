@@ -123,6 +123,13 @@ function visitor_meta.log_warning(visitor, ...)
 	print(head, ...)
 end
 
+function visitor_meta.log_wany(visitor, ...)
+	local filename = visitor.env.filename
+	local node = visitor.stack[#visitor.stack]
+	local head = string.format("%s:%d:%d:[WANY]", filename, node.l, node.c)
+	print(head, ...)
+end
+
 -- expr add type, check right_deco
 local function add_type(visitor, node, t)
 	--[[ do nothing...
@@ -342,25 +349,40 @@ local visitor_exp = {
 	},
 	Table={
 		after=function(visitor, vTableNode)
-			local nFieldList = {}
-			local nArrayTypeList = {}
-			local nArrayField = false
+			local nRecordFieldDict = {} -- {key=var1}
+			local nHashFieldList = {} -- {[var1]=var2}
+			local nArrayTypeList = {} -- {1,2,3}
 			for i, nSubNode in ipairs(vTableNode) do
 				if nSubNode.tag == "Pair" then
-					nFieldList[#nFieldList + 1] = tltable.Field(nSubNode[1].type, nSubNode[2].type)
-				elseif nSubNode.tag == "Dots" then
-					if i < #vTableNode then
-						nArrayTypeList[#nArrayTypeList + 1] = tltype.first(nSubNode.type)
-						visitor:log_warning("Dots isn't last element in table constructor")
+					local nKeyType = nSubNode[1].type
+					local nField = tltable.Field(nKeyType, nSubNode[2].type)
+					if nKeyType.tag == "TLiteral" then
+						if nRecordFieldDict[nKeyType[1]] then
+							visitor:log_warning("same record key in table constructor")
+						end
+						nRecordFieldDict[nKeyType[1]] = nField
 					else
-						local nDotsTuple = nSubNode.type
-						if nDotsTuple.sub_tag == "TVarTuple" then
-							for j=1, #nDotsTuple - 1 do
-								nArrayTypeList[#nArrayTypeList + 1] = nDotsTuple[j]
-							end
-							nArrayField = tltable.Field(tltype.Integer(), nDotsTuple[#nDotsTuple])
+						nHashFieldList[#nHashFieldList + 1] = nField
+					end
+				elseif nSubNode.tag == "Dots" or nSubNode.tag == "Call" or nSubNode.tag == "Invoke" then
+					if i < #vTableNode then
+						if nSubNode.type.tag == "TTuple" then
+							nArrayTypeList[#nArrayTypeList + 1] = tltype.first(nSubNode.type)
+							visitor:log_warning("TTuple isn't last element in table constructor")
 						else
-							for i, nType in ipairs(nDotsTuple) do
+							nArrayTypeList[#nArrayTypeList + 1] = nSubNode.type
+						end
+					else
+						local nFinalTuple = nSubNode.type
+						assert(nFinalTuple.tag == "TTuple")
+						if nFinalTuple.sub_tag == "TVarTuple" then
+							for j=1, #nFinalTuple - 1 do
+								nArrayTypeList[#nArrayTypeList + 1] = nFinalTuple[j]
+							end
+							nHashFieldList[#nHashFieldList + 1] =
+									tltable.Field(tltype.Integer(), nFinalTuple[#nFinalTuple])
+						else
+							for i, nType in ipairs(nFinalTuple) do
 								nArrayTypeList[#nArrayTypeList + 1] = nType
 							end
 						end
@@ -370,26 +392,54 @@ local visitor_exp = {
 				end
 			end
 
-			if not nArrayField then
+			local nFieldList = {}
+			local nAutoTable = tltAuto.AutoTable()
+			if #nHashFieldList == 0 then
+				-- insert record field
+				for nRecordKey, nRecordField in pairs(nRecordFieldDict) do
+					if nArrayTypeList[nRecordKey] then
+						visitor:log_error("table constructor confliction in record key")
+					else
+						tltable.insert(nAutoTable, nRecordField)
+					end
+				end
+				-- insert array record field
 				for i, nType in ipairs(nArrayTypeList) do
-					nFieldList[#nFieldList + 1] = tltable.Field(tltype.Literal(i), nType)
+					local nField = tltable.Field(tltype.Literal(i), nType)
+					tltable.insert(nAutoTable, nField)
 				end
 			else
-				for i, nType in pairs(nArrayTypeList) do
-					if not tltRelation.contain(nArrayField[2], nType) then
-						visitor:log_error("table contain array field but type conflict")
-					end
-					if nType.tag == "TNil" then
-						visitor:log_error("table contain array field but mixed nil value")
+				-- insert hash field
+				for i, nHashField in ipairs(nHashFieldList) do
+					if tltable.index_field(nAutoTable, nHashField[1]) then
+						visitor:log_error("table construct confliction in hash key")
+					else
+						tltable.insert(nAutoTable, nHashField)
 					end
 				end
-				nFieldList[#nFieldList + 1] = nArrayField
+				-- insert record field
+				for nRecordKey, nRecordField in pairs(nRecordFieldDict) do
+					local nFindField = tltable.index_field(nAutoTable, nRecordField[1])
+					if nFindField then
+						visitor:log_error("table construct confliction between hash key and record key")
+					elseif nArrayTypeList[nRecordKey] then
+						visitor:log_error("table construct confliction between record key and array key")
+					else
+						tltable.insert(nAutoTable, nRecordField)
+					end
+				end
+				-- insert array record field
+				if #nArrayTypeList > 0 and tltable.index_field(nAutoTable, tltype.Literal(1)) then
+					visitor:log_error("table construct confliction between hash key and array key")
+				else
+					for i, nType in ipairs(nArrayTypeList) do
+						local nField = tltable.Field(tltype.Literal(i), nType)
+						tltable.insert(nAutoTable, nField)
+					end
+				end
 			end
 
 			local nRegionRefer = visitor.region_stack[#visitor.region_stack]
-
-			-- if not deco type, ident is unique table
-			local nAutoTable = tltAuto.AutoTable(table.unpack(nFieldList))
 			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
 
 			add_type(visitor, vTableNode, nAutoLink)

@@ -64,7 +64,7 @@ function tltOper._call(visitor, vCallerType, vArgTuple)
 			visitor:log_error("function sub_tag exception", nFunctionType.sub_tag)
 		end
 	elseif nFunctionType.tag == "TAny" then
-		visitor:log_warning("call any")
+		visitor:log_wany("call any")
 		return tltype.VarTuple(tltype.Any())
 	else
 		visitor:log_error(tltype.tostring(nFunctionType), "is not function type")
@@ -78,7 +78,7 @@ function tltOper._index_get(visitor, vPrefixType, vKeyType)
 	if vPrefixType.tag == "TTable" then
 		nField = tltable.index_field(vPrefixType, vKeyType)
 	elseif vPrefixType.tag == "TAny" then
-		visitor:log_warning("index any")
+		visitor:log_wany("index any")
 		nField = tltable.Field(tltype.Any(), tltype.Any())
 	else
 		-- TODO check node is Table
@@ -86,6 +86,7 @@ function tltOper._index_get(visitor, vPrefixType, vKeyType)
 	end
 	local nReType = nil
 	if not nField then
+		visitor:log_warning("index a nil field")
 		nReType = tltype.Nil()
 	else
 		nReType = nField[2]
@@ -143,7 +144,7 @@ function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDec
 			end
 		end
 	elseif vPrefixType.tag == "TAny" then
-		visitor:log_warning("set index for any")
+		visitor:log_wany("set index for any")
 	else
 		-- TODO deal case for non-table
 		visitor:log_error("index for non-table type not implement...", vPrefixType.tag)
@@ -360,21 +361,5 @@ end
 function tltOper._fornum(visitor, vType)
 	tltOper.assert_type(visitor, vType, tltype.Number())
 end
-
-tltOper.wrapper = setmetatable({},{
-	__index=function(t,k)
-		local nFunc = tltype[k]
-		return function(...)
-			local nType = nFunc(...)
-			local nWrapper = setmetatable({}, {
-				__index={type=nType},
-				__newindex=function()
-					error("wrapper can't be modified")
-				end
-			})
-			return nWrapper
-		end
-	end
-})
 
 return tltOper
