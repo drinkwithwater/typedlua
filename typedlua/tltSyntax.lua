@@ -139,8 +139,18 @@ function tltSyntax.capture_deco(vAllSubject, vPos, vContext, vDecoSubject, vIsPr
 	end
 end
 
-function tltSyntax.capture_chunk(vAllSubject, vPos, vContext, vSubject)
-	print("TODO")
+function tltSyntax.capture_define_chunk(vAllSubject, vPos, vContext, vDefineSubject)
+	local nDefineList, nErrorContext = tltSyntax.parse_define_chunk(vDefineSubject, vContext.filename)
+	if nDefineList then
+		for i, nDefineNode in ipairs(nDefineList) do
+			vContext.define_list[#vContext.define_list + 1] = nDefineNode
+		end
+		return true
+	else
+		vContext.ffp = vPos - #vDefineSubject- 3 + nErrorContext.ffp
+		vContext.sub_context = nErrorContext
+		return false
+	end
 end
 
 function tltSyntax.parse_deco(vSubject, vFileName)
@@ -149,7 +159,7 @@ function tltSyntax.parse_deco(vSubject, vFileName)
   return lpeg.match(mDecoPattern, vSubject, nil, nContext)
 end
 
-function tltSyntax.parse_chunk(vSubject, vFileName)
+function tltSyntax.parse_define_chunk(vSubject, vFileName)
   local nContext = tllexer.create_context(vSubject, vFileName)
   lpeg.setmaxstack(1000)
   return lpeg.match(mChunkPattern, vSubject, nil, nContext)

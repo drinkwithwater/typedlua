@@ -20,11 +20,14 @@ local tlmain = {}
 function tlmain.main(subject, filename, strict, integer, color)
 	-- TODO maybe no integer for 5.2 or 5.1
 	tltype.integer = true
-	local ast, error_msg = tlparser.parse(subject, filename, strict, integer)
+	local nContext, error_msg = tlparser.parse(subject, filename, strict, integer)
+	local ast = nContext.ast
 	if not ast then
 		print(error_msg)
 		return
 	end
+
+	print(seri(nContext.define_list))
 
 	local nGlobalEnv = tlenv.GlobalEnv(filename)
 	tlenv.begin_file(nGlobalEnv, subject, filename, ast)
@@ -52,7 +55,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 	print("==========================================tlvBreadth=======================")
 	tlvBreadth.visit(nFileEnv)
 
-	print(tlutils.dumpLambda(nFileEnv.ast, function(node)
+	--[[print(tlutils.dumpLambda(nFileEnv.ast, function(node)
 		if node.type then
 			return node, "", node.type.tag
 		else

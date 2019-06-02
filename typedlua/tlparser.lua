@@ -37,6 +37,8 @@ local G = lpeg.P { "TypedLua";
   TypeDecoPrefix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoPrefixString*lpeg.Cc(true), tltSyntax.capture_deco) * tllexer.Skip;
   TypeDecoSuffix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoSuffixString*lpeg.Cc(false), tltSyntax.capture_deco) * tllexer.Skip;
 
+  TypeDefineChunk = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDefineChunkString, tltSyntax.capture_define_chunk) * tllexer.Skip;
+
   -- parser
   Chunk = lpeg.V("Block") / tlast.chunk;
   StatList = (tllexer.symb(";") + lpeg.V("Stat"))^0;
@@ -186,6 +188,7 @@ local G = lpeg.P { "TypedLua";
              function (s, i, s1, f, ...) return f(s1, ...) end);
 
   Stat = -- TODO lpeg.V("DecoDefineStat") + lpeg.V("TypeDecStat") +
+		 lpeg.V("TypeDefineChunk") +
 		 lpeg.V("LocalStat") + lpeg.V("SetStat") +
 
 		 lpeg.V("IfStat") + lpeg.V("WhileStat") + lpeg.V("DoStat") + lpeg.V("ForStat") +
@@ -221,10 +224,14 @@ function tlparser.parse (subject, filename, strict, integer)
   lpeg.setmaxstack(1000)
   if integer and _VERSION ~= "Lua 5.3" then integer = false end
   local ast, error_msg = lpeg.match(G, subject, nil, nContext, strict, integer)
-  if not ast then return ast, error_msg end
+  if not ast then
+	  return nil, error_msg
+  else
+	  fixup_lin_col(subject, ast)
 
-  fixup_lin_col(subject, ast)
-  return ast, error_msg
+	  nContext.ast = ast
+	  return nContext, error_msg
+  end
 end
 
 return tlparser

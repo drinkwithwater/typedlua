@@ -68,6 +68,7 @@ function tlenv.FileEnv(vSubject, vFileName, vAst)
 		ast = vAst,
 		subject = vSubject,
 		filename = vFileName,
+		interface_dict = {},
 
 		-- region
 		scope_list = nil,

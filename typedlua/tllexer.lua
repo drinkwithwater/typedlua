@@ -99,7 +99,7 @@ local Identifier = idStart * idRest^0
 
 tllexer.Name = -tllexer.Reserved * lpeg.C(Identifier) * -idRest
 
-tllexer.TypeChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
+tllexer.TypeDefineChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
 tllexer.TypeDecoPrefixString = lpeg.P("--@")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
 tllexer.TypeDecoSuffixString = lpeg.P("--<")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
 
@@ -182,6 +182,8 @@ function tllexer.create_context(vSubject, vFileName)
 	return {
 		subject = vSubject,
 		filename = vFileName,
+		define_list = {},
+		ast = nil,
 		ffp = 0,		 -- ffp == forward first position ???
 		unexpected = nil,
 		expected = nil,
