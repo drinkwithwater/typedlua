@@ -21,11 +21,11 @@ function tlmain.main(subject, filename, strict, integer, color)
 	-- TODO maybe no integer for 5.2 or 5.1
 	tltype.integer = true
 	local nContext, error_msg = tlparser.parse(subject, filename, strict, integer)
-	local ast = nContext.ast
-	if not ast then
+	if not nContext then
 		print(error_msg)
 		return
 	end
+	local ast = nContext.ast
 
 	print(seri(nContext.define_list))
 

@@ -13,15 +13,14 @@ local tltAuto = require "typedlua.tltAuto"
 local tltable = require "typedlua.tltable"
 local tlutils = require "typedlua.tlutils"
 
-local function chainl1 (pat, sep)
-  return lpeg.Cf(pat * lpeg.Cg(sep * pat)^0, tlast.exprBinaryOp)
+local tltSyntax = {}
+
+function tltSyntax.ast_include(vPos, vFileName)
+	return {tag="Include", pos=vPos, vFileName}
 end
 
-local function exprFunction(...)
-  local func = tlast.exprFunction(...)
-  func.comment = table.concat(tllexer.comments, "\n")
-  tllexer.comments = {}
-  return func
+function tltSyntax.ast_variable_type(vPos, vName, vType)
+  return { tag = "TVariable", pos=vPos, vName, vType}
 end
 
 local mBaseSyntax = {
@@ -85,10 +84,10 @@ local mBaseSyntax = {
   IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.StaticTable;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
   Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
-              tlast.statInterface +
+              tltSyntax.ast_variable_type +
               lpeg.Cp() * tllexer.kw("typealias") *
               tllexer.token(tllexer.Name, "Name") * tllexer.symb("=") * lpeg.V("Type") /
-              tlast.statInterface;
+              tltSyntax.ast_variable_type;
   LocalInterface = tllexer.kw("local") * lpeg.V("Interface") / tlast.statLocalTypeDec;
   TypeDecStat = lpeg.V("Interface") + lpeg.V("LocalInterface");
 
@@ -97,7 +96,7 @@ local mBaseSyntax = {
   -- other --
   -----------
   Userdata = lpeg.Cp() * tllexer.kw("userdata") * lpeg.V("TypeDec") /
-             tlast.statUserdata;
+             tltSyntax.ast_variable_type;
   TypedId = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") *
             tllexer.symb(":") * lpeg.V("Type") / tlast.ident;
 
@@ -126,28 +125,29 @@ local mChunkPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeChunk";
   TypeStatList = lpeg.V("TypeStat")^1 / function (...) return {...} end;
 }))
 
-local tltSyntax = {}
-
-function tltSyntax.capture_deco(vAllSubject, vPos, vContext, vDecoSubject, vIsPrefix)
+function tltSyntax.capture_deco(vAllSubject, vNextPos, vContext, vStartPos, vDecoSubject, vIsPrefix)
 	local nDecoList, nErrorContext = tltSyntax.parse_deco(vDecoSubject, vContext.filename)
 	if nDecoList then
 		return true, nDecoList
 	else
-		vContext.ffp = vPos - #vDecoSubject - 3 + nErrorContext.ffp
+		vContext.ffp = vStartPos + nErrorContext.ffp - 1
 		vContext.sub_context = nErrorContext
 		return false
 	end
 end
 
-function tltSyntax.capture_define_chunk(vAllSubject, vPos, vContext, vDefineSubject)
+function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartPos, vDefineSubject)
 	local nDefineList, nErrorContext = tltSyntax.parse_define_chunk(vDefineSubject, vContext.filename)
 	if nDefineList then
 		for i, nDefineNode in ipairs(nDefineList) do
+			local nFullPos = vStartPos + nDefineNode.pos - 1
+			nDefineNode.pos = nFullPos
+			nDefineNode.l, nDefineNode.c = tllexer.context_fixup_pos(vContext, nFullPos)
 			vContext.define_list[#vContext.define_list + 1] = nDefineNode
 		end
 		return true
 	else
-		vContext.ffp = vPos - #vDefineSubject- 3 + nErrorContext.ffp
+		vContext.ffp = vStartPos + nErrorContext.ffp - 1
 		vContext.sub_context = nErrorContext
 		return false
 	end

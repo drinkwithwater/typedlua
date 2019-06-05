@@ -200,13 +200,8 @@ end
 -- type variables
 
 -- Variable : (string) -> (type)
-function tltype.Variable (name)
-  return { tag = "TVariable", [1] = name }
-end
-
--- isVariable : (type) -> (boolean)
-function tltype.isVariable (t)
-  return t.tag == "TVariable"
+function tltype.Variable (vPos, vName, vType)
+  return { tag = "TVariable", pos=vPos, vName, vType}
 end
 
 -- global type variables

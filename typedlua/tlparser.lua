@@ -197,24 +197,13 @@ local G = lpeg.P { "TypedLua";
          lpeg.V("ApplyStat");
 }
 
-local function fixup_lin_col(subject, node, counter)
-  counter = counter or {
-	  curLine = 0,
-	  startPos = 0,
-	  finishPos = 0,
-  }
-  if node and node.pos then
-	  while counter.finishPos < node.pos do
-		  counter.startPos = counter.finishPos
-		  counter.finishPos = subject:find("\n", counter.finishPos + 1)
-		  counter.curLine = counter.curLine + 1
-	  end
-	  node.l = counter.curLine
-	  node.c = node.pos - counter.startPos
+local function fixup_lin_col(vContext, vNode)
+  if vNode and vNode.pos then
+	  vNode.l, vNode.c = tllexer.context_fixup_pos(vContext, vNode.pos)
   end
-  for _, child in ipairs(node) do
-    if type(child) == "table" then
-		fixup_lin_col(subject, child, counter)
+  for _, nChild in ipairs(vNode) do
+    if type(nChild) == "table" then
+		fixup_lin_col(vContext, nChild)
     end
   end
 end
@@ -227,7 +216,7 @@ function tlparser.parse (subject, filename, strict, integer)
   if not ast then
 	  return nil, error_msg
   else
-	  fixup_lin_col(subject, ast)
+	  fixup_lin_col(nContext, ast)
 
 	  nContext.ast = ast
 	  return nContext, error_msg

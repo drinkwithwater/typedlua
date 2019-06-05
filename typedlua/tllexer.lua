@@ -99,9 +99,9 @@ local Identifier = idStart * idRest^0
 
 tllexer.Name = -tllexer.Reserved * lpeg.C(Identifier) * -idRest
 
-tllexer.TypeDefineChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
-tllexer.TypeDecoPrefixString = lpeg.P("--@")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
-tllexer.TypeDecoSuffixString = lpeg.P("--<")*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0*lpeg.P("\n"))
+tllexer.TypeDefineChunkString = lpeg.P("--") * Open * (lpeg.P("@")) * lpeg.Cp()*lpeg.C((lpeg.P(1) - CloseEQ)^0) * Close
+tllexer.TypeDecoPrefixString = lpeg.P("--@")*lpeg.Cp()*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0)*lpeg.P("\n")
+tllexer.TypeDecoSuffixString = lpeg.P("--<")*lpeg.Cp()*lpeg.C((lpeg.P(1) - lpeg.P("\n"))^0)*lpeg.P("\n")
 
 function tllexer.token (pat, name)
   return pat * tllexer.Skip + updateffp(name) * lpeg.P(false)
@@ -109,10 +109,6 @@ end
 
 function tllexer.symb (str)
   return tllexer.token(lpeg.P(str), str)
-end
-
-function tllexer.decokw(str)
-  return tllexer.decotoken(lpeg.P(str)*-idRest, str)
 end
 
 function tllexer.kw (str)
@@ -157,23 +153,13 @@ function tllexer.throw_context()
   end
 end
 
-function tllexer.context_lineno(vContext)
-	local nSubject = vContext.subject
-	local nPos = vContext.ffp
-	if nPos <= 1 then return 1, 1 end
-	-- replace all char except "\n"
-	local nRest, nLine = nSubject:sub(1,nPos):gsub("[^\n]*\n", "")
-	local nColumn = #nRest ~= 0 and #nRest or 1
-	return nLine + 1, nColumn
-end
-
 function tllexer.context_errormsg(vRootContext)
 	-- use sub_context's unexpected & expecting, use root context's ffp
 	local nErrorContext = vRootContext
 	while nErrorContext.sub_context do
 		nErrorContext = nErrorContext.sub_context
 	end
-	local nLine, nColumn = tllexer.context_lineno(vRootContext)
+	local nLine, nColumn = tllexer.context_fixup_pos(vRootContext, vRootContext.ffp)
 	return string.format("%s:%d:%d: syntax error, unexpected '%s', expecting %s",
 	vRootContext.filename, nLine, nColumn, nErrorContext.unexpected, nErrorContext.expected)
 end
@@ -188,7 +174,59 @@ function tllexer.create_context(vSubject, vFileName)
 		unexpected = nil,
 		expected = nil,
 		sub_context = nil,
+		split_info_list = tllexer.create_split_info_list(vSubject)
 	}
+end
+
+function tllexer.create_split_info_list(vSubject)
+	local nStartPos = 1
+	local nFinishPos = 0
+	local nList = {}
+	local nLineCount = 0
+	while true do
+		nLineCount = nLineCount + 1
+		nFinishPos = vSubject:find("\n", nStartPos)
+		if nFinishPos then
+			nList[#nList + 1] = {start_pos=nStartPos, finish_pos=nFinishPos}
+			nStartPos = nFinishPos + 1
+		else
+			if nStartPos <= #vSubject then
+				nList[#nList + 1] = {start_pos=nStartPos, finish_pos=#vSubject}
+			end
+			break
+		end
+	end
+	return nList
+end
+
+function tllexer.context_fixup_pos(vContext, vPos)
+	if vPos == 0 then
+		return 0, 1
+	end
+	local nList = vContext.split_info_list
+	local nLeft = 1
+	local nRight = #nList
+	assert(nRight>=nLeft)
+	if vPos > nList[nRight].finish_pos then
+		print("warning pos out of range, "..vPos)
+		return nRight, nList[nRight].finish_pos - nList[nRight].start_pos + 1
+	elseif vPos < nList[nLeft].start_pos then
+		print("warning pos out of range, "..vPos)
+		return 1, 1
+	end
+	local nMiddle = (nLeft + nRight)// 2
+	while true do
+		local nMiddleInfo = nList[nMiddle]
+		if vPos < nMiddleInfo.start_pos then
+			nRight = nMiddle - 1
+			nMiddle = (nLeft + nRight)// 2
+		elseif nMiddleInfo.finish_pos < vPos then
+			nLeft = nMiddle + 1
+			nMiddle = (nLeft + nRight)// 2
+		else
+			return nMiddle, vPos - nMiddleInfo.start_pos + 1
+		end
+	end
 end
 
 return tllexer
