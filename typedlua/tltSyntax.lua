@@ -104,7 +104,7 @@ local mBaseSyntax = {
 }
 
 local mTestPattern = lpeg.P { "Sth";
-	Test = tllexer.token("fdsfds", "fds") ^0 + tllexer.throw_context();
+	Test = tllexer.token("fdsfds", "fds") ^0 + tllexer.report_error();
 	Sth = lpeg.V("Test");
 }
 
@@ -112,32 +112,34 @@ local mTestPattern = lpeg.P { "Sth";
 -- create deco --
 -----------------
 local mDecoPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeDeco";
-  TypeDeco = (tllexer.Skip * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 ) * -1 / function(...) return {...} end + tllexer.throw_context();
+  TypeDeco = (tllexer.Skip * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 ) * -1 / function(...) return {...} end + tllexer.report_error();
 }))
 
 ------------------
 -- create chunk --
 ------------------
 local mChunkPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeChunk";
-  TypeChunk = tllexer.Skip * lpeg.V("TypeStatList") * -1 + tllexer.throw_context();
+  TypeChunk = tllexer.Skip * lpeg.V("TypeStatList") * -1 + tllexer.report_error();
   -- stat
   TypeStat = lpeg.V("TypedId") + lpeg.V("Interface") + lpeg.V("Userdata");
   TypeStatList = lpeg.V("TypeStat")^1 / function (...) return {...} end;
 }))
 
-function tltSyntax.capture_deco(vAllSubject, vNextPos, vContext, vStartPos, vDecoSubject, vIsPrefix)
-	local nDecoList, nErrorContext = tltSyntax.parse_deco(vDecoSubject, vContext.filename)
+function tltSyntax.capture_deco(vAllSubject, vNextPos, vContext, vStartPos, vDecoSubject)
+	local nSubContext = tllexer.create_context(vContext.env)
+	local nDecoList, nErrorMsg = lpeg.match(mDecoPattern, vDecoSubject, nil, nSubContext)
 	if nDecoList then
 		return true, nDecoList
 	else
-		vContext.ffp = vStartPos + nErrorContext.ffp - 1
-		vContext.sub_context = nErrorContext
+		vContext.ffp = vStartPos + nSubContext.ffp - 1
+		vContext.sub_context = nSubContext
 		return false
 	end
 end
 
 function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartPos, vDefineSubject)
-	local nDefineList, nErrorContext = tltSyntax.parse_define_chunk(vDefineSubject, vContext.filename)
+	local nSubContext = tllexer.create_context(vContext.env)
+	local nDefineList, nErrorMsg = lpeg.match(mChunkPattern, vDefineSubject, nil, nSubContext)
 	if nDefineList then
 		for i, nDefineNode in ipairs(nDefineList) do
 			local nFullPos = vStartPos + nDefineNode.pos - 1
@@ -147,26 +149,28 @@ function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartP
 		end
 		return true
 	else
-		vContext.ffp = vStartPos + nErrorContext.ffp - 1
-		vContext.sub_context = nErrorContext
+		vContext.ffp = vStartPos + nSubContext.ffp - 1
+		vContext.sub_context = nSubContext
 		return false
 	end
 end
 
-function tltSyntax.parse_deco(vSubject, vFileName)
-  local nContext = tllexer.create_context(vSubject, vFileName)
+function tltSyntax.parse_deco(vFileEnv, vSubject)
+	error("TODO")
+  local nContext = tllexer.create_context(vFileEnv)
   lpeg.setmaxstack(1000)
   return lpeg.match(mDecoPattern, vSubject, nil, nContext)
 end
 
-function tltSyntax.parse_define_chunk(vSubject, vFileName)
-  local nContext = tllexer.create_context(vSubject, vFileName)
+function tltSyntax.parse_define_chunk(vFileEnv, vSubject)
+	error("TODO")
+  local nContext = tllexer.create_context(vFileEnv)
   lpeg.setmaxstack(1000)
   return lpeg.match(mChunkPattern, vSubject, nil, nContext)
 end
 
-function tltSyntax.parse_test(vSubject, vFileName)
-  local nContext = tllexer.create_context(vSubject, vFileName)
+function tltSyntax.parse_test(vFileEnv, vSubject)
+  local nContext = tllexer.create_context(vFileEnv)
   lpeg.setmaxstack(1000)
   return lpeg.match(mTestPattern, vSubject, nil, nContext)
 end

@@ -31,8 +31,6 @@ function tlenv.GlobalEnv(vMainFileName)
 		main_filename = vMainFileName,
 		file_env_dict = {},
 		interface_dict = {},
-		env_stack = {},
-		cur_env = nil,
 		_G_node = nil,
 		_G_ident = nil,
 		scope_list = {},
@@ -63,12 +61,13 @@ function tlenv.GlobalEnv(vMainFileName)
 	return nGlobalEnv
 end
 
-function tlenv.FileEnv(vSubject, vFileName, vAst)
+function tlenv.FileEnv(vSubject, vFileName)
 	local env = {
-		ast = vAst,
 		subject = vSubject,
 		filename = vFileName,
 		interface_dict = {},
+		ast = nil,
+		split_info_list = nil,
 
 		-- region
 		scope_list = nil,
@@ -81,21 +80,12 @@ function tlenv.FileEnv(vSubject, vFileName, vAst)
 	return env
 end
 
-function tlenv.begin_file(vGlobalEnv, vSubject, vFileName, vAst)
-	local nFileEnv = tlenv.FileEnv(vSubject, vFileName, vAst)
-
+function tlenv.create_file_env(vGlobalEnv, vSubject, vFileName)
+	local nFileEnv = tlenv.FileEnv(vSubject, vFileName)
 	-- bind globalenv with fileenv
 	setmetatable(nFileEnv, {__index=vGlobalEnv})
-	vGlobalEnv.env_stack[#vGlobalEnv.env_stack + 1] = nFileEnv
 	vGlobalEnv.file_env_dict[vFileName] = nFileEnv
-	vGlobalEnv.cur_env = nFileEnv
-
-end
-
-function tlenv.end_file(vGlobalEnv)
-	local nLastIndex = #vGlobalEnv.env_stack
-	vGlobalEnv.env_stack[nLastIndex] = nil
-	vGlobalEnv.cur_env = vGlobalEnv.env_stack[nLastIndex - 1]
+	return nFileEnv
 end
 
 function tlenv.create_scope(vFileEnv, vCurScope, vNode)

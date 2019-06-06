@@ -138,18 +138,10 @@ local OneWord = tllexer.Name + tllexer.Number + tllexer.String + tllexer.Reserve
 
 function tllexer.report_error ()
   return lpeg.Cmt(lpeg.Carg(1), getffp) * (lpeg.C(OneWord) + lpeg.Cc("EOF")) /
-  function (t, u)
-    t.unexpected = u
-    return nil, tllexer.context_errormsg(t)
-  end
-end
-
-function tllexer.throw_context()
-  return lpeg.Cmt(lpeg.Carg(1), getffp) * (lpeg.C(OneWord) + lpeg.Cc("EOF")) /
   function (vContext, u)
     vContext.unexpected = u
 	vContext.ffp = vContext.ffp or 1
-    return nil, vContext
+    return nil, tllexer.context_errormsg(t)
   end
 end
 
@@ -164,17 +156,16 @@ function tllexer.context_errormsg(vRootContext)
 	vRootContext.filename, nLine, nColumn, nErrorContext.unexpected, nErrorContext.expected)
 end
 
-function tllexer.create_context(vSubject, vFileName)
+function tllexer.create_context(vFileEnv)
 	return {
-		subject = vSubject,
-		filename = vFileName,
+		filename = vFileEnv.filename,
+		env = vFileEnv,
 		define_list = {},
 		ast = nil,
 		ffp = 0,		 -- ffp == forward first position ???
 		unexpected = nil,
 		expected = nil,
 		sub_context = nil,
-		split_info_list = tllexer.create_split_info_list(vSubject)
 	}
 end
 
@@ -203,7 +194,7 @@ function tllexer.context_fixup_pos(vContext, vPos)
 	if vPos == 0 then
 		return 0, 1
 	end
-	local nList = vContext.split_info_list
+	local nList = vContext.env.split_info_list
 	local nLeft = 1
 	local nRight = #nList
 	assert(nRight>=nLeft)

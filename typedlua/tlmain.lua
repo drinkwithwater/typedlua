@@ -18,19 +18,18 @@ local tlenv = require "typedlua/tlenv"
 local tlmain = {}
 
 function tlmain.main(subject, filename, strict, integer, color)
-	-- TODO maybe no integer for 5.2 or 5.1
-	tltype.integer = true
-	local nContext, error_msg = tlparser.parse(subject, filename, strict, integer)
+	local nGlobalEnv = tlenv.GlobalEnv(filename)
+	local nFileEnv = tlenv.create_file_env(nGlobalEnv, subject, filename)
+
+	local nContext, error_msg = tlparser.parse(nFileEnv, subject, filename, strict, integer)
 	if not nContext then
 		print(error_msg)
 		return
 	end
-	local ast = nContext.ast
+	nFileEnv.ast = nContext.ast
 
 	print(seri(nContext.define_list))
 
-	local nGlobalEnv = tlenv.GlobalEnv(filename)
-	tlenv.begin_file(nGlobalEnv, subject, filename, ast)
 
 	-- print(tlutils.dumpast(global_env.ast))
 
@@ -43,7 +42,6 @@ function tlmain.main(subject, filename, strict, integer, color)
 	--[[for k,v in pairs(global_env.interface_dict) do
 		print(k, tlutils.dumptype(v))
 	end]]
-	local nFileEnv = nGlobalEnv.cur_env
 
 	print("==========================================tlvRefer=======================")
 
@@ -66,7 +64,6 @@ function tlmain.main(subject, filename, strict, integer, color)
 
 	print(tlchecker.error_msgs(msgs,true,false,false))]]
 
-	tlenv.end_file(nFileEnv)
 	return ast
 end
 

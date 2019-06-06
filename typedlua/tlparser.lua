@@ -34,8 +34,8 @@ local G = lpeg.P { "TypedLua";
   --[[GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
                 lpeg.Ct(lpeg.Cc()) / tlast.statLocal;]]
   -- DecoDefineStat = tllexer.symb("--[[@") * lpeg.V("TypeDecStat")^0 * tllexer.symb("]]");
-  TypeDecoPrefix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoPrefixString*lpeg.Cc(true), tltSyntax.capture_deco) * tllexer.Skip;
-  TypeDecoSuffix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoSuffixString*lpeg.Cc(false), tltSyntax.capture_deco) * tllexer.Skip;
+  TypeDecoPrefix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoPrefixString, tltSyntax.capture_deco) * tllexer.Skip;
+  TypeDecoSuffix = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDecoSuffixString, tltSyntax.capture_deco) * tllexer.Skip;
 
   TypeDefineChunk = lpeg.Cmt(lpeg.Carg(1)*tllexer.TypeDefineChunkString, tltSyntax.capture_define_chunk) * tllexer.Skip;
 
@@ -208,11 +208,12 @@ local function fixup_lin_col(vContext, vNode)
   end
 end
 
-function tlparser.parse (subject, filename, strict, integer)
-  local nContext = tllexer.create_context(subject, filename)
+function tlparser.parse (vFileEnv, strict, integer)
+  local nContext = tllexer.create_context(vFileEnv)
+  vFileEnv.split_info_list = tllexer.create_split_info_list(vFileEnv.subject)
   lpeg.setmaxstack(1000)
   if integer and _VERSION ~= "Lua 5.3" then integer = false end
-  local ast, error_msg = lpeg.match(G, subject, nil, nContext, strict, integer)
+  local ast, error_msg = lpeg.match(G, vFileEnv.subject, nil, nContext, strict, integer)
   if not ast then
 	  return nil, error_msg
   else

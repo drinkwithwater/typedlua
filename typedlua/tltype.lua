@@ -8,6 +8,7 @@ This module implements Typed Lua tltype.
 local tltype = {}
 local tltRelation = require "typedlua/tltRelation"
 
+-- TODO maybe no integer for 5.2 or 5.1
 tltype.integer = true
 
 -- literal types
