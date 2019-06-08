@@ -161,11 +161,12 @@ function tllexer.context_errormsg(vRootContext)
 	end
 end
 
-function tllexer.create_context(vFileEnv)
+function tllexer.create_context(vFileEnv, vOffset)
 	return {
 		filename = vFileEnv.filename,
 		env = vFileEnv,
 		ffp = 0,		 -- ffp == forward first position ???
+		offset = vOffset or 0,
 		unexpected = nil,
 		expected = nil,
 		sub_context = nil,

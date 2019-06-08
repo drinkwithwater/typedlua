@@ -216,11 +216,13 @@ function tlparser.parse (vFileEnv, strict, integer)
   local ast = lpeg.match(G, vFileEnv.subject, nil, nContext, strict, integer)
   if not ast then
 	  return nil, tllexer.context_errormsg(nContext)
-  else
-	  fixup_lin_col(nContext, ast)
-	  nContext.ast = ast
-	  return nContext
   end
+  fixup_lin_col(nContext, ast)
+  nContext.ast = ast
+  if not tltSyntax.check_define_link(nContext) then
+	  return nil, tllexer.context_errormsg(nContext)
+  end
+  return nContext
 end
 
 return tlparser

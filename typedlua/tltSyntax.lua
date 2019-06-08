@@ -19,15 +19,19 @@ function tltSyntax.ast_include(vPos, vFileName)
 	return {tag="Include", pos=vPos, vFileName}
 end
 
-function tltSyntax.ast_define_type(vPos, vName, vType)
+function tltSyntax.ast_define_type(vPos, vContext, vName, vType)
 	local nDefineType = tltype.Define(vName, vType)
-	nDefineType.pos = vPos
+	local nFullPos = vContext.offset + vPos - 1
+	nDefineType.pos = nFullPos
+	nDefineType.l, nDefineType.c = tllexer.context_fixup_pos(vContext, nFullPos)
 	return nDefineType
 end
 
 function tltSyntax.ast_link_define_type(vPos, vContext, vName)
 	local nDefineLink = tltype.DefineLink(vName)
-	nDefineLink.pos = vPos
+	local nFullPos = vContext.offset + vPos - 1
+	nDefineLink.pos = nFullPos
+	nDefineLink.l, nDefineLink.c = tllexer.context_fixup_pos(vContext, nFullPos)
 
 	-- record in env
 	local nList = vContext.env.define_link_list
@@ -97,9 +101,9 @@ local mBaseSyntax = {
   IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltable.fieldlist;
   IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.StaticTable;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
-  Interface = lpeg.Cp() * tllexer.kw("interface") * lpeg.V("TypeDec") /
-              tltSyntax.ast_define_type+
-              lpeg.Cp() * tllexer.kw("typealias") *
+  Interface = lpeg.Cp() * lpeg.Carg(1) * tllexer.kw("interface") * lpeg.V("TypeDec") /
+              tltSyntax.ast_define_type +
+              lpeg.Cp() * lpeg.Carg(1) * tllexer.kw("typealias") *
               tllexer.token(tllexer.Name, "Name") * tllexer.symb("=") * lpeg.V("Type") /
               tltSyntax.ast_define_type;
   LocalInterface = tllexer.kw("local") * lpeg.V("Interface") / tlast.statLocalTypeDec;
@@ -109,7 +113,7 @@ local mBaseSyntax = {
   -----------
   -- other --
   -----------
-  Userdata = lpeg.Cp() * tllexer.kw("userdata") * lpeg.V("TypeDec") /
+  Userdata = lpeg.Cp() * lpeg.Carg(1) * tllexer.kw("userdata") * lpeg.V("TypeDec") /
              tltSyntax.ast_define_type;
   TypedId = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") *
             tllexer.symb(":") * lpeg.V("Type") / tlast.ident;
@@ -140,7 +144,7 @@ local mChunkPattern = lpeg.P(tlutils.table_concat(mBaseSyntax, { "TypeChunk";
 }))
 
 function tltSyntax.capture_deco(vAllSubject, vNextPos, vContext, vStartPos, vDecoSubject)
-	local nSubContext = tllexer.create_context(vContext.env)
+	local nSubContext = tllexer.create_context(vContext.env, vStartPos)
 	local nDecoList = lpeg.match(mDecoPattern, vDecoSubject, nil, nSubContext)
 	if nDecoList then
 		return true, nDecoList
@@ -153,13 +157,10 @@ end
 
 function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartPos, vDefineSubject)
 	local nFileEnv = vContext.env
-	local nSubContext = tllexer.create_context(nFileEnv)
+	local nSubContext = tllexer.create_context(nFileEnv, vStartPos)
 	local nDefineList = lpeg.match(mChunkPattern, vDefineSubject, nil, nSubContext)
 	if nDefineList then
 		for i, nDefineNode in ipairs(nDefineList) do
-			local nFullPos = vStartPos + nDefineNode.pos - 1
-			nDefineNode.pos = nFullPos
-			nDefineNode.l, nDefineNode.c = tllexer.context_fixup_pos(vContext, nFullPos)
 			local nFindInterface = nFileEnv.define_dict[nDefineNode[1]]
 			if not nFindInterface then
 				nFileEnv.define_dict[nDefineNode[1]] = nDefineNode
@@ -176,6 +177,20 @@ function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartP
 		vContext.sub_context = nSubContext
 		return false
 	end
+end
+
+function tltSyntax.check_define_link(vContext)
+	local nFileEnv = vContext.env
+	for i, nDefineLink in ipairs(nFileEnv.define_link_list) do
+		local nName = nDefineLink[1]
+		if not nFileEnv.define_dict[nName] then
+			vContext.ffp = nDefineLink.pos
+			vContext.sub_context = nil
+			vContext.semantic_error = "define not found"
+			return false
+		end
+	end
+	return true
 end
 
 function tltSyntax.parse_deco(vFileEnv, vSubject)
