@@ -202,11 +202,11 @@ end
 
 -- define: (string) -> (type)
 function tltype.Define(vName, vType)
-  return { tag = "TDefine", vName, vType}
+  return { tag = "TDefine", name=vName, define_type=vType}
 end
 
-function tltype.DefineLink(vName)
-	return { tag = "TDefineLink", vName}
+function tltype.DefineRefer(vName)
+	return { tag = "TDefineRefer", name=vName}
 end
 
 function tltype.first(vType)
@@ -265,6 +265,9 @@ local formatterDict ={
 			nList[#nList + 1] = tltype.tostring(vType)
 		end
 		return "("..table.concat(nList, ",")..")"
+	end,
+	TDefineRefer		= function(vType)
+		return vType.name
 	end,
 	TAutoLink		= function(vTuple)
 		return "autostrTODO"

@@ -1,6 +1,7 @@
 local seri = require "typedlua/seri"
 local tltRelation = {}
 
+--@(any)->(string)
 function tltRelation.to_base_detail(vValue)
 	local nValueType = type(vValue)
 	if type(vValue) == "number" then
@@ -255,8 +256,30 @@ local TypeContainDict = {
 		TUnion			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
+	TDefine=setDefault({
+		TDefine=function(vLeftDefine, vRightDefine)
+			if vLeftDefine.name == vRightDefine.name then
+				return CONTAIN_FULL
+			else
+				return CONTAIN_NIL
+			end
+		end,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+	}, containNil),
+	TDefineRefer=setDefault({
+		TDefineRefer=function(vLeftDefineRefer, vRightDefineRefer)
+			if vLeftDefineRefer.name == vRightDefineRefer.name then
+				return CONTAIN_FULL
+			else
+				return CONTAIN_NIL
+			end
+		end,
+		TUnion			= singleContainUnion,
+		TAny			= singleContainAny,
+	}, containNil),
 	TAutoLink=setDefault({}, function()
-		print("TODO AutoLink relation ...........")
+		error("TODO AutoLink relation ...........")
 		return CONTAIN_FULL
 	end),
 }
@@ -272,6 +295,7 @@ for nType, nRelation in pairs(TypeContainDict) do
 	end
 end
 
+--@(any, any)->(any)
 function tltRelation.contain(vLeft, vRight)
 	local nContain = TypeContainDict[vLeft.tag][vRight.tag]
 	if nContain then
@@ -281,6 +305,7 @@ function tltRelation.contain(vLeft, vRight)
 	end
 end
 
+--@(any, any)->(any)
 function tltRelation.sub(vLeft, vRight)
 	local nContain = TypeContainDict[vRight.tag][vLeft.tag]
 	if nContain then

@@ -28,15 +28,15 @@ function tltSyntax.ast_define_type(vPos, vContext, vName, vType)
 end
 
 function tltSyntax.ast_link_define_type(vPos, vContext, vName)
-	local nDefineLink = tltype.DefineLink(vName)
+	local nDefineRefer = tltype.DefineRefer(vName)
 	local nFullPos = vContext.offset + vPos - 1
-	nDefineLink.pos = nFullPos
-	nDefineLink.l, nDefineLink.c = tllexer.context_fixup_pos(vContext, nFullPos)
+	nDefineRefer.pos = nFullPos
+	nDefineRefer.l, nDefineRefer.c = tllexer.context_fixup_pos(vContext, nFullPos)
 
 	-- record in env
 	local nList = vContext.env.define_link_list
-	nList[#nList + 1] = nDefineLink
-	return nDefineLink
+	nList[#nList + 1] = nDefineRefer
+	return nDefineRefer
 end
 
 local mBaseSyntax = {
@@ -161,9 +161,9 @@ function tltSyntax.capture_define_chunk(vAllSubject, vNextPos, vContext, vStartP
 	local nDefineList = lpeg.match(mChunkPattern, vDefineSubject, nil, nSubContext)
 	if nDefineList then
 		for i, nDefineNode in ipairs(nDefineList) do
-			local nFindInterface = nFileEnv.define_dict[nDefineNode[1]]
+			local nFindInterface = nFileEnv.define_dict[nDefineNode.name]
 			if not nFindInterface then
-				nFileEnv.define_dict[nDefineNode[1]] = nDefineNode
+				nFileEnv.define_dict[nDefineNode.name] = nDefineNode
 			else
 				vContext.ffp = vStartPos + nSubContext.ffp - 1
 				vContext.sub_context = nSubContext
@@ -181,10 +181,10 @@ end
 
 function tltSyntax.check_define_link(vContext)
 	local nFileEnv = vContext.env
-	for i, nDefineLink in ipairs(nFileEnv.define_link_list) do
-		local nName = nDefineLink[1]
+	for i, nDefineRefer in ipairs(nFileEnv.define_link_list) do
+		local nName = nDefineRefer.name
 		if not nFileEnv.define_dict[nName] then
-			vContext.ffp = nDefineLink.pos
+			vContext.ffp = nDefineRefer.pos
 			vContext.sub_context = nil
 			vContext.semantic_error = "define not found"
 			return false
