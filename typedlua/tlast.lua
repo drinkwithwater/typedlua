@@ -75,13 +75,13 @@ field: `TField{ <string> type }
 
 local tlast = {}
 
--- namelist : (number, ident, ident*) -> (namelist)
+--@(integer, integer, any*)->(any)
 function tlast.namelist (pos, id, ...)
   local t = { tag = "NameList", pos = pos, id, ... }
   return t
 end
 
--- explist : (number, expr, expr*) -> (explist)
+--@(integer, integer, any*)->(any)
 function tlast.explist (pos, expr, ...)
   local t = { tag = "ExpList", pos = pos, expr, ... }
   return t
@@ -89,37 +89,38 @@ end
 
 -- stat
 
--- block : (number, stat*) -> (block)
+--@(integer, integer, any*)->(any)
 function tlast.block (pos, ...)
   return { tag = "Block", pos = pos, ... }
 end
 
+--@(any)->(any)
 function tlast.chunk(block)
 	block.pos = 0
 	return {tag = "Chunk", pos = 0, block}
 end
 
--- statDo : (block) -> (stat)
+--@(any)->(any)
 function tlast.statDo (block)
   return { tag = "Do", pos = block.pos, [1] = block}
 end
 
--- statWhile : (number, expr, block) -> (stat)
+--@(integer, any, any)->(any)
 function tlast.statWhile (pos, expr, block)
   return { tag = "While", pos = pos, [1] = expr, [2] = block }
 end
 
--- statRepeat : (number, block, expr) -> (stat)
+--@(integer, any, any)->(any)
 function tlast.statRepeat (pos, block, expr)
   return { tag = "Repeat", pos = pos, [1] = block, [2] = expr }
 end
 
--- statIf : (number, any*) -> (stat)
+--@(integer, any*)->(any)
 function tlast.statIf (pos, ...)
   return { tag = "If", pos = pos, ... }
 end
 
--- statFornum : (number, ident, expr, expr, expr|block, block?) -> (stat)
+--@(integer, any*)->(any)
 function tlast.statFornum (pos, ident, e1, e2, e3, block)
   local s = { tag = "Fornum", pos = pos }
   s[1] = ident
@@ -221,18 +222,6 @@ function tlast.statApply (expr)
     -- invalid statement
     return false
   end
-end
-
--- statInterface : (number, string, type) -> (stat)
-function tlast.statInterface (pos, name, t)
-  t.interface = name
-  return { tag = "Interface", pos = pos, [1] = name, [2] = t }
-end
-
--- statUserdata : (number, string, type) -> (stat)
-function tlast.statUserdata (pos, name, t)
-  t.userdata = name
-  return { tag = "Userdata", pos = pos, [1] = name, [2] = t }
 end
 
 -- statRequire : (number, string) -> (stat)

@@ -30,7 +30,7 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
 		file_env_dict = {},
-		interface_dict = {},
+		define_dict = {},
 		_G_node = nil,
 		_G_ident = nil,
 		scope_list = {},
@@ -65,7 +65,8 @@ function tlenv.FileEnv(vSubject, vFileName)
 	local env = {
 		subject = vSubject,
 		filename = vFileName,
-		interface_dict = {},
+		define_dict = {},
+		define_link_list = {},
 		ast = nil,
 		split_info_list = nil,
 

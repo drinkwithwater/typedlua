@@ -136,12 +136,12 @@ tllexer.String = LongString + (ShortString / fix_str)
 -- for error reporting
 local OneWord = tllexer.Name + tllexer.Number + tllexer.String + tllexer.Reserved + lpeg.P("...") + lpeg.P(1)
 
-function tllexer.report_error ()
+function tllexer.syntax_error()
   return lpeg.Cmt(lpeg.Carg(1), getffp) * (lpeg.C(OneWord) + lpeg.Cc("EOF")) /
   function (vContext, u)
     vContext.unexpected = u
 	vContext.ffp = vContext.ffp or 1
-    return nil, tllexer.context_errormsg(t)
+    return false
   end
 end
 
@@ -152,20 +152,24 @@ function tllexer.context_errormsg(vRootContext)
 		nErrorContext = nErrorContext.sub_context
 	end
 	local nLine, nColumn = tllexer.context_fixup_pos(vRootContext, vRootContext.ffp)
-	return string.format("%s:%d:%d: syntax error, unexpected '%s', expecting %s",
-	vRootContext.filename, nLine, nColumn, nErrorContext.unexpected, nErrorContext.expected)
+	if nErrorContext.semantic_error then
+		return string.format("%s:%d:%d: semantic error, %s",
+		vRootContext.filename, nLine, nColumn, nErrorContext.semantic_error)
+	else
+		return string.format("%s:%d:%d: syntax error, unexpected '%s', expecting %s",
+		vRootContext.filename, nLine, nColumn, nErrorContext.unexpected, nErrorContext.expected)
+	end
 end
 
 function tllexer.create_context(vFileEnv)
 	return {
 		filename = vFileEnv.filename,
 		env = vFileEnv,
-		define_list = {},
-		ast = nil,
 		ffp = 0,		 -- ffp == forward first position ???
 		unexpected = nil,
 		expected = nil,
 		sub_context = nil,
+		semantic_error = nil,
 	}
 end
 

@@ -198,32 +198,15 @@ function tltype.NativeFunction(vNativeFunction)
 	return {tag = "TFunction", sub_tag = "TNativeFunction", caller = vNativeFunction}
 end
 
--- type variables
+-- type define
 
--- Variable : (string) -> (type)
-function tltype.Variable (vPos, vName, vType)
-  return { tag = "TVariable", pos=vPos, vName, vType}
+-- define: (string) -> (type)
+function tltype.Define(vName, vType)
+  return { tag = "TDefine", vName, vType}
 end
 
--- global type variables
-
--- GlobalVariable : (string) -> (type)
-function tltype.GlobalVariable (env, name, pos, typeerror, namespace)
-  return { tag = "TGlobalVariable", [1] = name} --, [2] = env, [3] = pos, [4] = typeerror, [5] = namespace }
-end
-
--- isVariable : (type) -> (boolean)
-function tltype.isGlobalVariable (t)
-  return t.tag == "TGlobalVariable"
-end
-
-function tltype.setGlobalVariable(t, env, pos, typeerror, namespace)
-  t.tag = "TGlobalVariable"
-  --[[
-  t[2] = env
-  t[3] = pos
-  t[4] = typeerror
-  t[5] = namespace]]
+function tltype.DefineLink(vName)
+	return { tag = "TDefineLink", vName}
 end
 
 function tltype.first(vType)

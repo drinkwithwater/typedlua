@@ -28,7 +28,7 @@ end
 local tlparser = {}
 
 local G = lpeg.P { "TypedLua";
-  TypedLua = tllexer.Shebang^-1 * tllexer.Skip * lpeg.V("Chunk") * -1 + tllexer.report_error();
+  TypedLua = tllexer.Shebang^-1 * tllexer.Skip * lpeg.V("Chunk") * -1 + tllexer.syntax_error();
 
   -- deco
   --[[GlobalDefine = lpeg.Cp() * tllexer.kw("global") * lpeg.V("NameList") *
@@ -213,14 +213,13 @@ function tlparser.parse (vFileEnv, strict, integer)
   vFileEnv.split_info_list = tllexer.create_split_info_list(vFileEnv.subject)
   lpeg.setmaxstack(1000)
   if integer and _VERSION ~= "Lua 5.3" then integer = false end
-  local ast, error_msg = lpeg.match(G, vFileEnv.subject, nil, nContext, strict, integer)
+  local ast = lpeg.match(G, vFileEnv.subject, nil, nContext, strict, integer)
   if not ast then
-	  return nil, error_msg
+	  return nil, tllexer.context_errormsg(nContext)
   else
 	  fixup_lin_col(nContext, ast)
-
 	  nContext.ast = ast
-	  return nContext, error_msg
+	  return nContext
   end
 end
 
