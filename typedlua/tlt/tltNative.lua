@@ -28,12 +28,15 @@ tltNative.inext = tltype.NativeFunction(function(visitor, vTuple)
 	local nTableType = tltype.tuple_index(vTuple, 1)
 	local nIndexType = tltype.tuple_index(vTuple, 2)
 	print("TODO check next's arg")
+	nTableType = visitor:link_refer_type(nTableType)
 	if nTableType.tag == "TTable" then
 		return tltable.inext_return(nTableType)
+	elseif nTableType.tag == "TDefineType" or nTableType.tag == "TAutoType" then
+		return tltable.inext_return(nTableType[1])
+	elseif nTableType.tag == "TAny" then
+		return tltype.Tuple(Integer, Any)
 	else
-		if nTableType.tag ~= "TAny" then
-			visitor:log_error("next iter on non-table non-any type")
-		end
+		visitor:log_error("next iter on non-table non-any type")
 		return tltype.Tuple(Integer, Any)
 	end
 end)

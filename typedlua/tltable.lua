@@ -4,28 +4,42 @@ local tltRelation = require "typedlua.tltRelation"
 
 local tltable = {}
 
---[[ --@
+--[[@
 
-
-interface Field
+interface TTuple
+	tag=string
+	sub_tag=string
+	[integer]=Type
 end
 
-interface Table
-	tag=string,
-	sub_tag=string,
-	record_dict={[string]=integer},
-	hash_list={[integer]=integer},
-	[integer]=Field
+interface Type
+	tag=string
+	sub_tag=string
+end
+
+interface TField
+	tag=string
+	sub_tag=string
+	[1]=Type
+	[2]=Type
+end
+
+interface TTable
+	tag=string
+	sub_tag=string
+	record_dict={[string]=integer}
+	hash_list={[integer]=integer}
+	[integer]=TField
 end
 
 ]]
 
---@()->(any)
+--@()->(TTable)
 function tltable.AnyTable()
 	return {tag = "TTable", sub_tag = "TAnyTable", record_dict = {}, hash_list = {}}
 end
 
---@(any*)->(any)
+--@(TField*)->(TTable)
 function tltable.TableConstructor(...)
 	-- TODO check part contain type in keyset
   local nTableType = { tag = "TTable", sub_tag = "TUnknownTable", record_dict={}, hash_list={}, ... }
@@ -43,14 +57,14 @@ function tltable.TableConstructor(...)
   return nTableType
 end
 
---@(any*)->(any)
+--@(TField*)->(TTable)
 function tltable.StaticTable(...)
 	local nStaticTable = tltable.TableConstructor(...)
 	nStaticTable.sub_tag = "TStaticTable"
 	return nStaticTable
 end
 
---@(any, any)->(any)
+--@(Type, TField)->(TTable)
 function tltable.insert(vTableType, vFieldType)
 	local nNewIndex = #vTableType + 1
 	local nFieldKey = vFieldType[1]
@@ -63,7 +77,7 @@ function tltable.insert(vTableType, vFieldType)
 	vTableType[nNewIndex] = vFieldType
 end
 
---@(any, any)->(any)
+--@(TTable, Type)->(TField)
 function tltable.index_field(vTableType, vKeyType)
 	if vTableType.sub_tag == "TAnyTable" then
 		return tltable.Field(tltype.Any(), tltype.Any())
@@ -82,7 +96,7 @@ function tltable.index_field(vTableType, vKeyType)
 	return nil
 end
 
---@(any)->(any)
+--@(TTable)->(TTuple)
 function tltable.next_return(vTableType)
 	print("next TODO... merge in union")
 	for i, nField in ipairs(vTableType) do
@@ -90,7 +104,7 @@ function tltable.next_return(vTableType)
 	end
 end
 
---@(any)->(any)
+--@(TTable)->(TTuple)
 function tltable.inext_return(vTableType)
 	print("inext TODO... merge in union")
 	for i, nField in ipairs(vTableType) do
@@ -103,7 +117,7 @@ function tltable.inext_return(vTableType)
 	end
 end
 
---@(any, any)->(any)
+--@(Type, Type)->(TTable)
 function tltable.Field(vKeyType, vValueType)
 	if vKeyType.tag == "TLiteral" then
 		return {tag = "TField", sub_tag = "TNotnilField", [1] = vKeyType, [2] = vValueType}
@@ -112,23 +126,14 @@ function tltable.Field(vKeyType, vValueType)
 	end
 end
 
---@(any)->(any)
+--@(Type)->(TField)
 function tltable.ArrayField(vValueType)
 	return tltable.Field(tltype.Integer(), vValueType)
 end
 
---@(any, any)->(any)
+--@(Type, Type)->(TField)
 function tltable.NilableField(vKeyType, vValueType)
 	return {tag = "TField", sub_tag = "TNilableField", [1] = vKeyType, [2] = vValueType}
-end
-
---@(any, any)->(any*)
-function tltable.fieldlist(idlist, t)
-  local l = {}
-  for _, v in ipairs(idlist) do
-    table.insert(l, tltable.Field(tltype.Literal(v[1]), t))
-  end
-  return table.unpack(l)
 end
 
 return tltable

@@ -108,7 +108,11 @@ function tllexer.token (pat, name)
 end
 
 function tllexer.symb (str)
-  return tllexer.token(lpeg.P(str), str)
+	if str=="-" then
+	   return tllexer.token(lpeg.P("-")*-lpeg.P("-"), str)
+    else
+	   return tllexer.token(lpeg.P(str), str)
+	end
 end
 
 function tllexer.kw (str)

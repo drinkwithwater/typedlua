@@ -62,12 +62,13 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
 	local nRightType = nRegion.auto_stack[vAutoLink.link_index]
+	local nLeftType = visitor:link_refer_type(vLeftType)
 	if nRightType.tag == "TAutoType" and nRightType.sub_tag == "TTableAuto" then
 		local nLeftTableType
-		if vLeftType.tag == "TTable" then
-			nLeftTableType = vLeftType
-		elseif vLeftType.tag == "TDefineType" and vLeftType[1].tag == "TTable" then
-			nLeftTableType = vLeftType[1]
+		if nLeftType.tag == "TTable" then
+			nLeftTableType = nLeftType
+		elseif nLeftType.tag == "TDefineType" and nLeftType[1].tag == "TTable" then
+			nLeftTableType = nLeftType[1]
 		else
 			visitor:log_error("cast_auto type unexception type when table, info TODO")
 			return false
@@ -90,10 +91,10 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 		print("TODO check other field")
 	elseif nRightType.tag == "TAutoType" and nRightType.sub_tag == "TFunctionAuto" then
 		local nLeftFunctionType
-		if vLeftType.tag == "TFunction" then
-			nLeftTableType = vLeftType
-		elseif vLeftType.tag == "TDefineType" and vLeftType[1].tag == "TFunction" then
-			nLeftTableType = vLeftType[1]
+		if nLeftType.tag == "TFunction" then
+			nLeftTableType = nLeftType
+		elseif nLeftType.tag == "TDefineType" and nLeftType[1].tag == "TFunction" then
+			nLeftTableType = nLeftType[1]
 		else
 			visitor:log_error("cast_auto type unexception type when function, info TODO")
 			return false
@@ -103,7 +104,7 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 			return false
 		end
 	else
-		visitor:log_error("cast_auto type unexception", vLeftType.tag, nRightType.tag, nRightType.sub_tag)
+		visitor:log_error("cast_auto type unexception", nLeftType.tag, nRightType.tag, nRightType.sub_tag)
 		return false
 	end
 	nRightType[2] = nRightType[1]
@@ -114,7 +115,7 @@ end
 
 function visitor_meta.link_refer_type(visitor, vType)
 	if vType.tag == "TDefineRefer" then
-		return visitor.env.define_dict[vDefineRefer.name]
+		return visitor.env.define_dict[vType.name]
 	elseif vType.tag == "TAutoLink" then
 		local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 		local nRegion = visitor.env.region_list[nRegionRefer]
@@ -123,7 +124,7 @@ function visitor_meta.link_refer_type(visitor, vType)
 		end
 		local nAutoType = nRegion.auto_stack[vType.link_index]
 		if nAutoType.sub_tag == "TCastAuto" then
-			return nAutoType[1]
+			return visitor:link_refer_type(nAutoType[1])
 		else
 			return nAutoType
 		end

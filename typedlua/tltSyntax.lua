@@ -77,13 +77,15 @@ local mBaseSyntax = {
   ----------------
   -- table type --
   ----------------
-  KeyType = lpeg.V("BaseType") + lpeg.V("AnyType");
-  RecordField = tllexer.symb("[") * lpeg.V("LiteralType") * tllexer.symb("]") *
-				tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
+  RecordKey = tllexer.symb("[") * lpeg.V("LiteralType") * tllexer.symb("]") +
+				  tllexer.token(tllexer.Name, "Name") / tltype.Literal;
+  RecordField = lpeg.V("RecordKey") * tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
   RecordType = lpeg.V("RecordField") * (tllexer.symb(",") * lpeg.V("RecordField"))^0 *
                (tllexer.symb(",") * (lpeg.V("HashType") + lpeg.V("ArrayType")))^-1;
-  HashType = tllexer.symb("[") * lpeg.V("KeyType") * tllexer.symb("]") *
-			 tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
+
+  HashKey = tllexer.symb("[") * ( lpeg.V("BaseType") + lpeg.V("AnyType") ) * tllexer.symb("]");
+  HashType = lpeg.V("HashKey") * tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
+
   ArrayType = lpeg.V("Type") / tltable.ArrayField;
   TableTypeBody = lpeg.V("RecordType") + lpeg.V("HashType") + lpeg.V("ArrayType") + lpeg.Cc(nil);
   TableType = tllexer.symb("{") * lpeg.V("TableTypeBody") * tllexer.symb("}") / tltable.StaticTable;
@@ -96,9 +98,7 @@ local mBaseSyntax = {
   -----------------------
   -- interface ?? TODO --
   -----------------------
-  Id = lpeg.Cp() * tllexer.token(tllexer.Name, "Name") / tlast.ident;
-  IdList = lpeg.Cp() * lpeg.V("Id") * (tllexer.symb(",") * lpeg.V("Id"))^0 / tlast.namelist;
-  IdDec = lpeg.V("IdList") * tllexer.symb(":") * lpeg.V("Type") / tltable.fieldlist;
+  IdDec = (lpeg.V("RecordKey") + lpeg.V("HashKey")) * tllexer.symb("=") * lpeg.V("Type") / tltable.Field;
   IdDecList = ((lpeg.V("IdDec") * tllexer.Skip)^1 + lpeg.Cc(nil)) / tltable.StaticTable;
   TypeDec = tllexer.token(tllexer.Name, "Name") * lpeg.V("IdDecList") * tllexer.kw("end");
   Interface = lpeg.Cp() * lpeg.Carg(1) * tllexer.kw("interface") * lpeg.V("TypeDec") /
@@ -186,7 +186,7 @@ function tltSyntax.check_define_link(vContext)
 		if not nFileEnv.define_dict[nName] then
 			vContext.ffp = nDefineRefer.pos
 			vContext.sub_context = nil
-			vContext.semantic_error = "define not found"
+			vContext.semantic_error = "define not found:"..tostring(nName)
 			return false
 		end
 	end
