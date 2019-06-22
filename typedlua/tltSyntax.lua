@@ -71,8 +71,8 @@ local mBaseSyntax = {
   -------------------
   -- function type only use tuple
   TupleType = tllexer.symb("(") * (lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0)^-1 * tllexer.symb(")") / tltype.Tuple + tllexer.symb("(") * lpeg.V("Type") * (tllexer.symb(",") * lpeg.V("Type"))^0 * tllexer.symb("*") * tllexer.symb(")") / tltype.VarTuple;
-  FunctionType = lpeg.V("TupleType") * tllexer.symb("->") * lpeg.V("TupleType") / tltype.StaticFunction +
-				 lpeg.V("TupleType") * tllexer.symb("->") * tllexer.kw("auto") / tltAuto.AutoFunction;
+  FunctionType = lpeg.V("TupleType") * tllexer.symb("->") * lpeg.V("TupleType") / tltype.StaticFunction;
+    -- TODO + lpeg.V("TupleType") * tllexer.symb("->") * tllexer.kw("auto") / tltAuto.FunctionAuto;
 
   ----------------
   -- table type --

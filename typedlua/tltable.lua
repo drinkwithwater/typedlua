@@ -4,6 +4,21 @@ local tltRelation = require "typedlua.tltRelation"
 
 local tltable = {}
 
+--[[ --@
+
+
+interface Field
+end
+
+interface Table
+	tag=string,
+	sub_tag=string,
+	record_dict={[string]=integer},
+	hash_list={[integer]=integer},
+	[integer]=Field
+end
+
+]]
 
 --@()->(any)
 function tltable.AnyTable()
@@ -11,9 +26,9 @@ function tltable.AnyTable()
 end
 
 --@(any*)->(any)
-function tltable.StaticTable(...)
+function tltable.TableConstructor(...)
 	-- TODO check part contain type in keyset
-  local nTableType = { tag = "TTable", sub_tag="TStaticTable", record_dict={}, hash_list={}, ... }
+  local nTableType = { tag = "TTable", sub_tag = "TUnknownTable", record_dict={}, hash_list={}, ... }
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
   for i, nField in ipairs(nTableType) do
@@ -26,6 +41,13 @@ function tltable.StaticTable(...)
 	  end
   end
   return nTableType
+end
+
+--@(any*)->(any)
+function tltable.StaticTable(...)
+	local nStaticTable = tltable.TableConstructor(...)
+	nStaticTable.sub_tag = "TStaticTable"
+	return nStaticTable
 end
 
 --@(any, any)->(any)

@@ -15,10 +15,11 @@ function tltOper.assert_type(visitor, vType, vMustType)
 end
 
 function tltOper._return(visitor, vFunctionNode, vTupleType)
-	local nFunctionType = visitor:link_type(vFunctionNode.type)
-	if not nFunctionType[2] then
+	local nFunctionType = visitor:link_refer_type(vFunctionNode.type)
+	if nFunctionType.sub_tag == "TFunctionAuto" then
 		-- auto set type
-		nFunctionType[2] = vTupleType
+		print("TODO return for multi value")
+		nFunctionType[1][2] = vTupleType
 	else
 		print("TODO check type")
 		-- check type
@@ -42,19 +43,17 @@ function tltOper._relink_tuple(visitor, vArgTuple)
 	end
 
 	for i, nType in ipairs(nNewTuple) do
-		nNewTuple[i] = visitor:link_type(nType)
+		nNewTuple[i] = visitor:link_refer_type(nType)
 	end
 	return nNewTuple
 end
 
 function tltOper._call(visitor, vCallerType, vArgTuple)
-	local nFunctionType = visitor:link_type(vCallerType)
+	local nFunctionType = visitor:link_refer_type(vCallerType)
+	local nInputTuple = tltOper._relink_tuple(visitor, vArgTuple)
 	if nFunctionType.tag == "TFunction" then
-		local nInputTuple = tltOper._relink_tuple(visitor, vArgTuple)
 		print("TODO tltOper._call check and cast args")
-		if nFunctionType.sub_tag == "TAutoFunction" then
-			return visitor:oper_auto_call(vCallerType, nInputTuple)
-		elseif nFunctionType.sub_tag == "TNativeFunction" then
+		if nFunctionType.sub_tag == "TNativeFunction" then
 			return nFunctionType.caller(visitor, nInputTuple)
 		elseif nFunctionType.sub_tag == "TStaticFunction" then
 			return nFunctionType[2]
@@ -63,6 +62,10 @@ function tltOper._call(visitor, vCallerType, vArgTuple)
 		else
 			visitor:log_error("function sub_tag exception", nFunctionType.sub_tag)
 		end
+	elseif nFunctionType.tag == "TDefineType" then
+		print("define typeTODO")
+	elseif nFunctionType.tag == "TAutoType" then
+		return visitor:oper_auto_call(vCallerType, nInputTuple)
 	elseif nFunctionType.tag == "TAny" then
 		visitor:log_wany("call any")
 		return tltype.VarTuple(tltype.Any())
@@ -72,82 +75,92 @@ function tltOper._call(visitor, vCallerType, vArgTuple)
 	end
 end
 
+function tltOper.pindex_field(visitor, vPrefixType, vKeyType)
+	local nTypeTag = vPrefixType.tag
+
+	if nTypeTag == "TTable" then
+		return true, tltable.index_field(vPrefixType, vKeyType)
+	elseif nTypeTag == "TAny" then
+		return true, tltable.Field(tltype.Any(), tltype.Any())
+	elseif nTypeTag == "TBase" then
+		return false, "TODO may index for string"
+
+	elseif nTypeTag == "TDefineRefer" or nTypeTag == "TAutoLink" then
+		vPrefixType = visitor:link_refer_type(vPrefixType)
+		return tltOper.pindex_field(visitor, vPrefixType[1], vKeyType)
+	elseif nTypeTag == "TDefineType" or nTypeTag == "TAutoType" then
+		return tltOper.pindex_field(visitor, vPrefixType[1], vKeyType)
+
+	elseif nTypeTag == "TUnion" then
+		return false, "TODO index TUnion not implement"
+	else
+		return false, "TODO index valid typetag="..tostring(nTypeTag)
+	end
+end
+
 function tltOper._index_get(visitor, vPrefixType, vKeyType)
-	vPrefixType = visitor:link_type(vPrefixType)
-	local nField = nil
-	if vPrefixType.tag == "TTable" then
-		nField = tltable.index_field(vPrefixType, vKeyType)
-	elseif vPrefixType.tag == "TAny" then
-		visitor:log_wany("index any")
-		nField = tltable.Field(tltype.Any(), tltype.Any())
+	local nOkay, nField = tltOper.pindex_field(visitor, vPrefixType, vKeyType)
+	if not nOkay then
+		visitor:log_error(nField)
+		return tltype.Any()
 	else
-		-- TODO check node is Table
-		visitor:log_error("index for non-table type not implement...")
+		if not nField then
+			visitor:log_warning("index a nil field")
+			return tltype.Nil()
+		else
+			return nField[2]
+		end
 	end
-	local nReType = nil
-	if not nField then
-		visitor:log_warning("index a nil field")
-		nReType = tltype.Nil()
-	else
-		nReType = nField[2]
-	end
-	return nReType
 end
 
 -- TODO think which one is better ... -- no return
 function tltOper._index_set(visitor, vPrefixType, vKeyType, vValueType, vLeftDeco)
+	local nRightType = tltype.Nil()
 	if not vValueType then
-		vValueType = tltype.Nil()
 		visitor:log_warning("set assign missing")
 	else
-		vValueType = tltype.general(vValueType)
+		nRightType = tltype.general(vValueType)
 	end
-	vPrefixType = visitor:link_type(vPrefixType)
-	if vPrefixType.tag == "TTable" then
-		local nField = tltable.index_field(vPrefixType, vKeyType)
-		if (not nField) and (not vLeftDeco) then
-			if vPrefixType.sub_tag == "TAutoTable" then
-				tltable.insert(vPrefixType, tltable.NilableField(
-					vKeyType, vValueType
-				))
+	local nPrefixType = visitor:link_refer_type(vPrefixType)
+	local nOkay, nLeftField = tltOper.pindex_field(visitor, nPrefixType, vKeyType)
+	if not nOkay then
+		visitor:log_error(nLeftField)
+		return
+	end
+	if nPrefixType.sub_tag == "TTableAuto" and (not nLeftField) then
+		assert(nPrefixType[1].tag == "TTable", "TTableAuto not TTable")
+		if vLeftDeco then
+			tltable.insert(nPrefixType[1], tltable.NilableField(vKeyType, vLeftDeco))
+			if nRightType.tag == "TAutoLink" then
+				visitor:cast_auto(vLeftDeco, nRightType)
 			else
-				visitor:log_error("non-auto table set in empty field", tltype.tostring(nField[2]))
+				if not tltRelation.contain(vLeftDeco, nRightType) then
+					visitor:log_error("index insert outtype for deco & right", vLeftDeco.tag , nRightType.tag)
+				end
 			end
-		elseif nField and nField.tag == "TAutoLink" then
-			assert(vPrefixType.sub_tag == "TAutoTable")
-			visitor:log_error("autolink field can't be set")
 		else
-			local nCastType = nil
-			if nField then
-				nCastType = nField[2]
-				if vLeftDeco then
-					if not tltRelation.contain(nField[2], vLeftDeco) then
-						visitor:log_error(
-							tltype.tostring(nField[2]), "field not contain deco",
-							tltype.tostring(vLeftDeco))
-					end
-				end
-			elseif vLeftDeco and (not nField) then
-				nCastType = vLeftDeco
-				tltable.insert(vPrefixType, tltable.NilableField(vKeyType, vLeftDeco))
-			else
-				error("error branch when index_set")
+			--local seri = require "typedlua/seri"
+			--print("before:", seri(nPrefixType))
+			tltable.insert(nPrefixType[1], tltable.NilableField(vKeyType, nRightType))
+			--print("after", seri(nPrefixType))
+		end
+	else
+		local nLeftType = tltype.Nil()
+		if nLeftField then
+			nLeftType = nLeftField[2]
+		end
+		if vLeftDeco then
+			if not tltRelation.contain(nLeftType, vLeftDeco) then
+				visitor:log_error("index set outtype for left & deco", nLeftType.tag, vLeftDeco.tag)
 			end
-			if nCastType and vValueType.tag == "TAutoLink" then
-				visitor:cast_auto(nCastType, vValueType)
-			else
-				if not tltRelation.contain(nCastType, vValueType) then
-					visitor:log_error(
-						tltype.tostring(vValueType), "index set",
-						tltype.tostring(nField[2]), "failed")
-				end
+			if not tltRelation.contain(vLeftDeco, nRightType) then
+				visitor:log_error("index set outtype for deco & right", vLeftDeco.tag, nRightType.tag)
+			end
+		else
+			if not tltRelation.contain(nLeftType, nRightType) then
+				visitor:log_error("index set outtype for left & right", nLeftType.tag, nRightType.tag)
 			end
 		end
-	elseif vPrefixType.tag == "TAny" then
-		visitor:log_wany("set index for any")
-	else
-		-- TODO deal case for non-table
-		visitor:log_error("index for non-table type not implement...", vPrefixType.tag)
 	end
 end
 

@@ -25,7 +25,6 @@ local tltAuto = require "typedlua/tltAuto"
 local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
 local tltOper = require "typedlua/tltOper"
-local tlvBreadth = {}
 local tlenv = require "typedlua/tlenv"
 
 local Nil = tltype.Nil()
@@ -35,13 +34,15 @@ local String = tltype.String()
 
 local visitor_meta = {}
 
+local tlvBreadth = {}
+
 -- TODO use duck type....
 function visitor_meta.oper_auto_call(visitor, vType, vArgTuple)
-	local nFunctionType = visitor:link_type(vType)
-	assert(nFunctionType.sub_tag == "TAutoFunction")
+	local nFunctionType = visitor:link_refer_type(vType)
+	assert(nFunctionType.sub_tag == "TFunctionAuto")
 	if nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_START then
 		visitor:log_error("function auto solving loop...")
-		return tltype.Tuple(tltype.Any())
+		return tltype.VarTuple(tltype.Any())
 	else
 		-- maybe function is not visited, because node was breadth-first visited.
 		-- so visit without breadth
@@ -61,11 +62,21 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	end
 	local nRegion = visitor.env.region_list[nRegionRefer]
 	local nRightType = nRegion.auto_stack[vAutoLink.link_index]
-	if vLeftType.tag == "TTable" and nRightType.tag == "TTable" and nRightType.sub_tag == "TAutoTable" then
-		for i, nField in ipairs(nRightType) do
+	if nRightType.tag == "TAutoType" and nRightType.sub_tag == "TTableAuto" then
+		local nLeftTableType
+		if vLeftType.tag == "TTable" then
+			nLeftTableType = vLeftType
+		elseif vLeftType.tag == "TDefineType" and vLeftType[1].tag == "TTable" then
+			nLeftTableType = vLeftType[1]
+		else
+			visitor:log_error("cast_auto type unexception type when table, info TODO")
+			return false
+		end
+		-- 1. check sub autolink field
+		for i, nField in ipairs(nRightType[1]) do
 			if nField[2].tag == "TAutoLink" then
-				assert(nField[1].tag == "TLiteral")
-				local nLeftField = tltable.index_field(vLeftType, nField[1])
+				assert(nField[1].tag == "TLiteral", "auto link in unliteral field")
+				local nLeftField = tltable.index_field(nLeftTableType, nField[1])
 				if not nLeftField then
 					visitor:log_error("finish auto fail for field", tltype.tostring(nField[1]))
 					return false
@@ -74,40 +85,52 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 					visitor:log_error("recursive finish auto fail for field", tltype.tostring(nField[1]))
 					return false
 				end
-				nField[2] = nLeftField[2]
 			end
 		end
-		if not tltRelation.contain(vLeftType, nRightType) then
-			visitor:log_error("finish auto fail for relation")
+		print("TODO check other field")
+	elseif nRightType.tag == "TAutoType" and nRightType.sub_tag == "TFunctionAuto" then
+		local nLeftFunctionType
+		if vLeftType.tag == "TFunction" then
+			nLeftTableType = vLeftType
+		elseif vLeftType.tag == "TDefineType" and vLeftType[1].tag == "TFunction" then
+			nLeftTableType = vLeftType[1]
+		else
+			visitor:log_error("cast_auto type unexception type when function, info TODO")
 			return false
 		end
-		nRegion.auto_stack[vAutoLink.link_index] = vLeftType
-		return true
-	elseif vLeftType.tag == "TFunction" and nRightType.tag == "TFunction" and nRightType.sub_tag == "TAutoFunction" then
-		if nRightType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
-			nRegion.auto_stack[vAutoLink.link_index] = vLeftType
-			return true
-		else
+		if nRightType.auto_solving_state ~= tltAuto.AUTO_SOLVING_IDLE then
 			visitor:log_error("finish auto fail because function is not idle")
 			return false
 		end
 	else
 		visitor:log_error("cast_auto type unexception", vLeftType.tag, nRightType.tag, nRightType.sub_tag)
+		return false
 	end
+	nRightType[2] = nRightType[1]
+	nRightType[1] = vLeftType
+	nRightType.sub_tag = "TCastAuto"
+	return true
 end
 
-function visitor_meta.link_type(visitor, vAutoLink)
-	if vAutoLink.tag ~= "TAutoLink" then
-		return vAutoLink
+function visitor_meta.link_refer_type(visitor, vType)
+	if vType.tag == "TDefineRefer" then
+		return visitor.env.define_dict[vDefineRefer.name]
+	elseif vType.tag == "TAutoLink" then
+		local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+		local nRegion = visitor.env.region_list[nRegionRefer]
+		while nRegion.region_refer ~= vType.link_region_refer do
+			nRegion = visitor.env.region_list[nRegion.parent_refer]
+		end
+		local nAutoType = nRegion.auto_stack[vType.link_index]
+		if nAutoType.sub_tag == "TCastAuto" then
+			return nAutoType[1]
+		else
+			return nAutoType
+		end
+	else
+		return vType
 	end
-	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
-	local nRegion = visitor.env.region_list[nRegionRefer]
-	while nRegion.region_refer ~= vAutoLink.link_region_refer do
-		nRegion = visitor.env.region_list[nRegion.parent_refer]
-	end
-	return nRegion.auto_stack[vAutoLink.link_index]
 end
-
 
 function visitor_meta.log_error (visitor, ...)
 	local filename = visitor.env.filename
@@ -269,10 +292,42 @@ local visitor_exp = {
 		override=function(visitor, vFunctionNode, visit_node, self_visit)
 			-- if #stack == 1 then visit function in an isolating stack
 			if #visitor.stack == 1 then
-				local nFunctionType = visitor:link_type(vFunctionNode.type)
-				-- deco input parameter
-				local nInputTuple = nFunctionType[1]
-				if nInputTuple then
+				local nFunctionType = vFunctionNode.type
+				nFunctionType = visitor:link_refer_type(nFunctionType)
+				-- breadth visit
+				if nFunctionType.sub_tag == "TFunctionAuto" then
+					assert(nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE)
+					-- add any for default
+					local nTypeList = {}
+					local nParList = vFunctionNode[1]
+					local nHasDots = false
+					for k, nIdentNode in ipairs(nParList) do
+						-- TODO fill default with duck type
+						nIdentNode.deco_type = tltype.Any()
+						nTypeList[k] = tltype.Any()
+						if nIdentNode.tag == "Dots" then
+							assert(k == #nParList)
+							nIdentNode.deco_type = tltype.VarTuple(tltype.Any())
+							nHasDots = true
+						end
+					end
+					if nHasDots then
+						nFunctionType[1][1] = tltype.VarTuple(table.unpack(nTypeList))
+					else
+						nFunctionType[1][1] = tltype.Tuple(table.unpack(nTypeList))
+					end
+					-- if auto function and idle, change state and visit
+					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_START
+					self_visit(visitor, vFunctionNode)
+					-- TODO solving all auto type in this region when function visit end
+					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
+				else
+					if nFunctionType.tag == "TDefineType" then
+						nFunctionType = nFunctionType[1]
+					end
+					assert(nFunctionType.tag == "TFunction", "function but not function type")
+					-- deco input parameter
+					local nInputTuple = nFunctionType[1]
 					local nParList = vFunctionNode[1]
 					for k, nIdentNode in ipairs(nParList) do
 						if nIdentNode.tag == "Dots" then
@@ -296,49 +351,18 @@ local visitor_exp = {
 							visitor:log_error("unexcept branch when function deco parlist")
 						end
 					end
-				else
-					-- add any for default
-					local nTypeList = {}
-					local nParList = vFunctionNode[1]
-					local nHasDots = false
-					for k, nIdentNode in ipairs(nParList) do
-						-- TODO fill default with duck type
-						nIdentNode.deco_type = tltype.Any()
-						nTypeList[k] = tltype.Any()
-						if nIdentNode.tag == "Dots" then
-							assert(k == #nParList)
-							nIdentNode.deco_type = tltype.VarTuple(tltype.Any())
-							nHasDots = true
-						end
-					end
-					if nHasDots then
-						nFunctionType[1]= tltype.VarTuple(table.unpack(nTypeList))
-					else
-						nFunctionType[1]= tltype.Tuple(table.unpack(nTypeList))
-					end
-				end
-				-- breadth visit
-				if nFunctionType.sub_tag == "TAutoFunction"
-					and nFunctionType.auto_solving_state == tltAuto.AUTO_SOLVING_IDLE then
-					-- if auto function and idle, change state and visit
-					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_START
-					self_visit(visitor, vFunctionNode)
-					-- TODO solving all auto type in this region when function visit end
-					nFunctionType.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
-				else
-					-- assert not looping
-					assert(nFunctionType.auto_solving_state ~= tltAuto.AUTO_SOLVING_START)
 					-- if not auto function or auto finish
 					self_visit(visitor, vFunctionNode)
 				end
 			-- if #stack > 1 then visit function in parent's stack
-			-- create AutoFunction right now but visit when it's called or by breadth
+			-- create FunctionAuto right now but visit when it's called or by breadth
 			else
 				-- auto deco for parameter
 				local nOwnRegionRefer = vFunctionNode.region_refer
-				local nAutoFunction = tltAuto.AutoFunction(nOwnRegionRefer)
+				local nFunctionAuto = tltAuto.FunctionAuto(nOwnRegionRefer)
 				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_refer
-				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nAutoFunction)
+				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nFunctionAuto)
+				-- if static, cast when assign
 				vFunctionNode.type = nAutoLink
 				visitor.breadth_region_node_list[#visitor.breadth_region_node_list + 1] = vFunctionNode
 			end
@@ -393,54 +417,55 @@ local visitor_exp = {
 			end
 
 			local nFieldList = {}
-			local nAutoTable = tltAuto.AutoTable()
+			local nTableConstructor = tltable.TableConstructor()
 			if #nHashFieldList == 0 then
 				-- insert record field
 				for nRecordKey, nRecordField in pairs(nRecordFieldDict) do
 					if nArrayTypeList[nRecordKey] then
 						visitor:log_error("table constructor confliction in record key")
 					else
-						tltable.insert(nAutoTable, nRecordField)
+						tltable.insert(nTableConstructor, nRecordField)
 					end
 				end
 				-- insert array record field
 				for i, nType in ipairs(nArrayTypeList) do
 					local nField = tltable.Field(tltype.Literal(i), nType)
-					tltable.insert(nAutoTable, nField)
+					tltable.insert(nTableConstructor, nField)
 				end
 			else
 				-- insert hash field
 				for i, nHashField in ipairs(nHashFieldList) do
-					if tltable.index_field(nAutoTable, nHashField[1]) then
+					if tltable.index_field(nTableConstructor, nHashField[1]) then
 						visitor:log_error("table construct confliction in hash key")
 					else
-						tltable.insert(nAutoTable, nHashField)
+						tltable.insert(nTableConstructor, nHashField)
 					end
 				end
 				-- insert record field
 				for nRecordKey, nRecordField in pairs(nRecordFieldDict) do
-					local nFindField = tltable.index_field(nAutoTable, nRecordField[1])
+					local nFindField = tltable.index_field(nTableConstructor, nRecordField[1])
 					if nFindField then
 						visitor:log_error("table construct confliction between hash key and record key")
 					elseif nArrayTypeList[nRecordKey] then
 						visitor:log_error("table construct confliction between record key and array key")
 					else
-						tltable.insert(nAutoTable, nRecordField)
+						tltable.insert(nTableConstructor, nRecordField)
 					end
 				end
 				-- insert array record field
-				if #nArrayTypeList > 0 and tltable.index_field(nAutoTable, tltype.Literal(1)) then
+				if #nArrayTypeList > 0 and tltable.index_field(nTableConstructor, tltype.Literal(1)) then
 					visitor:log_error("table construct confliction between hash key and array key")
 				else
 					for i, nType in ipairs(nArrayTypeList) do
 						local nField = tltable.Field(tltype.Literal(i), nType)
-						tltable.insert(nAutoTable, nField)
+						tltable.insert(nTableConstructor, nField)
 					end
 				end
 			end
 
 			local nRegionRefer = visitor.region_stack[#visitor.region_stack]
-			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nAutoTable)
+			local nTableAuto = tltAuto.TableAuto(nTableConstructor)
+			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nTableAuto)
 
 			add_type(visitor, vTableNode, nAutoLink)
 

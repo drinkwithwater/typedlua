@@ -50,7 +50,8 @@ function tlenv.GlobalEnv(vMainFileName)
 	nRootScope.record_dict["_ENV"] = tlenv.G_IDENT_REFER
 
 	-- put _G as auto type
-	nNode.type = tlenv.region_push_auto(nGlobalEnv, tlenv.G_REGION_REFER, tltPrime)
+	local nGlobalAuto = tltAuto.TableAuto(tltPrime)
+	nNode.type = tlenv.region_push_auto(nGlobalEnv, tlenv.G_REGION_REFER, nGlobalAuto)
 
 
 	nGlobalEnv.root_scope = nRootScope
@@ -176,23 +177,25 @@ function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
 		def_index = nClosureIndex,
 		run_region_refer = vRunRegionRefer,
 		run_index = nClosureIndex,
-		length = #nFunctionOwnRegion.auto_stack,
 		caller_auto_link = tltAuto.AutoLink(vFunctionType.run_region_refer, vFunctionType.run_index),
 	}
 	nRunRegion.auto_stack[nClosureIndex] = nClosure
 	for i, nAutoType in ipairs(nFunctionOwnRegion.auto_stack) do
 		local nNewIndex = #nRunRegion.auto_stack + 1
 		local nCopyType = nil
-		if nAutoType.tag == "TFunction" then
-			nCopyType = tlenv.closure_copy_function(vFileEnv, nClosure, nAutoType)
-		elseif nAutoType.tag == "TTable" then
-			nCopyType = tlenv.closure_copy_table(vFileEnv, nClosure, nAutoType)
+		if nAutoType.tag == "TAutoType" then
+			if nAutoType.sub_tag == "TFunctionAuto" then
+				nCopyType = tlenv.closure_copy_function(vFileEnv, nClosure, nAutoType)
+			elseif nAutoType.sub_tag == "TTableAuto" then
+				nCopyType = tlenv.closure_copy_table(vFileEnv, nClosure, nAutoType)
+			else
+				error("unexception auto sub type"..tostring(nAutoType.sub_tag))
+			end
 		elseif nAutoType.tag == "TClosure" then
 			nCopyType = {
 				tag = "TClosure",
 				def_region_refer = vRunRegionRefer,
 				def_index = nNewIndex,
-				length = nAutoType.length,
 				caller_auto_link = tlenv.closure_relink(vFileEnv, nClosure, nAutoType.caller_auto_link),
 			}
 		end
@@ -200,9 +203,9 @@ function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
 		nCopyType.run_region_refer = vRunRegionRefer
 		nCopyType.run_index = nNewIndex
 	end
-	if vFunctionType[2] then
+	if vFunctionType[1][2] then
 		local nOutputTuple = tltype.Tuple()
-		for i, nType in ipairs(vFunctionType[2]) do
+		for i, nType in ipairs(vFunctionType[1][2]) do
 			if nType.tag == "TAutoLink" then
 				nOutputTuple[i] = tlenv.closure_relink(vFileEnv, nClosure, nType)
 			else
@@ -215,57 +218,63 @@ function tlenv.function_call(vFileEnv, vRunRegionRefer, vFunctionType)
 	end
 end
 
-function tlenv.closure_copy_table(vFileEnv, vClosure, vAutoTable)
-	if vAutoTable.sub_tag ~= "TAutoTable" then
-		return vAutoTable
+function tlenv.closure_copy_table(vFileEnv, vClosure, vTableAuto)
+	if vTableAuto.sub_tag ~= "TTableAuto" then
+		return vTableAuto
 	end
-	local nCopyTable = tltAuto.AutoTable()
-	nCopyTable.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
-	nCopyTable.def_region_refer = vAutoTable.def_region_refer
-	nCopyTable.def_index  = vAutoTable.def_index
-	for i, nField in ipairs(vAutoTable) do
+	local nFieldList = {}
+	for i, nField in ipairs(vTableAuto[1]) do
 		local nFieldKey = nField[1]
 		local nFieldValue = nField[2]
 		if nFieldValue.tag == "TAutoLink" then
 			nFieldValue = tlenv.closure_relink(vFileEnv, vClosure, nFieldValue)
 		end
-		nCopyTable.record_dict[nFieldKey[1]] = i
-		nCopyTable[i] = tltable.Field(nFieldKey, nFieldValue)
+		nFieldList[i] = tltable.Field(nFieldKey, nFieldValue)
 	end
-	return nCopyTable
+	local nTableAuto = tltAuto.TableAuto(tltable.TableConstructor(table.unpack(nFieldList)))
+	nTableAuto.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
+	nTableAuto.def_region_refer = vTableAuto.def_region_refer
+	nTableAuto.def_index  = vTableAuto.def_index
+	return nTableAuto
 end
 
-function tlenv.closure_copy_function(vFileEnv, vClosure, vAutoFunction)
-	if vAutoFunction.sub_tag ~= "TAutoFunction" then
-		return vAutoFunction
+function tlenv.closure_copy_function(vFileEnv, vClosure, vFunctionAuto)
+	if vFunctionAuto.sub_tag ~= "TFunctionAuto" then
+		return vFunctionAuto
 	end
-	local nCopyFunction = tltAuto.AutoFunction(vAutoFunction.own_region_refer, vAutoFunction[1])
-	nCopyFunction.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
-	nCopyFunction.def_region_refer = vAutoFunction.def_region_refer
-	nCopyFunction.def_index = vAutoFunction.def_index
 	-- input is static type...
-	nCopyFunction[1] = vAutoFunction[1]
-	if not vAutoFunction[2] then
+	local nInputTuple, nOutputTuple = vFunctionAuto[1][1], vFunctionAuto[1][2]
+	if not nOutputTuple then
 		print("auto function nil return...")
 	else
-		local nOutputTuple = tltype.Tuple()
-		for i, nType in ipairs(vAutoFunction[2]) do
-			if nType.tag == "TAutoLink" and nType.link_region_refer ~= vAutoFunction.own_region_refer then
+		nOutputTuple = tltype.Tuple()
+		for i, nType in ipairs(vFunctionAuto[1][2]) do
+			if nType.tag == "TAutoLink" and nType.link_region_refer ~= vFunctionAuto.own_region_refer then
 				nOutputTuple[i] = tlenv.closure_relink(vFileEnv, vClosure, nType)
 			else
 				nOutputTuple[i] = nType
 			end
 		end
-		nCopyFunction[2] = nOutputTuple
 	end
-	return nCopyFunction
+	local nCopyAuto = tltAuto.FunctionAuto(
+		vFunctionAuto.own_region_refer,
+		tltype.FunctionConstructor(nInputTuple, nOutputTuple))
+	nCopyAuto.auto_solving_state = tltAuto.AUTO_SOLVING_FINISH
+	nCopyAuto.def_region_refer = vFunctionAuto.def_region_refer
+	nCopyAuto.def_index = vFunctionAuto.def_index
+	return nCopyAuto
 end
 
 -- change link from link-stack to link-closure-from-stack
+-- used place:
+-- 1. copy table, table field;
+-- 2. copy function, function return;
+-- 3. copy closure, closure caller;
+-- 4. function call, return;
 function tlenv.closure_relink(vFileEnv, vClosure, vAutoLink)
 	assert(vAutoLink.tag == "TAutoLink", "closure_relink called with unexcept type:"..tostring(vAutoLink.tag))
 	local nClosure = vClosure
-	while (nClosure ~= nil) and (nClosure.own_region_refer ~= vAutoLink.link_region_refer) do
+	while nClosure and (nClosure.own_region_refer ~= vAutoLink.link_region_refer) do
 		local nCallerLink = nClosure.caller_auto_link
 		local nCallerType = vFileEnv.region_list[nCallerLink.link_region_refer].auto_stack[nCallerLink.link_index]
 		nClosure = tlenv.type_find_closure(vFileEnv, nCallerType)
@@ -278,8 +287,12 @@ function tlenv.closure_relink(vFileEnv, vClosure, vAutoLink)
 		nLinkedType = tlenv.closure_index_type(vFileEnv, nClosure, vAutoLink.link_index)
 		-- return tltAuto.AutoLink(nLinkedType.run_region_refer, nLinkedType.run_index)
 	end
-	if tltAuto.is_auto_type(nLinkedType) then
-		return tltAuto.AutoLink(nLinkedType.run_region_refer, nLinkedType.run_index)
+	if nLinkedType.tag == "TAutoType" then
+		if nLinkedType.sub_tag == "TCastAuto" then
+			return nLinkedType[1]
+		else
+			return tltAuto.AutoLink(nLinkedType.run_region_refer, nLinkedType.run_index)
+		end
 	else
 		return nLinkedType
 	end

@@ -1,4 +1,6 @@
 
+local tltable = require "typedlua/tltable"
+local tltype = require "typedlua/tltype"
 local tltAuto = {}
 
 tltAuto.AUTO_SOLVING_IDLE = 1
@@ -14,54 +16,29 @@ function tltAuto.AutoLink(vRegionRefer, vIndex)
 	}
 end
 
--- TODO
-function tltAuto.PlaceHolder()
-	return {tag="TPlaceHolder"}
+function tltAuto.FunctionAuto(vRegionRefer, vFunctionConstructor)
+	return {
+		tag = "TAutoType", sub_tag = "TFunctionAuto",
+		auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
+		own_region_refer = vRegionRefer,
+		run_region_refer = nil,
+		run_index = nil,
+		def_region_refer = nil,
+		def_index = nil,
+		[1] = vFunctionConstructor or tltype.FunctionConstructor(),
+	}
 end
 
-function tltAuto.AutoFunction(vRegionRefer, vInputTuple)
-  return {
-	  tag = "TFunction", sub_tag = "TAutoFunction",
-	  auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
-	  own_region_refer = vRegionRefer,
-	  run_region_refer = nil,
-	  run_index = nil,
-	  def_region_refer = nil,
-	  def_index = nil,
-	  [1] = vInputTuple,
-  }
-end
-
-function tltAuto.AutoTable(...)
-	-- TODO check part contain type in keyset
-  local nTableType = {
-	  tag = "TTable", sub_tag="TAutoTable",
-	  auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
-	  record_dict={},
-	  hash_list={},
-	  ...
-  }
-  local nRecordDict = nTableType.record_dict
-  local nHashList = nTableType.hash_list
-  for i, nField in ipairs(nTableType) do
-	  local nFieldKey = nField[1]
-	  local nFieldValue = nField[2]
-	  if nFieldKey.tag == "TLiteral" then
-		  assert(not nRecordDict[nFieldKey[1]], "TLiteral key use twice")
-		  nRecordDict[nFieldKey[1]] = i
-	  else
-		  nHashList[#nHashList + 1] = i
-	  end
-  end
-  return nTableType
-end
-
-function tltAuto.is_auto_type(vType)
-	if vType.sub_tag == "TAutoTable" or vType.sub_tag == "TAutoFunction" then
-		return true
-	else
-		return false
-	end
+function tltAuto.TableAuto(vTableConstructor)
+	return {
+		tag = "TAutoType", sub_tag = "TTableAuto",
+		auto_solving_state = tltAuto.AUTO_SOLVING_IDLE,
+		run_region_refer = nil,
+		run_index = nil,
+		def_region_refer = nil,
+		def_index = nil,
+		[1] = vTableConstructor or tltable.TableConstructor(),
+	}
 end
 
 return tltAuto

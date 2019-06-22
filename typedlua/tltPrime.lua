@@ -4,7 +4,7 @@ local tltable = require "typedlua/tltable"
 local tltAuto = require "typedlua/tltAuto"
 local tltNative = require "typedlua/tlt/tltNative"
 
-local mGlobalTable = tltAuto.AutoTable()
+local mGlobalTable = tltable.TableConstructor()
 
 local Any = tltype.Any()
 

@@ -142,7 +142,7 @@ function tltype.tuple_index(vTuple, vIndex)
 end
 
 function tltype.tuple_sub(vTuple, vIndex)
-	assert(vTuple.tag == "TTuple")
+	assert(vTuple.tag == "TTuple", "tuple_sub for unexcept type "..tostring(vTuple.tag))
 	if vTuple.sub_tag == "TVarTuple" then
 		if vIndex <= #vTuple then
 			return tltype.VarTuple(select(vIndex, table.unpack(vTuple)))
@@ -189,6 +189,10 @@ function tltype.AnyFunction()
 	return {tag = "TFunction", sub_tag = "TAnyFunction"}
 end
 
+function tltype.FunctionConstructor(vInputTuple, vOutputTuple)
+	return {tag = "TFunction", sub_tag = "TUnknownFunction", [1] = vInputTuple, [2] = vOutputTuple}
+end
+
 -- Function : (type, type) -> (type)
 function tltype.StaticFunction (vInputTuple, vOutputTuple)
   return { tag = "TFunction", sub_tag = "TStaticFunction", [1] = vInputTuple, [2] = vOutputTuple }
@@ -202,7 +206,7 @@ end
 
 -- define: (string) -> (type)
 function tltype.Define(vName, vType)
-  return { tag = "TDefine", name=vName, define_type=vType}
+  return { tag = "TDefineType", name=vName, vType}
 end
 
 function tltype.DefineRefer(vName)
@@ -230,9 +234,6 @@ function tltype.general(vType)
 end
 
 local formatterDict ={
-	TGlobalVariable	= function(vType)
-		return string.format("TGlobalVariable(%s)", vType[1])
-	end,
 	TUnion			= function(vUnionType)
 		local nList = {}
 		for i, vType in ipairs(vUnionType) do
@@ -265,6 +266,12 @@ local formatterDict ={
 			nList[#nList + 1] = tltype.tostring(vType)
 		end
 		return "("..table.concat(nList, ",")..")"
+	end,
+	TDefineType		= function(vType)
+		return "definetype"
+	end,
+	TAutoType		= function(vType)
+		return vType.sub_tag
 	end,
 	TDefineRefer		= function(vType)
 		return vType.name

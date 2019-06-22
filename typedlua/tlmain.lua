@@ -28,7 +28,7 @@ function tlmain.main(subject, filename, strict, integer, color)
 	end
 	nFileEnv.ast = nContext.ast
 
-	print(seri(nContext.define_list))
+	print("define_list:", seri(nContext.define_list))
 
 
 	-- print(tlutils.dumpast(global_env.ast))
