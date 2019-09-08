@@ -12,6 +12,7 @@ local tltype = require "typedlua.tltype"
 local tltAuto = require "typedlua.tltAuto"
 local tltable = require "typedlua.tltable"
 local tlutils = require "typedlua.tlutils"
+local tleUnion = require "typedlua.tleUnion"
 
 local tltSyntax = {}
 
@@ -41,11 +42,16 @@ end
 
 local mBaseSyntax = {
   -- type language
-  Type = lpeg.V("NilableType");
-  NilableType = lpeg.V("UnionType") * (tllexer.symb("?") * lpeg.Cc(true))^-1 /
-                tltype.UnionNil;
-  UnionType = lpeg.V("PrimaryType") * (lpeg.Cg(tllexer.symb("|") * lpeg.V("PrimaryType"))^0) /
-              tltype.Union;
+  Type = lpeg.V("SingleOrUnionType");
+  -- TODO NilableType = lpeg.V("UnionType") * (tllexer.symb("?") * lpeg.Cc(true))^-1 / tleUnion.UnionNil;
+  SingleOrUnionType = lpeg.V("PrimaryType") * (lpeg.Cg(tllexer.symb("|") * lpeg.V("PrimaryType"))^0) /
+              function (...)
+				  if select("#", ...) == 1 then
+					  return ...
+				  else
+					  return tleUnion.UnionType(...)
+				  end
+			  end;
 
   PrimaryType = lpeg.V("LiteralType") +
                 lpeg.V("BaseType") +

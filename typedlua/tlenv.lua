@@ -37,6 +37,8 @@ function tlenv.GlobalEnv(vMainFileName)
 		ident_list = {},
 		auto_list = {},
 		closure_list = {},
+		union_deduce_tree_list = {},
+		union_deduce_list = {}
 	}
 
 	nGlobalEnv.region_list = nGlobalEnv.scope_list

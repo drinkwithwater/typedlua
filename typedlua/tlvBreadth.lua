@@ -26,6 +26,7 @@ local tltRelation = require "typedlua/tltRelation"
 local tltable = require "typedlua/tltable"
 local tltOper = require "typedlua/tltOper"
 local tlenv = require "typedlua/tlenv"
+local tleUnion = require "typedlua/tleUnion"
 
 local Nil = tltype.Nil()
 local Boolean = tltype.Boolean()
@@ -113,6 +114,7 @@ function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
 	return true
 end
 
+
 function visitor_meta.link_refer_type(visitor, vType)
 	if vType.tag == "TDefineRefer" then
 		return visitor.env.define_dict[vType.name]
@@ -154,6 +156,15 @@ function visitor_meta.log_wany(visitor, ...)
 	print(head, ...)
 end
 
+function visitor_meta.get_current_scope_refer(visitor)
+	for i=#visitor.stack, 1, -1 do
+		local nNode = visitor.stack[i]
+		if nNode.scope_refer then
+			return nNode.scope_refer
+		end
+	end
+end
+
 -- expr add type, check right_deco
 local function add_type(visitor, node, t)
 	--[[ do nothing...
@@ -171,6 +182,26 @@ local function add_type(visitor, node, t)
 end
 
 local visitor_stm = {
+	If={
+		__comment_override=function(visitor, vNode, vNodeVisit, vSelfVisit)
+			print("TODOTODOTODOTODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+			for i=1, #vNode, 2 do
+				if i ~= #vNode then
+					vNodeVisit(visitor, vNode[i])  -- visit exp
+					local nControlType = vNode[i].type
+					local nControlBlock = vNode[i + 1]
+					if nControlType.tag == "TUnionState" then
+						tleUnion.scope_assert(visitor.env, vControlBlock.scope_refer, nControlType)
+						print("TODOTODOTODOTODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+						print("main machinism!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+					end
+					vNodeVisit(visitor, vControlBlock) -- visit block
+				else
+					vNodeVisit(visitor, vNode[i]) -- visit block
+				end
+			end
+		end,
+	},
 	Forin={
 		override=function(visitor, vForinNode, vNodeVisit, vSelfVisit)
 			vNodeVisit(visitor, vForinNode[2])
@@ -304,11 +335,11 @@ local visitor_exp = {
 					local nHasDots = false
 					for k, nIdentNode in ipairs(nParList) do
 						-- TODO fill default with duck type
-						nIdentNode.deco_type = tltype.Any()
+						nIdentNode.type = tltype.Any()
 						nTypeList[k] = tltype.Any()
 						if nIdentNode.tag == "Dots" then
 							assert(k == #nParList)
-							nIdentNode.deco_type = tltype.VarTuple(tltype.Any())
+							nIdentNode.type = tltype.VarTuple(tltype.Any())
 							nHasDots = true
 						end
 					end
@@ -340,14 +371,14 @@ local visitor_exp = {
 									visitor:log_warning("dots but not vartuple ...")
 								end
 							end
-							nIdentNode.deco_type = nDecoTuple
+							nIdentNode.type = nDecoTuple
 						elseif nIdentNode.tag == "Id" then
 							local nDecoType = tltype.tuple_index(nInputTuple, k)
 							if not nDecoType then
 								nDecoType = tltype.Any()
 								visitor:log_error("arguments length and deco inputtuple not match")
 							end
-							nIdentNode.deco_type = nDecoType
+							nIdentNode.type = nDecoType
 						else
 							visitor:log_error("unexcept branch when function deco parlist")
 						end
@@ -494,11 +525,13 @@ local visitor_exp = {
 	Id={
 		before=function(visitor, node)
 			local ident = visitor.env.ident_list[node.ident_refer]
+			-- case 1, node is init: forin, fornum, local,
 			if node == ident.node then
-				-- ident set itself
-				if node.deco_type then
-					node.type = node.deco_type
-				end
+				-- if node.deco_type then
+					-- node.type = node.deco_type
+				-- end
+				-- ident set itself, doit when _init_assign
+			-- case 2, node is refered: other case...
 			else
 				-- ident get
 				node.type = ident.node.type
@@ -546,9 +579,9 @@ local visitor_exp = {
 			local nIdent = visitor.env.ident_list[vDotsNode.ident_refer]
 			if nIdent.node == vDotsNode then
 				-- dot define
-				if vDotsNode.deco_type then
-					vDotsNode.type = vDotsNode.deco_type
-				end
+				-- if vDotsNode.deco_type then
+					-- vDotsNode.type = vDotsNode.deco_type
+				-- end
 				assert(vDotsNode.type.tag == "TTuple")
 			else
 				if nParentNode and (nParentNode.tag == "ExpList" or nParentNode.tag == "Table") then

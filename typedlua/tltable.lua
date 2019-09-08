@@ -41,7 +41,9 @@ end
 
 --@(TField*)->(TTable)
 function tltable.TableConstructor(...)
-	-- TODO check part contain type in keyset
+  -- TODO check part contain type in keyset
+
+  --@TTable
   local nTableType = { tag = "TTable", sub_tag = "TUnknownTable", record_dict={}, hash_list={}, ... }
   local nRecordDict = nTableType.record_dict
   local nHashList = nTableType.hash_list
@@ -111,7 +113,7 @@ function tltable.inext_return(vTableType)
 		local nKeyType = nField[1]
 		if nKeyType.tag == "TBase" and nKeyType[1] == "integer" then
 			return tltype.Tuple(nField[1], nField[2])
-		elseif nKeyType.tag == "TLiteral" and type(nKeyType[1]=="number") then
+		elseif nKeyType.tag == "TLiteral" and type(nKeyType[1])=="number" then
 			return tltype.Tuple(nField[1], nField[2])
 		end
 	end

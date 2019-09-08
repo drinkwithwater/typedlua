@@ -77,7 +77,20 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TBase=function(vLiteral, vBase)
+			local nRightDetail = vBase[1]
+			local nLeftDetail = tltRelation.to_base_detail(vLiteral[1])
+			if nLeftDetail == nRightDetail then
+				return CONTAIN_PART
+			elseif nLeftDetail == "number" and nRightDetail == "integer" then
+				return CONTAIN_PART
+			elseif nLeftDetail == "integer" and nRightDetail == "number" then
+				return CONTAIN_PART
+			else
+				return CONTAIN_NIL
+			end
+		end,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
 	TBase=setDefault({
@@ -107,14 +120,14 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
 	--[[
 	--global variable TODO
 	TGlobalVariable=setDefault({
 		TGlobalVariable	= eq1,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),]]
 	TTable=setDefault({
@@ -208,11 +221,11 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
-	TUnion=setDefault({
-		TUnion=function(vUnion, vSubUnion)
+	TUnionType=setDefault({
+		TUnionType=function(vUnion, vSubUnion)
 			local nContainPart = false
 			for k, nSubUnionItem in ipairs(vSubUnion) do
 				local nContainResult = tltRelation.contain(vUnion, nSubUnionItem)
@@ -241,7 +254,7 @@ local TypeContainDict = {
 	end),
 	TNil=setDefault({
 		TNil			= containFull,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
 	TFunction=setDefault({
@@ -253,18 +266,20 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
-	TDefine=setDefault({
-		TDefine=function(vLeftDefine, vRightDefine)
+	TUnionState=setDefault({
+	}, containNil),
+	TDefineType=setDefault({
+		TDefineType=function(vLeftDefine, vRightDefine)
 			if vLeftDefine.name == vRightDefine.name then
 				return CONTAIN_FULL
 			else
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
 	TDefineRefer=setDefault({
@@ -275,7 +290,7 @@ local TypeContainDict = {
 				return CONTAIN_NIL
 			end
 		end,
-		TUnion			= singleContainUnion,
+		TUnionType			= singleContainUnion,
 		TAny			= singleContainAny,
 	}, containNil),
 	TAutoLink=setDefault({}, function()

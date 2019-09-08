@@ -2,11 +2,12 @@ local tltype = require "typedlua/tltype"
 local tltable = require "typedlua/tltable"
 local tltAuto = require "typedlua/tltAuto"
 local tltOper = require "typedlua/tltOper"
+local tleUnion = require "typedlua/tleUnion"
 
 local Function = tltype.StaticFunction
 local Tuple = tltype.Tuple
 local VarTuple = tltype.VarTuple
-local Union = tltype.Union
+local UnionType = tleUnion.UnionType
 
 local Any = tltype.Any()
 local String = tltype.String()
@@ -16,7 +17,7 @@ local Nil = tltype.Nil()
 local Boolean = tltype.Boolean()
 
 local AnyTable = tltable.AnyTable() -- TODO
-local AnyBase = Union(String, Number, Boolean) -- TODO
+local AnyBase = UnionType(String, Number, Boolean) -- TODO
 local AnyFunction = tltype.AnyFunction()
 local AnyNext = tltype.StaticFunction(Tuple(Any, Any), Tuple(Any, Any))
 
@@ -110,16 +111,16 @@ tltNative._G = {
 
 	print = Function(Tuple(Any), Tuple(Nil)),
 
-	tonumber = Function(Tuple(Any), Tuple(Union(Number, Nil))),
+	tonumber = Function(Tuple(Any), Tuple(UnionType(Number, Nil))),
 	tostring = Function(Tuple(Any), Tuple(String)),
 
 	rawequal = Function(Tuple(Any, Any), Tuple(Boolean)),
-	rawlen = Function(Tuple(Union(AnyTable, String)), Tuple(Number)),
+	rawlen = Function(Tuple(UnionType(AnyTable, String)), Tuple(Number)),
 	rawget = Function(Tuple(AnyTable, Any), Tuple(Any)), -- TODO
 	rawset = Function(Tuple(AnyTable, Any), Tuple(Any)), -- TODO
 
 	assert = Function(Tuple(Any)), -- TODO
-	error = Function(Tuple(Union(Number, String))),
+	error = Function(Tuple(UnionType(Number, String))),
 
 	require = Function(Tuple(String), Tuple(Any)), -- TODO
 	dofile = Function(Tuple(String)), -- TODO

@@ -55,66 +55,16 @@ end
 
 -- Nil : () -> (type)
 function tltype.Nil ()
-  return { tag = "TNil" }
+	  return { tag = "TNil", sub_tag = "TExplictNil" }
+end
+
+function tltype.ImplictNil()
+	  return { tag = "TNil", sub_tag = "TImplictNil"}
 end
 
 -- Any : () -> (type)
 function tltype.Any ()
   return { tag = "TAny" }
-end
-
--- union types
-
--- Union : (type*) -> (type)
-function tltype.Union (...)
-	if select("#", ...) == 1 then
-		return ...
-	end
-	local nTypeList = {...}
-	local nUnionType = {tag = "TUnion"}
-	for i, nType in ipairs(nTypeList) do
-		local nRightList = nType
-		if nType.tag ~= "TUnion" then
-			nRightList = {nType}
-		end
-		for j, nRightType in ipairs(nRightList) do
-			local nFullContain = false
-			local nFullBelong = false
-			for k, nLeftType in ipairs(nUnionType) do
-				-- right in left, do nothing
-				local nLeftContainRight = tltRelation.contain(nLeftType, nRightType)
-				if nLeftContainRight == tltRelation.CONTAIN_FULL then
-					nFullContain = true
-				end
-				-- left in right, replace left with right
-				local nRightContainLeft = tltRelation.contain(nRightType, nLeftType)
-				if nRightContainLeft == tltRelation.CONTAIN_FULL then
-					nFullBelong = k
-				end
-				if nLeftContainRight == tltRelation.CONTAIN_PART
-					and nRightContainLeft == tltRelation.CONTAIN_PART then
-					print("union type in unimplement case")
-				end
-			end
-			if not nFullContain then
-				if nFullBelong then
-					nUnionType[nFullBelong] = nRightType
-				else
-					nUnionType[#nUnionType + 1] = nRightType
-				end
-			end
-		end
-	end
-	return nUnionType
-end
-
--- UnionNil : (type, true?) -> (type)
-function tltype.UnionNil (t, is_union_nil)
-  if is_union_nil then
-    return tltype.Union(t, tltype.Nil())
-  else
-    return t
-  end
 end
 
 -- tuple types
@@ -234,12 +184,15 @@ function tltype.general(vType)
 end
 
 local formatterDict ={
-	TUnion			= function(vUnionType)
+	TUnionType		= function(vUnionType)
 		local nList = {}
 		for i, vType in ipairs(vUnionType) do
 			nList[#nList + 1] = tltype.tostring(vType)
 		end
 		return table.concat(nList, "|")
+	end,
+	TUnionDeduce	= function(vUnionState)
+		return "UnionDeduceTODO"
 	end,
 	TAny			= function(vType)
 		return "any"
