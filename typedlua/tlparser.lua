@@ -208,21 +208,23 @@ local function fixup_lin_col(vContext, vNode)
   end
 end
 
-function tlparser.parse (vFileEnv, strict, integer)
-  local nContext = tllexer.create_context(vFileEnv)
-  vFileEnv.split_info_list = tllexer.create_split_info_list(vFileEnv.subject)
-  lpeg.setmaxstack(1000)
-  if integer and _VERSION ~= "Lua 5.3" then integer = false end
-  local ast = lpeg.match(G, vFileEnv.subject, nil, nContext, strict, integer)
-  if not ast then
-	  return nil, tllexer.context_errormsg(nContext)
-  end
-  fixup_lin_col(nContext, ast)
-  nContext.ast = ast
-  if not tltSyntax.check_define_link(nContext) then
-	  return nil, tllexer.context_errormsg(nContext)
-  end
-  return nContext
+function tlparser.parse (vFileEnv)
+	local nContext = tllexer.create_context(vFileEnv)
+	local nSubject = vFileEnv.info.subject
+	vFileEnv.info.split_info_list = tllexer.create_split_info_list(nSubject)
+	lpeg.setmaxstack(1000)
+	-- TODO check _VERSION
+	local ast = lpeg.match(G, nSubject, nil, nContext)
+	if not ast then
+		return nil, tllexer.context_errormsg(nContext)
+	end
+	fixup_lin_col(nContext, ast)
+	nContext.ast = ast
+	vFileEnv.info.ast = ast
+	if not tltSyntax.check_define_link(nContext) then
+		return nil, tllexer.context_errormsg(nContext)
+	end
+	return nContext
 end
 
 return tlparser

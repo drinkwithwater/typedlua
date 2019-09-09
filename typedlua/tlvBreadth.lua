@@ -136,21 +136,21 @@ function visitor_meta.link_refer_type(visitor, vType)
 end
 
 function visitor_meta.log_error (visitor, ...)
-	local filename = visitor.env.filename
+	local filename = visitor.env.info.file_name
 	local node = visitor.stack[#visitor.stack]
 	local head = string.format("%s:%d:%d:[ERROR]", filename, node.l, node.c)
 	print(head, ...)
 end
 
 function visitor_meta.log_warning(visitor, ...)
-	local filename = visitor.env.filename
+	local filename = visitor.env.info.file_name
 	local node = visitor.stack[#visitor.stack]
 	local head = string.format("%s:%d:%d:[WARNING]", filename, node.l, node.c)
 	print(head, ...)
 end
 
 function visitor_meta.log_wany(visitor, ...)
-	local filename = visitor.env.filename
+	local filename = visitor.env.info.file_name
 	local node = visitor.stack[#visitor.stack]
 	local head = string.format("%s:%d:%d:[WANY]", filename, node.l, node.c)
 	print(head, ...)
@@ -630,7 +630,7 @@ function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 end
 
 function tlvBreadth.visit(vFileEnv)
-	tlvBreadth.visit_region(vFileEnv, vFileEnv.ast)
+	tlvBreadth.visit_region(vFileEnv, vFileEnv.info.ast)
 	--[[
 	local seri = require "typedlua.seri"
 	for k, nScope in ipairs(vFileEnv.scope_list) do

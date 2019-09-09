@@ -167,7 +167,7 @@ end
 
 function tllexer.create_context(vFileEnv, vOffset)
 	return {
-		filename = vFileEnv.filename,
+		filename = vFileEnv.info.file_name,
 		env = vFileEnv,
 		ffp = 0,		 -- ffp == forward first position ???
 		offset = vOffset or 0,
@@ -203,7 +203,7 @@ function tllexer.context_fixup_pos(vContext, vPos)
 	if vPos == 0 then
 		return 0, 1
 	end
-	local nList = vContext.env.split_info_list
+	local nList = vContext.env.info.split_info_list
 	local nLeft = 1
 	local nRight = #nList
 	assert(nRight>=nLeft)

@@ -35,7 +35,7 @@ function tltSyntax.ast_link_define_type(vPos, vContext, vName)
 	nDefineRefer.l, nDefineRefer.c = tllexer.context_fixup_pos(vContext, nFullPos)
 
 	-- record in env
-	local nList = vContext.env.define_link_list
+	local nList = vContext.env.info.link_define_list
 	nList[#nList + 1] = nDefineRefer
 	return nDefineRefer
 end
@@ -187,7 +187,7 @@ end
 
 function tltSyntax.check_define_link(vContext)
 	local nFileEnv = vContext.env
-	for i, nDefineRefer in ipairs(nFileEnv.define_link_list) do
+	for i, nDefineRefer in ipairs(nFileEnv.info.link_define_list) do
 		local nName = nDefineRefer.name
 		if not nFileEnv.define_dict[nName] then
 			vContext.ffp = nDefineRefer.pos

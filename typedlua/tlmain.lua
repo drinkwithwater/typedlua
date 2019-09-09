@@ -21,17 +21,15 @@ function tlmain.main(subject, filename, strict, integer, color)
 	local nGlobalEnv = tlenv.GlobalEnv(filename)
 	local nFileEnv = tlenv.create_file_env(nGlobalEnv, subject, filename)
 
-	local nContext, error_msg = tlparser.parse(nFileEnv, subject, filename, strict, integer)
+	local nContext, error_msg = tlparser.parse(nFileEnv)
 	if not nContext then
 		print(error_msg)
 		return
 	end
-	nFileEnv.ast = nContext.ast
 
-	print("define_list:", seri(nContext.define_list))
+	-- print("define_dict:", seri(nContext.env.define_dict))
 
-
-	-- print(tlutils.dumpast(global_env.ast))
+	-- print(tlutils.dumpast(global_env.info.ast))
 
 	-- print("==========================================tlvRequire=======================")
 	-- tlvRequire.requireAll(global_env)
@@ -46,14 +44,14 @@ function tlmain.main(subject, filename, strict, integer, color)
 	print("==========================================tlvRefer=======================")
 
 	tlvRefer.refer(nFileEnv)
-	print(tlutils.dumpast(nFileEnv.ast))
+	print(tlutils.dumpast(nFileEnv.info.ast))
 	--print(seri(identTree))
 	print(tlenv.dump(nFileEnv))
 
 	print("==========================================tlvBreadth=======================")
 	tlvBreadth.visit(nFileEnv)
 
-	--[[print(tlutils.dumpLambda(nFileEnv.ast, function(node)
+	--[[print(tlutils.dumpLambda(nFileEnv.info.ast, function(node)
 		if node.type then
 			return node, "", node.type.tag
 		else

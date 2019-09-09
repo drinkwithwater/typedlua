@@ -30,10 +30,12 @@ function tlenv.GlobalEnv(vMainFileName)
 	local nGlobalEnv = {
 		main_filename = vMainFileName,
 		file_env_dict = {},
-		define_dict = {},
 		_G_node = nil,
 		_G_ident = nil,
+
+		define_dict = {},
 		scope_list = {},
+		region_list = nil, -- region_list = scope_list
 		ident_list = {},
 		auto_list = {},
 		closure_list = {},
@@ -65,23 +67,30 @@ function tlenv.GlobalEnv(vMainFileName)
 end
 
 function tlenv.FileEnv(vSubject, vFileName)
-	local env = {
-		subject = vSubject,
-		filename = vFileName,
-		define_dict = {},
-		define_link_list = {},
-		ast = nil,
-		split_info_list = nil,
+	local nEnv = {
 
-		-- region
-		scope_list = nil,
+		info = {
+			subject = vSubject,
+			file_name = vFileName,
+			link_define_list = {},
+			split_info_list = nil,
+			ast = nil,
+		},
 
-		-- ident
-		ident_list = nil,
 
+		-- meta in global
 		root_scope = nil,
+		define_dict = nil,
+		scope_list = nil,
+		region_list = nil,
+		ident_list = nil,
+		auto_list = nil,
+		closure_list = nil,
+		union_deduce_tree_list = nil,
+		union_deduce_list = nil,
+
 	}
-	return env
+	return nEnv
 end
 
 function tlenv.create_file_env(vGlobalEnv, vSubject, vFileName)

@@ -211,7 +211,7 @@ function tlvRefer.refer(vFileEnv)
 		},
 		define_pos=false,
 	}
-	local nAst = vFileEnv.ast
+	local nAst = vFileEnv.info.ast
 	tlvisitor.visit_raw(nAst, visitor)
 	return vFileEnv
 end
