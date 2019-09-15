@@ -9,16 +9,34 @@ local visit_node
 local visit_block, visit_stm, visit_exp, visit_var, visit_par, visit_type, visit_list, visit_field
 local visit_explist, visit_varlist, visit_parlist
 
+local function trace_region(vFileEnv)
+	local seri = require "typedlua.seri"
+	for k, nScope in ipairs(vFileEnv.scope_list) do
+		if nScope.sub_tag == "Region" then
+			print(k, seri(nScope.auto_stack))
+		end
+	end
+end
+
 local function visit_error(visitor, t, trace, msg)
 	local seri = require "typedlua.seri"
 	local tagList = {}
 	for i=1,#visitor.stack do
 		tagList[#tagList + 1] = visitor.stack[i].tag
 	end
+	if visitor.env then
+		-- trace_region(visitor.env)
+	end
 	print("stack:",table.concat(tagList,","))
 	print("node:",seri(t))
-	print("trace:",trace)
+	--print("trace:",trace)
 	print("msg:",msg)
+
+end
+
+local _ecall = function(func, visitor, t, ...)
+	func(visitor, t, ...)
+	return true
 end
 
 local ecall = function(func, visitor, t, ...)
@@ -35,23 +53,30 @@ local ecall = function(func, visitor, t, ...)
 end
 
 -- __call for all visit dict
-local function visit_tag(visit_dict, visitor, t)
+local function visit_tag(raw_visit_dict, visitor, t)
   if visitor.stop then
 	  return
   end
   local tag = t.tag
   local stack = visitor.stack
   local index = #stack + 1
+  -- Step 1. push node into stack
   stack[index] = t
-  local before = visitor.before[tag]
-  local override = visitor.override[tag]
-  local after = visitor.after[tag]
+  -- Step 2. before default
+  local before_default = visitor.before_default
+  if before_default then
+	  before_default(visitor, t)
+  end
+  -- Step 3. before
+  local before = visitor.before_dict[tag]
   if before then
 	  local ok = ecall(before, visitor, t)
 	  if not ok then
 		  return
 	  end
   end
+  -- Step 4. override
+  local override = visitor.override_dict[tag]
   if override then
 	  local self_visit = visit_node[tag]
 	  local ok = ecall(override, visitor, t, visit_node, self_visit)
@@ -59,7 +84,7 @@ local function visit_tag(visit_dict, visitor, t)
 		  return
 	  end
   else
-	  local middle = visit_dict[tag]
+	  local middle = raw_visit_dict[tag]
 	  if middle then
 		  local ok = ecall(middle, visitor, t)
 		  if not ok then
@@ -67,12 +92,20 @@ local function visit_tag(visit_dict, visitor, t)
 		  end
 	  end
   end
+  -- Step 5. after
+  local after = visitor.after_dict[tag]
   if after then
 	  local ok = ecall(after, visitor, t)
 	  if not ok then
 		  return
 	  end
   end
+  -- Step 6. after default
+  local after_default = visitor.after_default
+  if after_default then
+	  after_default(visitor, t)
+  end
+  -- Step 7. pop node
   stack[index] = nil
 end
 
@@ -318,10 +351,10 @@ visit_block = setmetatable({
 	end
 })
 
-local function setDefaultVistior(visitor)
-	visitor.before = visitor.before or {}
-	visitor.after = visitor.after or {}
-	visitor.override = visitor.override or {}
+local function setDefaultVisitor(visitor)
+	visitor.before_dict = visitor.before_dict or {}
+	visitor.after_dict = visitor.after_dict or {}
+	visitor.override_dict = visitor.override_dict or {}
 	visitor.stack = visitor.stack or {}
 	visitor.stop = false
 end
@@ -379,25 +412,25 @@ function tlvisitor.visit_node(node, visitor)
 end
 
 function tlvisitor.visit_raw(block, visitor)
-	setDefaultVistior(visitor)
+	setDefaultVisitor(visitor)
 	visit_block(visitor, block)
 end
 
 function tlvisitor.visit_obj(block, visitor)
-	setDefaultVistior(visitor)
-	visitor.after = {}
-	visitor.override = {}
-	visitor.before = {}
+	setDefaultVisitor(visitor)
+	visitor.after_dict = {}
+	visitor.override_dict = {}
+	visitor.before_dict = {}
 	for tag, object in pairs(visitor.object_dict) do
-		visitor.after[tag] = object.after
-		visitor.override[tag] = object.override
-		visitor.before[tag] = object.before
+		visitor.after_dict[tag] = object.after
+		visitor.override_dict[tag] = object.override
+		visitor.before_dict[tag] = object.before
 	end
 	visit_block(visitor, block)
 end
 
 function tlvisitor.visit_type(node, visitor)
-	setDefaultVistior(visitor)
+	setDefaultVisitor(visitor)
 	visit_type(visitor, node)
 end
 

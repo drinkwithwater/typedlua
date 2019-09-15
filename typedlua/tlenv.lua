@@ -77,6 +77,12 @@ function tlenv.FileEnv(vSubject, vFileName)
 			ast = nil,
 		},
 
+		cursor = {
+			cur_node = nil,
+			cur_scope = nil,
+			cur_region = nil,
+		},
+
 
 		-- meta in global
 		root_scope = nil,
@@ -110,6 +116,7 @@ function tlenv.create_scope(vFileEnv, vCurScope, vNode)
 			__index=vCurScope.record_dict
 		}) or {},
 		scope_refer = nNewIndex,
+		parent_scope_refer = vCurScope and vCurScope.scope_refer,
 	}
 	vFileEnv.scope_list[nNewIndex] = nNextScope
 	-- if vCurScope then
@@ -126,9 +133,9 @@ function tlenv.create_region(vFileEnv, vParentRegion, vCurScope, vNode)
 	nRegion.child_refer_list = {}
 	if nRegion.region_refer ~= tlenv.G_REGION_REFER then
 		vParentRegion.child_refer_list[#vParentRegion.child_refer_list + 1] = nRegion.region_refer
-		nRegion.parent_refer = vParentRegion.region_refer
+		nRegion.parent_region_refer = vParentRegion.region_refer
 	else
-		nRegion.parent_refer = false
+		nRegion.parent_region_refer = false
 	end
 	return nRegion
 end
@@ -154,6 +161,21 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 	vCurScope.record_dict[nIdent[1]] = nNewIndex
 	vCurScope[#vCurScope + 1] = nIdent
 	return nIdent
+end
+
+--@(FileEnv, integer, integer, AstNode)
+function tlenv.update_cursor(vFileEnv, vRegionRefer, vScopeRefer, vAstNode)
+	local nCursor = vFileEnv.cursor
+	nCursor.cur_scope = vFileEnv.scope_list[vScopeRefer]
+	nCursor.cur_region = vFileEnv.region_list[vRegionRefer]
+	nCursor.cur_node = vAstNode
+end
+
+function tlenv.reset_cursor(vFileEnv)
+	local nCursor = vFileEnv.cursor
+	nCursor.cur_scope = vFileEnv.scope_list[tlenv.G_SCOPE_REFER]
+	nCursor.cur_region = vFileEnv.region_list[tlenv.G_REGION_REFER]
+	nCursor.cur_node = vFileEnv._G_node
 end
 
 function tlenv.dump(vFileEnv)

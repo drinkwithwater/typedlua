@@ -3,9 +3,7 @@
 local tlparser = require "typedlua/tlparser"
 
 -- visitor
-local tlvRequire = require "typedlua/tlvRequire"
 
-local tlvDefine = require "typedlua/tlvDefine"
 local tlvRefer = require "typedlua/tlvRefer"
 
 local tlvBreadth = require "typedlua/tlvBreadth"

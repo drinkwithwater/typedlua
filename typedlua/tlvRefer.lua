@@ -129,6 +129,8 @@ local visitor_after = {
 function tlvRefer.scope_begin(visitor, vNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
 	local nNextScope = nil
+	-- if function or chunk then create region
+	-- else create scope
 	if vNode.tag == "Function" or vNode.tag == "Chunk" then
 		local nParentRegion = nil
 		for i=#visitor.scope_stack, 1, -1 do
@@ -203,9 +205,9 @@ end
 function tlvRefer.refer(vFileEnv)
 	local visitor = {
 		file_env = vFileEnv,
-		before = visitor_before,
-		override = visitor_override,
-		after = visitor_after,
+		before_dict = visitor_before,
+		override_dict = visitor_override,
+		after_dict = visitor_after,
 		scope_stack = {
 			vFileEnv.root_scope
 		},

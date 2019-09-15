@@ -122,7 +122,7 @@ function visitor_meta.link_refer_type(visitor, vType)
 		local nRegionRefer = visitor.region_stack[#visitor.region_stack]
 		local nRegion = visitor.env.region_list[nRegionRefer]
 		while nRegion.region_refer ~= vType.link_region_refer do
-			nRegion = visitor.env.region_list[nRegion.parent_refer]
+			nRegion = visitor.env.region_list[nRegion.parent_region_refer]
 		end
 		local nAutoType = nRegion.auto_stack[vType.link_index]
 		if nAutoType.sub_tag == "TCastAuto" then
@@ -392,7 +392,7 @@ local visitor_exp = {
 				-- auto deco for parameter
 				local nOwnRegionRefer = vFunctionNode.region_refer
 				local nFunctionAuto = tltAuto.FunctionAuto(nOwnRegionRefer)
-				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_refer
+				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_region_refer
 				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nFunctionAuto)
 				-- if static, cast when assign
 				vFunctionNode.type = nAutoLink
