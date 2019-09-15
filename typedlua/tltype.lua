@@ -235,7 +235,7 @@ local formatterDict ={
 }
 
 function tltype.tostring (vType)
-	local nFunc = formatterDict[vType.tag]
+	local nFunc = assert(formatterDict[vType.tag], "type formatter not found"..vType.tag)
 	return vType.tag.."`"..nFunc(vType).."`"
 end
 

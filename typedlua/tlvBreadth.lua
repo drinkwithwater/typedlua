@@ -51,12 +51,12 @@ function visitor_meta.oper_auto_call(visitor, vType, vArgTuple)
 			local nScope = visitor.env.scope_list[nFunctionType.own_region_refer]
 			tlvBreadth.visit_region(visitor.env, nScope.node)
 		end
-		return tlenv.function_call(visitor.env, visitor.region_stack[#visitor.region_stack], nFunctionType)
+		return tlenv.function_call(visitor.env, visitor.env.cursor.cur_region.region_refer, nFunctionType)
 	end
 end
 
 function visitor_meta.cast_auto(visitor, vLeftType, vAutoLink)
-	local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+	local nRegionRefer = visitor.env.cursor.cur_region.region_refer
 	if vAutoLink.link_region_refer ~= nRegionRefer then
 		visitor:log_error("can't finish auto from out region")
 		return false
@@ -119,8 +119,7 @@ function visitor_meta.link_refer_type(visitor, vType)
 	if vType.tag == "TDefineRefer" then
 		return visitor.env.define_dict[vType.name]
 	elseif vType.tag == "TAutoLink" then
-		local nRegionRefer = visitor.region_stack[#visitor.region_stack]
-		local nRegion = visitor.env.region_list[nRegionRefer]
+		local nRegion = visitor.env.cursor.cur_region
 		while nRegion.region_refer ~= vType.link_region_refer do
 			nRegion = visitor.env.region_list[nRegion.parent_region_refer]
 		end
@@ -231,7 +230,7 @@ local visitor_stm = {
 			-- oper subNode 2, 3,..., #node-1
 			for i = 2, #node - 1 do
 				local nSubNode = node[i]
-				tltOper._fornum(visitor, nSubNode, nSubNode.type)
+				tltOper._fornum(visitor, nSubNode.type)
 			end
 			visit_node(visitor, node[#node])
 		end,
@@ -319,7 +318,6 @@ local visitor_exp = {
 
 	Function={
 		before=function(visitor, vFunctionNode)
-			visitor.region_stack[#visitor.region_stack + 1] = assert(vFunctionNode.region_refer)
 		end,
 		override=function(visitor, vFunctionNode, visit_node, self_visit)
 			-- if #stack == 1 then visit function in an isolating stack
@@ -390,7 +388,7 @@ local visitor_exp = {
 			-- create FunctionAuto right now but visit when it's called or by breadth
 			else
 				-- auto deco for parameter
-				local nOwnRegionRefer = vFunctionNode.region_refer
+				local nOwnRegionRefer = vFunctionNode.own_region_refer
 				local nFunctionAuto = tltAuto.FunctionAuto(nOwnRegionRefer)
 				local nParentRefer = visitor.env.region_list[nOwnRegionRefer].parent_region_refer
 				local nAutoLink = tlenv.region_push_auto(visitor.env, nParentRefer, nFunctionAuto)
@@ -400,7 +398,6 @@ local visitor_exp = {
 			end
 		end,
 		after=function(visitor, vFunctionNode)
-			visitor.region_stack[#visitor.region_stack] = nil
 		end,
 	},
 	Table={
@@ -495,7 +492,7 @@ local visitor_exp = {
 				end
 			end
 
-			local nRegionRefer = visitor.region_stack[#visitor.region_stack]
+			local nRegionRefer = vTableNode.parent_region_refer
 			local nTableAuto = tltAuto.TableAuto(nTableConstructor)
 			local nAutoLink = tlenv.region_push_auto(visitor.env, nRegionRefer, nTableAuto)
 
@@ -594,14 +591,24 @@ local visitor_exp = {
 	},
 	Chunk={
 		before=function(visitor, vChunkNode)
-			visitor.region_stack[#visitor.region_stack + 1] = assert(vChunkNode.region_refer)
 		end,
 		after=function(visitor, node)
-			visitor.region_stack[#visitor.region_stack] = nil
 		end
 	},
 }
 
+local function before_default(visitor, vNode)
+	tlenv.update_cursor(visitor.env, vNode.parent_region_refer, vNode.parent_scope_refer, vNode)
+end
+
+local function after_default(visitor, vNode)
+	local nPreNode = visitor.stack[#visitor.stack - 1]
+	if nPreNode then
+		tlenv.update_cursor(visitor.env, nPreNode.parent_region_refer, nPreNode.parent_scope_refer, nPreNode)
+	else
+		tlenv.reset_cursor(visitor.env)
+	end
+end
 
 local visitor_object_dict = tlvisitor.concat(visitor_stm, visitor_exp)
 
@@ -613,7 +620,8 @@ function tlvBreadth.visit_region(vFileEnv, vRegionNode)
 	vRegionNode.breadth_visited = true
 	local visitor = setmetatable({
 		object_dict = visitor_object_dict,
-		region_stack = {tlenv.G_SCOPE_REFER},
+		before_default = before_default,
+		after_default = after_default,
 		breadth_region_node_list = {},
 		env = vFileEnv,
 	}, {

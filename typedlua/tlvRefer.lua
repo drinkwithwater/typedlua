@@ -115,53 +115,38 @@ local visitor_after = {
 	Repeat=function(visitor, stm)
 		tlvRefer.scope_end(visitor)
 	end,
-
-	-- some node about open must contain region_refer
-	-- TODO write here or in tlvBreadth ?????
-	Call=function(visitor, vNode)
-		vNode.region_refer = assert(tlvRefer.get_region_refer(visitor), "region refer not found")
-	end,
-	Table=function(visitor, vNode)
-		vNode.region_refer = assert(tlvRefer.get_region_refer(visitor), "region refer not found")
-	end,
 }
+
+local before_default = function(visitor, vNode)
+	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+	local nCurRegion = visitor.region_stack[#visitor.region_stack]
+	vNode.parent_region_refer = assert(nCurRegion.region_refer)
+	vNode.parent_scope_refer = assert(nCurScope.scope_refer)
+end
 
 function tlvRefer.scope_begin(visitor, vNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+	local nCurRegion = visitor.region_stack[#visitor.region_stack]
 	local nNextScope = nil
 	-- if function or chunk then create region
-	-- else create scope
 	if vNode.tag == "Function" or vNode.tag == "Chunk" then
-		local nParentRegion = nil
-		for i=#visitor.scope_stack, 1, -1 do
-			local nScope = visitor.scope_stack[i]
-			if nScope.sub_tag == "Region" then
-				nParentRegion = nScope
-				break
-			end
-		end
-		nNextScope = tlenv.create_region(visitor.file_env, nParentRegion, nCurScope, vNode)
-		vNode.region_refer = nNextScope.scope_refer
+		nNextScope = tlenv.create_region(visitor.file_env, nCurRegion, nCurScope, vNode)
+		vNode.own_region_refer = nNextScope.region_refer
+		table.insert(visitor.region_stack, nNextScope)
+	-- else create scope
 	else
 		nNextScope = tlenv.create_scope(visitor.file_env, nCurScope, vNode)
 	end
+	vNode.own_scope_refer = nNextScope.scope_refer
 	table.insert(visitor.scope_stack, nNextScope)
-	vNode.scope_refer = nNextScope.scope_refer
 	return nNextScope
 end
 
 function tlvRefer.scope_end(visitor)
-	table.remove(visitor.scope_stack)
-end
-
-function tlvRefer.get_region_refer(visitor)
-	for i=#visitor.scope_stack, 1, -1 do
-		local nScopeNode = visitor.scope_stack[i].node
-		if nScopeNode.tag == "Function" or nScopeNode.tag == "Chunk" then
-			return nScopeNode.region_refer
-		end
+	local nScope = table.remove(visitor.scope_stack)
+	if nScope.sub_tag == "Region" then
+		table.remove(visitor.region_stack)
 	end
-	error("out side region...")
 end
 
 function tlvRefer.ident_define(visitor, vIdentNode)
@@ -205,12 +190,19 @@ end
 function tlvRefer.refer(vFileEnv)
 	local visitor = {
 		file_env = vFileEnv,
+
 		before_dict = visitor_before,
 		override_dict = visitor_override,
 		after_dict = visitor_after,
+		before_default = before_default,
+
 		scope_stack = {
 			vFileEnv.root_scope
 		},
+		region_stack = {
+			vFileEnv.root_scope
+		},
+
 		define_pos=false,
 	}
 	local nAst = vFileEnv.info.ast
