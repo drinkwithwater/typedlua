@@ -3,19 +3,6 @@ local tltable = require "typedlua/tltable"
 local tltype = require "typedlua/tltype"
 local tltAuto = {}
 
-tltAuto.AUTO_SOLVING_IDLE = 1
-tltAuto.AUTO_SOLVING_START = 2
-tltAuto.AUTO_SOLVING_FINISH = 3
-
-
-function tltAuto.AutoLink(vRegionRefer, vIndex)
-	return {
-		tag="TAutoLink",
-		link_region_refer=vRegionRefer,
-		link_index=vIndex
-	}
-end
-
 function tltAuto.FunctionAuto(vRegionRefer, vFunctionConstructor)
 	return {
 		tag = "TAutoType", sub_tag = "TFunctionAuto",

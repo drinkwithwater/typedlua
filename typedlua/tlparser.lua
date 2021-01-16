@@ -9,9 +9,6 @@ lpeg.locale(lpeg)
 local seri = require "typedlua/seri"
 local tlast = require "typedlua.tlast"
 local tllexer = require "typedlua.tllexer"
-local tltype = require "typedlua.tltype"
-local tltAuto = require "typedlua.tltAuto"
-local tltable = require "typedlua.tltable"
 local tltSyntax = require "typedlua.tltSyntax"
 
 local function chainl1 (pat, sep)
@@ -221,9 +218,6 @@ function tlparser.parse (vFileEnv)
 	fixup_lin_col(nContext, ast)
 	nContext.ast = ast
 	vFileEnv.info.ast = ast
-	if not tltSyntax.check_define_link(nContext) then
-		return nil, tllexer.context_errormsg(nContext)
-	end
 	return nContext
 end
 

@@ -42,12 +42,12 @@ function tlmain.main(subject, filename, strict, integer, color)
 	print("==========================================tlvRefer=======================")
 
 	tlvRefer.refer(nFileEnv)
-	print(tlutils.dumpast(nFileEnv.info.ast))
+	print(tlutils.seri(nFileEnv.info.ast))
 	--print(seri(identTree))
-	print(tlenv.dump(nFileEnv))
+	--print(tlenv.dump(nFileEnv))
 
-	print("==========================================tlvBreadth=======================")
-	tlvBreadth.visit(nFileEnv)
+	--print("==========================================tlvBreadth=======================")
+	--tlvBreadth.visit(nFileEnv)
 
 	--[[print(tlutils.dumpLambda(nFileEnv.info.ast, function(node)
 		if node.type then
