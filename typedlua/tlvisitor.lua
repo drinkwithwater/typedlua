@@ -301,9 +301,7 @@ visit_stm = setmetatable({
 	end,
 	Local=function(visitor, stm)
 		visit_list(visitor, stm[1])
-		if #stm[2] > 0 then
-			visit_list(visitor, stm[2])
-		end
+		visit_list(visitor, stm[2])
 	end,
 	Localrec=function(visitor, stm)
 		visit_list(visitor, stm[1])
@@ -323,10 +321,6 @@ visit_stm = setmetatable({
 		visit_exp(visitor, stm[1])
 		visit_exp(visitor, stm[2])
 		visit_list(visitor, stm[3])
-	end,
-	Interface=function(visitor, stm)
-		-- TODO? stm[1]
-		-- visit_type(visitor, stm[2])
 	end,
 }, {
 	__call=visit_tag,

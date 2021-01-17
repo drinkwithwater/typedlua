@@ -71,9 +71,7 @@ local visitor_override = {
 		end
 	end,
 	Local=function(visitor, stm, node_visit)
-		if #stm[2] > 0 then
-			node_visit(visitor, stm[2])
-		end
+		node_visit(visitor, stm[2])
 		visitor.define_pos = true
 		node_visit(visitor, stm[1])
 		visitor.define_pos = false

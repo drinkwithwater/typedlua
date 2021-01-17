@@ -168,7 +168,7 @@ local G = lpeg.P { "TypedLua";
   LocalFunc = lpeg.Cp() * tllexer.kw("local") * tllexer.kw("function") *
               lpeg.V("Id") * lpeg.V("FuncBody") / tlast.statLocalrec;
   LocalAssign = lpeg.Cp() * tllexer.kw("local") * lpeg.V("NameList") *
-                ((tllexer.symb("=") * lpeg.V("ExpList")) + lpeg.Ct(lpeg.Cc())) / tlast.statLocal;
+                ((tllexer.symb("=") * lpeg.V("ExpList")) + lpeg.Cc(nil)) / tlast.statLocal;
 
   -- stat with deco
   LocalStat = lpeg.V("LocalFunc") + lpeg.V("LocalAssign") +
@@ -200,6 +200,9 @@ local function fixup_lin_col(vContext, vNode)
   end
   for _, nChild in ipairs(vNode) do
     if type(nChild) == "table" then
+		if not nChild.pos then
+			nChild.pos = vNode.pos
+		end
 		fixup_lin_col(vContext, nChild)
     end
   end

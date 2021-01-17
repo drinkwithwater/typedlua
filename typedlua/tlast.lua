@@ -160,7 +160,7 @@ end
 
 -- statLocal : (number, namelist, explist) -> (stat)
 function tlast.statLocal (pos, namelist, explist)
-  return { tag = "Local", pos = pos, [1] = namelist, [2] = explist }
+  return { tag = "Local", pos = pos, [1] = namelist, [2] = explist or {tag="ExpList"}}
 end
 
 -- statLocalrec : (number, ident, expr) -> (stat)
