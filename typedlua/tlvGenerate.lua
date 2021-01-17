@@ -46,11 +46,9 @@ local visitor_stm = {
 	},
 	Set={
 		override=function(visitor, node)
-			visitor:indent()
 			visitor:print(node[1])
 			visitor:print("=")
 			visitor:print(node[2])
-			visitor:print("\n")
 		end
 	},
 	While={
@@ -76,6 +74,26 @@ local visitor_stm = {
 		end,
 	},
 	If={
+		override=function(visitor, node)
+			visitor:print("if ")
+			visitor:print(node[1])
+			visitor:print(" then\n")
+			visitor:print(node[2])
+			for i=3,#node-1,2 do
+				visitor:indent()
+				visitor:print("elseif ")
+				visitor:print(node[i])
+				visitor:print(" then\n")
+				visitor:print(node[i+1])
+			end
+			if #node >= 3 and #node % 2 == 1 then
+				visitor:indent()
+				visitor:print("else\n")
+				visitor:print(node[#node])
+			end
+			visitor:indent()
+			visitor:print("end")
+		end
 	},
 	Fornum={
 		override=function(visitor, node)
@@ -155,8 +173,22 @@ local visitor_stm = {
 		end,
 	},
 	Call={
+		override=function(visitor, node)
+			visitor:print(node[1])
+			visitor:print("(")
+			visitor:print(node[2])
+			visitor:print(")")
+		end
 	},
 	Invoke={
+		override=function(visitor, node)
+			visitor:print(node[1])
+			visitor:print(":")
+			visitor:print(node[2])
+			visitor:print("(")
+			visitor:print(node[3])
+			visitor:print(")")
+		end
 	},
 }
 
@@ -188,17 +220,17 @@ local visitor_exp = {
 	},
 	String={
 		before=function(visitor, node)
+			local s = string.gsub(node[1], '\\', '\\\\')
+			s = string.gsub(s, '"', '\\"')
 			if node[1]:match("\n") then
-				visitor:print('[[' .. string.gsub(node[1], '"', '\\"') .. ']]')
+				visitor:print('[[' .. s .. ']]')
 			else
-				visitor:print('"' .. string.gsub(node[1], '"', '\\"') .. '"')
+				visitor:print('"' .. s .. '"')
 			end
 		end
 	},
-
 	Function = {
 		override=function(visitor, node)
-			visitor:indent()
 			visitor:print("function (")
 			visitor:print(node[1])
 			visitor:print(")\n")
@@ -225,6 +257,28 @@ local visitor_exp = {
 		end,
 	},
 	Op = {
+		override=function(visitor, node)
+			local t = {["or"]=1,["not"]=1,["and"]=1}
+			if t[node[1]] then
+				if node[1] == "not" then
+					visitor:print("not ")
+					visitor:print(node[2])
+				else
+					visitor:print(node[2])
+					visitor:print(" "..node[1].." ")
+					visitor:print(node[3])
+				end
+			else
+				visitor:print(node[1])
+				visitor:print("(")
+				visitor:print(node[2])
+				if #node == 3 then
+					visitor:print(",")
+					visitor:print(node[3])
+				end
+				visitor:print(")")
+			end
+		end
 	},
 	Paren = {
 		before=function(visitor, node)
