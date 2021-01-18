@@ -4,8 +4,6 @@ This module implements some env setting
 
 local tlast = require "typedlua/tlast"
 local tltype = require "typedlua/tltype"
-local tltable = require "typedlua/tltable"
-local tltPrime = require "typedlua/tltPrime"
 local tlutils = require "typedlua/tlutils"
 local tlenv = {}
 

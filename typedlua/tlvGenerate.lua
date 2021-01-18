@@ -145,9 +145,10 @@ local visitor_stm = {
 			visitor:print("local function ")
 			visitor:print(node[1])
 			visitor:print("(")
-			visitor:print(node[2][1])
+			visitor:print(node[2][1][1])
 			visitor:print(")")
-			visitor:print(node[2][2])
+			visitor:print(node[2][1][2])
+			visitor:print("\n")
 			visitor:indent()
 			visitor:print("end")
 		end,
@@ -231,7 +232,7 @@ local visitor_exp = {
 	},
 	Function = {
 		override=function(visitor, node)
-			visitor:print("function (")
+			visitor:print("function(")
 			visitor:print(node[1])
 			visitor:print(")\n")
 			visitor:print(node[2])
