@@ -64,9 +64,13 @@ local visitor_override = {
 		local if_stm = stack[#stack - 1]
 		if if_stm and if_stm.tag == "If" then
 			tlvRefer.scope_begin(visitor, stm)
+			local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+			stm.self_scope_refer = nCurScope.scope_refer
 			self_visit(visitor, stm)
 			tlvRefer.scope_end(visitor)
 		else
+			local nCurScope = visitor.scope_stack[#visitor.scope_stack]
+			stm.self_scope_refer = nCurScope.scope_refer
 			self_visit(visitor, stm)
 		end
 	end,
@@ -129,13 +133,12 @@ function tlvRefer.scope_begin(visitor, vNode)
 	-- if function or chunk then create region
 	if vNode.tag == "Function" or vNode.tag == "Chunk" then
 		nNextScope = tlenv.create_region(visitor.file_env, nCurRegion, nCurScope, vNode)
-		vNode.own_region_refer = nNextScope.region_refer
 		table.insert(visitor.region_stack, nNextScope)
 	-- else create scope
 	else
 		nNextScope = tlenv.create_scope(visitor.file_env, nCurScope, vNode)
 	end
-	vNode.own_scope_refer = nNextScope.scope_refer
+	vNode.self_scope_refer = nNextScope.scope_refer
 	table.insert(visitor.scope_stack, nNextScope)
 	return nNextScope
 end
@@ -152,6 +155,7 @@ function tlvRefer.ident_define(visitor, vIdentNode)
 	local nCurScope = visitor.scope_stack[#visitor.scope_stack]
 	local nNewIdent = tlenv.create_ident(visitor.file_env, nCurScope, vIdentNode)
 	vIdentNode.ident_refer = nNewIdent.ident_refer
+	vIdentNode.is_define = true
 end
 
 function tlvRefer.ident_use(visitor, vIdentNode)
@@ -161,21 +165,25 @@ function tlvRefer.ident_use(visitor, vIdentNode)
 		local nIdentRefer = nCurScope.record_dict[nName]
 		if nIdentRefer then
 			vIdentNode.ident_refer = nIdentRefer
+			vIdentNode.is_define = false
 		else
+			vIdentNode.ident_refer = tlenv.G_IDENT_REFER
+			vIdentNode.is_define = false
 			-- unrefered ident converse to global
-			vIdentNode.tag = "Index"
+			--vIdentNode.tag = "Index"
 
 			-- ident
-			local e1 = tlast.ident(vIdentNode.pos, "_ENV")
-			e1.l, e1.c = vIdentNode.l, vIdentNode.c
-			e1.ident_refer = tlenv.G_IDENT_REFER
+			--local e1 = tlast.ident(vIdentNode.pos, "_ENV")
+			--e1.l, e1.c = vIdentNode.l, vIdentNode.c
+			--e1.ident_refer = tlenv.G_IDENT_REFER
+			--e1.self_scope_refer = tlenv.G_SCOPE_REFER
 
 			-- key
-			local e2 = tlast.exprString(vIdentNode.pos, vIdentNode[1])
-			e2.l, e2.c = vIdentNode.l, vIdentNode.c
+			--local e2 = tlast.exprString(vIdentNode.pos, vIdentNode[1])
+			--e2.l, e2.c = vIdentNode.l, vIdentNode.c
 
-			vIdentNode[1] = e1
-			vIdentNode[2] = e2
+			--vIdentNode[1] = e1
+			--vIdentNode[2] = e2
 		end
 	elseif vIdentNode.tag == "Dots" then
 		local nName = "..."

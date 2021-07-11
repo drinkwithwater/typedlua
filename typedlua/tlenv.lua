@@ -137,6 +137,7 @@ function tlenv.create_ident(vFileEnv, vCurScope, vIdentNode)
 		tag = "IdentDefine",
 		node=vIdentNode,
 		ident_refer=nNewIndex,
+		scope_refer=vCurScope.scope_refer,
 		nName,
 		nNewIndex,
 	}

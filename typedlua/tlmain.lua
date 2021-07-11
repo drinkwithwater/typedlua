@@ -8,6 +8,7 @@ local tlvRefer = require "typedlua/tlvRefer"
 
 --local tlvBreadth = require "typedlua/tlvBreadth"
 local tlvGenerate = require "typedlua/tlvGenerate"
+local tlvTypingGen = require "typedlua/tlvTypingGen"
 
 -- utils
 local seri = require "typedlua/seri"
@@ -40,11 +41,12 @@ function tlmain.main(subject, filename, strict, integer, color)
 		print(k, tlutils.dumptype(v))
 	end]]
 
-	print("==========================================tlvRefer=======================")
+	-- print("==========================================tlvRefer=======================")
 
 	tlvRefer.refer(nFileEnv)
 	--print(tlutils.seri(nFileEnv.info.ast))
-	tlvGenerate.visit(nFileEnv)
+	--tlvGenerate.visit(nFileEnv)
+	tlvTypingGen.visit(nFileEnv)
 	--print(seri(identTree))
 	--print(tlenv.dump(nFileEnv))
 

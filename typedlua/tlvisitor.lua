@@ -43,7 +43,7 @@ local ecall = function(func, visitor, t, ...)
 	local logError = visitor.error or visit_error
 	local ok = xpcall(func, function(emsg)
 		if not emsg:find("throw", -5) then
-			logError(visitor, t, debug.traceback(), emsg)
+			--logError(visitor, t, debug.traceback(), emsg)
 		end
 	end, visitor, t, ...)
 	if not ok then
@@ -70,35 +70,23 @@ local function visit_tag(raw_visit_dict, visitor, t)
   -- Step 3. before
   local before = visitor.before_dict[tag]
   if before then
-	  local ok = ecall(before, visitor, t)
-	  if not ok then
-		  return
-	  end
+	  before(visitor, t)
   end
   -- Step 4. override
   local override = visitor.override_dict[tag]
   if override then
 	  local self_visit = visit_node[tag]
-	  local ok = ecall(override, visitor, t, visit_node, self_visit)
-	  if not ok then
-		  return
-	  end
+	  override(visitor, t, visit_node, self_visit)
   else
 	  local middle = raw_visit_dict[tag]
 	  if middle then
-		  local ok = ecall(middle, visitor, t)
-		  if not ok then
-			  return
-		  end
+		  middle(visitor, t)
 	  end
   end
   -- Step 5. after
   local after = visitor.after_dict[tag]
   if after then
-	  local ok = ecall(after, visitor, t)
-	  if not ok then
-		  return
-	  end
+	  after(visitor, t)
   end
   -- Step 6. after default
   local after_default = visitor.after_default

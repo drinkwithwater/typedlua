@@ -1,11 +1,10 @@
-#!/data/data/com.termux/files/usr/bin/lua
+#!/usr/bin/lua
 
 local tlutils = require "typedlua.tlutils"
 local seri = require "typedlua.seri"
 
 local tlast = require "typedlua.tlast"
 local tlparser = require "typedlua.tlparser"
-local tlvDefine = require "typedlua.tlvDefine"
 
 local VERSION = "scm"
 local PROGNAME = "tlc"
